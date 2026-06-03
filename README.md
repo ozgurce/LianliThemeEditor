@@ -4,7 +4,7 @@ An unofficial Windows theme editor for Lian Li L-Connect 3 LCD templates.
 
 The editor is built for Hydroshift II LCD devices and lets you inspect, edit, add, reorder, preview, and apply LCD template layers without doing every change manually inside L-Connect.
 
-> This project is not affiliated with, endorsed by, or supported by Lian Li. It modifies local L-Connect 3 template/profile files, so keep backups of important themes.
+> This project is not affiliated with, endorsed by, or supported by Lian Li. I'm grateful to them for accepting my post on discord. But this is not an official app. If it didnt work for you, please don't blame them. It modifies local L-Connect 3 template/profile files, so keep backups of important themes.
 
 ## Screenshot
 
