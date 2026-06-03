@@ -1,0 +1,23 @@
+# Local runtime output
+*.log
+*.tmp
+*.bak
+*.bak-*
+*.backup
+
+# Personal/editor state
+theme_editor_settings.json
+
+# Large local test artifacts
+_test_image_bitmap.template
+
+# Old local backup folder
+2lang/
+
+# Build output
+EXE/*.exe
+EXE/*.zip
+EXE/Test.zip
+
+# Generated/copied release resources
+EXE/lang/
