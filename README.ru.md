@@ -1,6 +1,6 @@
 # Lian Li LCD Theme Editor
 
-**Языки:** [English](README.en.md) | [Русский](README.ru.md)
+**Языки:** [English](README.en.md) | [Türkçe](README.tr.md) | [Русский](README.ru.md) | [简体中文](README.zh.md)
 
 Неофициальный редактор LCD-шаблонов Lian Li L-Connect 3 для Windows.
 

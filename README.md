@@ -1,6 +1,6 @@
 # Lian Li LCD Theme Editor
 
-**Languages:** [English](README.en.md) | [Русский](README.ru.md)
+**Languages:** [English](README.en.md) | [Türkçe](README.tr.md) | [Русский](README.ru.md) | [简体中文](README.zh.md)
 
 An unofficial Windows theme editor for Lian Li L-Connect 3 LCD templates.
 
