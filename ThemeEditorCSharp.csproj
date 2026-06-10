@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>LianLiThemeEditor</AssemblyName>
+    <RootNamespace>ThemeEditorCSharp</RootNamespace>
+    <Version>1.0.0-beta</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>V 1.0 Beta</InformationalVersion>
+    <Title>Lian Li LCD Template Editor V 1.0 Beta</Title>
+    <Product>Lian Li LCD Template Editor</Product>
+    <Authors>Ozgur Yalcin</Authors>
+    <ApplicationIcon>editor.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="editor.ico" />
+    <Resource Include="Assets\glass-background.png" />
+    <Resource Include="Assets\glass-background-light.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="supporter.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="lang\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Редактор LCD-шаблонов Lian Li V0.97"
+                "title":  "Lian Li LCD Template Editor V 1.0 Beta"
             },
     "common":  {
                    "apply":  "Применить",
@@ -19,13 +19,18 @@
                    "save":  "Сохранить",
                    "close":  "Закрыть",
                    "moveUp":  "Вверх",
-                   "moveDown":  "Вниз"
+                   "moveDown":  "Вниз",
+                   "undo":  "Отменить",
+                   "redo":  "Повторить"
                },
     "top":  {
                 "useActiveTemplate":  "Использовать активный шаблон",
                 "device":  "УСТРОЙСТВО",
                 "templateId":  "ID ШАБЛОНА",
                 "load":  "Загрузить",
+                "exportTheme":  "Экспорт темы",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "Импорт темы",
                 "restartLConnect":  "Перезапустить L-Connect",
                 "templateNotLoaded":  "Шаблон: не загружен",
                 "templateLoaded":  "Шаблон: {0}{1}"
@@ -36,7 +41,10 @@
                      "timeDateFormat":  "Формат времени / даты",
                      "addNewLayer":  "Добавить новый слой",
                      "dropShadow":  "Тень",
-                     "preview":  "Предпросмотр"
+                     "preview":  "Предпросмотр",
+                     "graphSettings":  "Размеры и оформление графика",
+                     "imageSettings":  "Настройки изображения",
+                     "advancedGraph":  "Advanced Graph"
                  },
     "grid":  {
                  "type":  "ТИП",
@@ -67,6 +75,8 @@
                    "thickness":  "ТОЛЩИНА",
                    "fillColor":  "ЦВЕТ ЗАЛИВКИ",
                    "trackColor":  "ЦВЕТ ДОРОЖКИ",
+                   "gradientColor":  "ЦВЕТ ГРАДИЕНТА",
+                   "useGradient":  "Использовать градиент",
                    "imageFile":  "ФАЙЛ ИЗОБРАЖЕНИЯ",
                    "zoomRate":  "МАСШТАБ",
                    "image":  "ИЗОБРАЖЕНИЕ",
@@ -81,7 +91,18 @@
                    "layer":  "СЛОЙ",
                    "background":  "ФОН",
                    "graph":  "ГРАФИК",
-                   "description":  "ОПИСАНИЕ"
+                   "description":  "ОПИСАНИЕ",
+                   "columnWidth":  "COLUMN WIDTH",
+                   "fillBack":  "Fill back",
+                   "revert":  "Revert",
+                   "direction":  "DIRECTION",
+                   "subsection":  "Subsection",
+                   "borderWidth":  "BORDER WIDTH",
+                   "lineWidth":  "LINE WIDTH",
+                   "segmentsGap":  "SEGMENTS / GAP",
+                   "innerRadius":  "INNER RADIUS",
+                   "charSpacing":  "CHAR SPACING",
+                   "fillBackground":  "Fill background"
                },
     "edit":  {
                  "applyToShadow":  "Применить к тени",
@@ -90,6 +111,13 @@
                  "syncShadow":  "Синхронизировать тень"
              },
     "add":  {
+                "layerType":  "ТИП СЛОЯ",
+                "typeText":  "Текст",
+                "typeData":  "Данные",
+                "typeImage":  "Изображение",
+                "typeGraph":  "График",
+                "withShadow":  "Добавить тень",
+                "shadowAutoHint":  "Тень будет добавлена вместе со слоем.",
                 "addText":  "Добавить текст",
                 "addData":  "Добавить данные",
                 "chooseAddImage":  "Выбрать и добавить изображение",
@@ -101,11 +129,15 @@
             },
     "shadow":  {
                    "addShadow":  "Добавить тень",
+                   "options":  "Настройки тени",
+                   "pair":  "Связать тень",
+                   "syncColor":  "Синхронизировать цвет",
                    "note":  "Цвет тени сохраняется отдельно, если синхронизация выключена."
                },
     "preview":  {
-                    "gifMp4Layer":  "Загрузить GIF / MP4",
-                    "dragToReposition":  "Перетащите для изменения позиции"
+                    "gifMp4Layer":  "Загрузить JPG / GIF / MP4",
+                    "dragToReposition":  "Перетащите для изменения позиции",
+                    "uploadBackground":  "Upload Background (GIF / JPG / MP4)"
                 },
     "footer":  {
                    "language":  "Язык",
@@ -172,13 +204,22 @@
                    "addingStreamGraph":  "Добавление потокового графика...",
                    "streamGraphAdded":  "Потоковый график добавлен.",
                    "undoApplied":  "Отмена применена. Нажмите «Применить», чтобы записать изменения в шаблон.",
-                   "nothingToUndo":  "Нечего отменять."
+                   "nothingToUndo":  "Нечего отменять.",
+                   "exportingTheme":  "Экспорт темы...",
+                   "exportingLConnect":  "Создание пакета L-Connect...",
+                   "themeExported":  "Пакет темы экспортирован.",
+                   "lConnectExported":  "Пакет L-Connect экспортирован.",
+                   "exportFailed":  "Ошибка экспорта.",
+                   "importingTheme":  "Импорт темы...",
+                   "themeImported":  "Пакет темы импортирован.",
+                   "importFailed":  "Ошибка импорта."
                },
     "messages":  {
                      "loadFailed":  "Ошибка загрузки",
                      "saveFailed":  "Ошибка сохранения",
                      "backgroundFailed":  "Не удалось загрузить фон",
                      "removeLayerConfirm":  "Удалить слой {0}?",
+                     "removeLayersConfirm":  "Удалить выбранные слои ({0})?",
                      "removeLayerTitle":  "Удалить слой",
                      "removeFailed":  "Не удалось удалить слой",
                      "shadowFailed":  "Не удалось добавить тень",
@@ -200,9 +241,23 @@
                      "moveFailed":  "Не удалось переместить слой",
                      "chooseDataFirst":  "Сначала выберите источник данных.",
                      "layerNotFound":  "Слой не найден.",
-                     "addStreamBarFailed":  "Не удалось добавить потоковый график"
+                     "addStreamBarFailed":  "Не удалось добавить потоковый график",
+                     "loadThemeFirst":  "Сначала загрузите тему.",
+                     "exportThemeFailed":  "Не удалось экспортировать тему",
+                     "exportLConnectFailed":  "Не удалось экспортировать пакет L-Connect",
+                     "importThemeFailed":  "Не удалось импортировать тему",
+                     "themeExported":  "Тема экспортирована",
+                     "lConnectExported":  "Пакет L-Connect экспортирован",
+                     "lConnectImportHint":  "В L-Connect откройте экран шаблонов HydroShift, выберите импорт шаблона и укажите этот ZIP-файл.",
+                     "themeImported":  "Тема импортирована"
                  },
     "dialogs":  {
+                    "exportTheme":  "Экспорт темы Lian Li",
+                    "exportLConnect":  "Экспорт для L-Connect",
+                    "importTheme":  "Импорт темы Lian Li",
+                    "themePackageFilter":  "Пакет темы Lian Li (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "Пакет шаблона L-Connect (*.zip)|*.zip",
+                    "chooseImage":  "Выберите изображение LCD",
                     "chooseBackgroundMedia":  "Выберите фоновое медиа для LCD",
                     "mediaFilter":  "Медиафайлы (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|Все файлы (*.*)|*.*",
                     "imageFilter":  "Изображения (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Все файлы (*.*)|*.*"

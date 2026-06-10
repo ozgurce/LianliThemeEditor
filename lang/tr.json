@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD Tema Editörü V0.97"
+                "title":  "Lian Li LCD Tema Editörü V 1.0 Beta"
             },
     "common":  {
                    "apply":  "Uygula",
@@ -8,6 +8,7 @@
                    "remove":  "Kaldır",
                    "change":  "Değiştir...",
                    "bold":  "Kalın",
+                   "italic":  "İtalik",
                    "choose":  "Seç",
                    "browse":  "Gözat",
                    "cancel":  "İptal",
@@ -19,13 +20,18 @@
                    "save":  "Kaydet",
                    "close":  "Kapat",
                    "moveUp":  "Yukarı Taşı",
-                   "moveDown":  "Aşağı Taşı"
+                   "moveDown":  "Aşağı Taşı",
+                   "undo":  "Geri Al",
+                   "redo":  "Yinele"
                },
     "top":  {
                 "useActiveTemplate":  "Aktif temayı kullan",
                 "device":  "CİHAZ",
                 "templateId":  "TEMA ID",
                 "load":  "Yükle",
+                "exportTheme":  "Temayı Dışa Aktar",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "Temayı İçe Aktar",
                 "restartLConnect":  "L-Connect\u0027i Yeniden Başlat",
                 "templateNotLoaded":  "Tema: yüklenmedi",
                 "templateLoaded":  "Tema: {0}{1}"
@@ -36,7 +42,10 @@
                      "timeDateFormat":  "Saat / Tarih Biçimi",
                      "addNewLayer":  "Yeni Katman Ekle",
                      "dropShadow":  "Gölge",
-                     "preview":  "Önizleme"
+                     "preview":  "Önizleme",
+                     "graphSettings":  "Grafik Boyutları ve Görünümü",
+                     "imageSettings":  "Görsel Ayarları",
+                     "advancedGraph":  "Gelişmiş Grafik"
                  },
     "grid":  {
                  "type":  "TÜR",
@@ -67,7 +76,13 @@
                    "thickness":  "KALINLIK",
                    "fillColor":  "DOLGU RENGİ",
                    "trackColor":  "ZEMİN RENGİ",
+                   "gradientColor":  "GEÇİŞ RENGİ",
+                   "fontGradientColor":  "YAZI GEÇİŞ RENGİ",
+                   "fontGradientDirection":  "GEÇİŞ YÖNÜ",
+                   "useGradient":  "Renk geçişi kullan",
                    "imageFile":  "GÖRSEL DOSYASI",
+                   "rotate":  "DÖNDÜR",
+                   "rect":  "KIRPMA ALANI",
                    "zoomRate":  "YAKINLAŞTIRMA",
                    "image":  "GÖRSEL",
                    "progress":  "İLERLEME ÇUBUĞU",
@@ -81,7 +96,18 @@
                    "layer":  "KATMAN",
                    "background":  "ARKA PLAN",
                    "graph":  "GRAFİK",
-                   "description":  "AÇIKLAMA"
+                   "description":  "AÇIKLAMA",
+                   "columnWidth":  "BÖLME GENİŞLİĞİ",
+                   "fillBack":  "Arka planı doldur",
+                   "revert":  "Ters çevir",
+                   "direction":  "YÖN",
+                   "subsection":  "Alt bölüm",
+                   "borderWidth":  "KENAR KALINLIĞI",
+                   "lineWidth":  "ÇİZGİ KALINLIĞI",
+                   "segmentsGap":  "BÖLME / BOŞLUK",
+                   "innerRadius":  "İÇ YARIÇAP",
+                   "charSpacing":  "KARAKTER ARALIĞI",
+                   "fillBackground":  "Arka planı doldur"
                },
     "edit":  {
                  "applyToShadow":  "Gölgeye de uygula",
@@ -90,6 +116,13 @@
                  "syncShadow":  "Gölgeyle eşitle"
              },
     "add":  {
+                "layerType":  "KATMAN TÜRÜ",
+                "typeText":  "Yazı",
+                "typeData":  "Veri",
+                "typeImage":  "Görsel",
+                "typeGraph":  "Grafik",
+                "withShadow":  "Gölge ekle",
+                "shadowAutoHint":  "Gölge, katmanla birlikte otomatik eklenecek.",
                 "addText":  "Yazı Ekle",
                 "addData":  "Veri Katmanı Ekle",
                 "chooseAddImage":  "Görsel Seç ve Ekle",
@@ -101,11 +134,15 @@
             },
     "shadow":  {
                    "addShadow":  "Gölge Ekle",
+                   "options":  "Gölge seçenekleri",
+                   "pair":  "Gölgeyi eşleştir",
+                   "syncColor":  "Rengi eşitle",
                    "note":  "Gölgeyle eşitle kapalıysa gölge rengi ayrı tutulur."
                },
     "preview":  {
-                    "gifMp4Layer":  "GIF / MP4 Yükle",
-                    "dragToReposition":  "Konumu değiştirmek için sürükle"
+                    "gifMp4Layer":  "JPG / GIF / MP4 Yükle",
+                    "dragToReposition":  "Konumu değiştirmek için sürükle",
+                    "uploadBackground":  "Arka Plan Yükle (GIF / JPG / MP4)"
                 },
     "footer":  {
                    "language":  "Dil",
@@ -172,13 +209,22 @@
                    "undoApplied":  "Geri alma uygulandı. Temaya yazmak için Uygula\u0027ya basın.",
                    "linearBarAdded":  "Çubuk gösterge eklendi.",
                    "restartingLConnectApp":  "L-Connect uygulaması yeniden başlatılıyor...",
-                   "addingArcBar":  "Yay gösterge ekleniyor..."
+                   "addingArcBar":  "Yay gösterge ekleniyor...",
+                   "exportingTheme":  "Tema dışa aktarılıyor...",
+                   "exportingLConnect":  "L-Connect paketi oluşturuluyor...",
+                   "themeExported":  "Tema paketi dışa aktarıldı.",
+                   "lConnectExported":  "L-Connect paketi dışa aktarıldı.",
+                   "exportFailed":  "Dışa aktarma başarısız.",
+                   "importingTheme":  "Tema içe aktarılıyor...",
+                   "themeImported":  "Tema paketi içe aktarıldı.",
+                   "importFailed":  "İçe aktarma başarısız."
                },
     "messages":  {
                      "loadFailed":  "Yükleme başarısız",
                      "saveFailed":  "Kaydetme başarısız",
                      "backgroundFailed":  "Arka plan yüklenemedi",
                      "removeLayerConfirm":  "{0} numaralı katman kaldırılsın mı?",
+                     "removeLayersConfirm":  "Seçili {0} katman kaldırılsın mı?",
                      "removeLayerTitle":  "Katmanı kaldır",
                      "removeFailed":  "Katman kaldırılamadı",
                      "shadowFailed":  "Gölge eklenemedi",
@@ -200,9 +246,23 @@
                      "moveFailed":  "Katman taşınamadı",
                      "chooseDataFirst":  "Önce bir veri kaynağı seçin.",
                      "layerNotFound":  "Katman bulunamadı.",
-                     "addStreamBarFailed":  "Akış grafiği eklenemedi"
+                     "addStreamBarFailed":  "Akış grafiği eklenemedi",
+                     "loadThemeFirst":  "Önce bir tema yükleyin.",
+                     "exportThemeFailed":  "Tema dışa aktarılamadı",
+                     "exportLConnectFailed":  "L-Connect paketi dışa aktarılamadı",
+                     "importThemeFailed":  "Tema içe aktarılamadı",
+                     "themeExported":  "Tema dışa aktarıldı",
+                     "lConnectExported":  "L-Connect paketi dışa aktarıldı",
+                     "lConnectImportHint":  "L-Connect içinde HydroShift tema ekranını açın, Tema İçe Aktar seçeneğine basın ve bu ZIP dosyasını seçin.",
+                     "themeImported":  "Tema içe aktarıldı"
                  },
     "dialogs":  {
+                    "exportTheme":  "Lian Li temasını dışa aktar",
+                    "exportLConnect":  "L-Connect için dışa aktar",
+                    "importTheme":  "Lian Li temasını içe aktar",
+                    "themePackageFilter":  "Lian Li tema paketi (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "L-Connect tema paketi (*.zip)|*.zip",
+                    "chooseImage":  "LCD görselini seç",
                     "chooseBackgroundMedia":  "LCD arka plan medyasını seç",
                     "mediaFilter":  "Medya dosyaları (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|Tüm dosyalar (*.*)|*.*",
                     "imageFilter":  "Görsel dosyaları (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Tüm dosyalar (*.*)|*.*"

@@ -1,139 +1,134 @@
-# Lian Li LCD Theme Editor
+# Lian Li LCD Template Editor
 
-**Languages:** [English](README.en.md) | [Türkçe](README.tr.md) | [Русский](README.ru.md) | [简体中文](README.zh.md)
+**Current release:** V 1.0 Beta
 
-An unofficial Windows theme editor for Lian Li L-Connect 3 LCD templates.
+An unofficial Windows editor for Lian Li L-Connect 3 LCD templates. It lets you load an existing LCD template, edit its layers with a live preview, export the edited template as an L-Connect import package, and apply changes back to L-Connect.
 
-The editor is built for Hydroshift II LCD devices and lets you inspect, edit, add, reorder, preview, and apply LCD template layers without doing every change manually inside L-Connect.
-
-> This project is not affiliated with, endorsed by, or supported by Lian Li. I'm grateful to them for accepting my post on discord. But this is not an official app. If it didnt work for you, please don't blame them. It modifies local L-Connect 3 template/profile files, so keep backups of important themes.
-
-## Screenshot
-
-
-<img width="2537" height="1382" alt="image" src="https://github.com/user-attachments/assets/1dffbef5-7abc-4506-a1a4-6c3e908d5e52" />
-
-
-## Features
-
-- Edit existing L-Connect 3 LCD template layers.
-- Supports Hydroshift II LCD-S and Hydroshift II LCD-C.
-- Automatic device detection fallback when the active template belongs to the other device family.
-- Square preview for LCD-S and circular preview mask for LCD-C.
-- Live preview for text, data, image, graph, GIF, and MP4 layers.
-- Background GIF/MP4 upload and apply workflow.
-- Layer list with editable index, type, data source, text, media, position, size, font, bold, color, and format fields.
-- Add static text layers.
-- Add live data layers such as CPU/GPU temperature, load, clocks, fan/pump data, time, date, and day fields.
-- Add image layers.
-- Add graph layers from available L-Connect modular graph styles.
-- Edit graph style, position, size, colors, and data source where supported.
-- Move layers up/down to control draw order.
-- Add and track shadow layers.
-- Sync shadow movement/color from the source layer.
-- Transparent color support through manual ARGB/hex values.
-- Date/time format controls, including formats such as `Y-M-D`, `D-M-Y`, `D.M.Y`, `00:00`, and `00:00:00`.
-- Multi-language UI: English, Turkish, Russian, and Simplified Chinese.
-- Dark/light UI theme selection.
-- `Apply All` workflow for saving template changes and asking L-Connect to refresh without restarting the fan-control service.
+> This project is not affiliated with, endorsed by, or supported by Lian Li. It edits local L-Connect 3 template/profile files. Keep backups of important themes before experimenting.
 
 ## Supported Devices
 
-| Device | Status | Notes |
-| --- | --- | --- |
-| Hydroshift II LCD-S | Supported | Square LCD preview. |
-| Hydroshift II LCD-C | Supported | Circular preview mask. Uses C-specific template/modular assets. |
+- HydroShift II LCD-S
+- HydroShift II LCD-C
 
-The editor can seed missing ProgramData template/modular/theme/preview files from the installed L-Connect `Assets` directory when possible.
+The editor resolves templates, backgrounds, images, videos, graph modules, and preview assets from the normal L-Connect folders under `C:\ProgramData\Lian-Li\L-Connect 3` and the installed L-Connect assets folder.
 
 ## Requirements
 
-- Windows 10 or Windows 11.
-- L-Connect 3 installed.
-- PowerShell 5.1 or newer.
-- .NET/WPF support available through Windows PowerShell.
-- Administrator rights are recommended when writing to `C:\ProgramData\Lian-Li\L-Connect 3`.
-- `ffmpeg` is recommended for reliable background video conversion/preview workflows.
-- Optional: `ps2exe` if you want to build standalone EXE files.
+- Windows 10 or Windows 11
+- L-Connect 3 installed
+- Administrator rights recommended when writing into `C:\ProgramData\Lian-Li\L-Connect 3`
+- PowerShell 5.1 or newer for the bundled template supporter script
 
-When running from `EXE/`, the editor is designed to look for resources in the parent folder when needed.
+## Release Package
 
-## Running From PowerShell
+The release ZIP should contain:
 
-Open PowerShell and run:
+- `LianLiThemeEditor.exe`
+- `supporter.exe`
+- `lang/`
 
-```powershell
-powershell -ExecutionPolicy Bypass -File editor.ps1
-```
-
-If you installed the project somewhere else, change the path accordingly.
-
-## Building EXE Files
-
-Install/import `ps2exe`, then run these commands from the `ThemeEditor` folder.
-
+Keep these files together in the same folder. The C# editor uses the bundled `supporter.exe` for low-level L-Connect template operations and `lang/*.json` for UI language text.
 
 ## Basic Usage
 
-1. Open L-Connect 3 and select the LCD device.
-2. Select a template in L-Connect or leave the currently active template selected.
-3. Run Theme Editor.
-4. Choose the device type:
-   - `Hydroshift II LCD-S`
-   - `Hydroshift II LCD-C`
-5. Keep `Use active template` enabled, or enter a template ID manually.
-6. Click `Load`.
-7. Select a layer from the layer list or from the preview.
-8. Edit position, font, data source, text, size, color, format, or graph options.
-9. Click `Apply` for the selected layer.
-10. Use `Apply All` to write changes and trigger L-Connect to refresh.
+1. Open L-Connect 3.
+2. Select your HydroShift LCD device and template.
+3. Start `LianLiThemeEditor.exe`.
+4. Keep `Use active template` enabled or choose a template manually.
+5. Click `Load`.
+6. Select a layer from the layer list or the preview canvas.
+7. Edit position, size, font, color, text/data source, graph settings, image settings, or background media.
+8. Use `Apply` for a single layer or `Apply All` for the current set of changes.
+9. Use `Export Theme` to create an L-Connect importable ZIP.
 
-## Layer Types
+## Main Features
 
-Common layer types include:
-
-- `GraphAnimation`: background video/GIF/image animation layer.
-- `GraphItem`: text or data text layer.
-- `GraphImage`: image layer.
-- `GraphStatuBar`: linear/progress-style bar.
-- `GraphArchBar`: circular/arc-style graph.
-- `GraphLine`: stream/line graph.
-- `GraphDynamicBar`: dynamic segmented/bar graph.
-
-Not every property exists on every L-Connect graph object. The editor shows and applies controls based on what the layer supports.
+- C# WPF interface with glassmorphism dark/light themes.
+- Layer list with drag-and-drop ordering.
+- Live preview canvas with zoom, Ctrl + mouse wheel zoom, alignment guides, and direct layer dragging.
+- Right-side properties panel that only shows controls supported by the selected layer.
+- Add layer workflow for text, data, image, graph, and optional shadow layers.
+- Text/data layer editing: position, size, font, color, bold/italic, alignment, character spacing, line height, and format where supported.
+- Image layer editing: image file, size/zoom, rotate, and rect/crop fields where supported.
+- Graph editing: graph type, data source, dimensions, fill/track colors, gradient color, split/subsection options, direction, line/column/border settings, and supported graph-specific fields.
+- Background upload/export support for MP4, GIF, JPG/JPEG, and PNG.
+- L-Connect compatible export package generation.
+- Active template loading on startup workflow.
+- Safer Apply/Apply All flow that refreshes layer state when L-Connect changes the template.
+- Multi-language UI: English, Turkish, Russian, and Simplified Chinese.
 
 ## Data Sources
 
-The editor only keeps practical data sources that L-Connect templates can actually use or display. Common examples:
+The editor exposes practical L-Connect data sources with user-friendly names and keeps the internal L-Connect keys when saving.
 
-- `CPUTEMP`
-- `CPUCLOCK`
-- `CPULOAD`
-- `CPUFAN`
-- `GPUTEMP`
-- `GPUCLOCK`
-- `GPULOAD`
-- `RAMLOAD`
-- `DRVLOAD`
-- `WATERPUMP`
-- `TIME`
-- `DATE`
-- `DAY`
-- `APM`
-- `StaticText`
+Common supported data sources include:
 
-Some values depend on the hardware, L-Connect version, and available sensor data.
+- CPU Clock
+- CPU Clock (GHz)
+- CPU Fan
+- CPU Load
+- CPU Model
+- CPU Power
+- CPU Temperature
+- CPU Temperature (F)
+- CPU Voltage
+- Date
+- Day
+- Drive Load
+- FPS
+- GPU Clock
+- GPU Clock (GHz)
+- GPU Fan
+- GPU Load
+- GPU Model
+- GPU Power
+- GPU RAM
+- GPU RAM Load
+- GPU Temperature
+- GPU Temperature (F)
+- GPU Valid RAM
+- GPU Voltage
+- HDD Temperature
+- HDD Temperature (F)
+- HDD Used
+- Pump / Water Pump
+- RAM
+- RAM Load
+- RAM Model
+- RAM Total
+- RAM Valid
+- Static Text
+- Time
+- Upload Speed
+- Download Speed
+
+### FPS
+
+FPS uses the L-Connect/HWiNFO sensor path exposed as `FPS_AVG` internally and is displayed in the editor as `FPS`. If L-Connect or HWiNFO is not providing this sensor, the preview may fall back to a sample value.
+
+### Power Values
+
+CPU Power and GPU Power are formatted as integers in the editor and save path so decimal fractions from L-Connect sensors do not clutter compact LCD layouts.
 
 ## Date And Time Formats
 
-Time examples:
+Only formats verified to work with L-Connect are exposed.
+
+Time:
 
 ```text
 00:00
 00:00:00
+h_12
+h_24
+m
+s
+AM
+PM
 ```
 
-Date examples:
+Date:
 
 ```text
 Y-M-D
@@ -143,72 +138,83 @@ M
 D
 ```
 
-Date and time layers should stay dynamic. They are not intended to be saved as fixed static text.
+Day:
+
+```text
+Day_en
+ddd
+```
+
+## Graph Notes
+
+The graph list is filtered to the useful H2 graph styles instead of showing duplicate or unsupported L-Connect module entries. The editor shows graph controls based on the selected graph object's supported fields.
+
+Known graph families:
+
+- Bar Chart: horizontal bar graph
+- Donut Bar: circular ring graph
+- Stream Bar: line/stream graph
+
+Some fields only apply to specific graph classes. Unsupported fields are intentionally hidden to avoid saving no-op or unstable values.
 
 ## Background Media
 
-The editor supports GIF/MP4 background selection. When a background is applied, the helper attempts to mirror the way L-Connect stores uploaded background media.
+Backgrounds can be selected as:
 
-Useful paths:
+- MP4
+- GIF
+- JPG/JPEG
+- PNG
 
-```text
-C:\ProgramData\Lian-Li\L-Connect 3\uploaded
-C:\ProgramData\Lian-Li\L-Connect 3\hydroshift-ii-lcd-s
-C:\ProgramData\Lian-Li\L-Connect 3\hydroshift-ii-lcd-c
-```
+The export flow attempts to include the edited background and generated preview assets so L-Connect imports show the edited theme instead of the original default preview.
 
-The editor avoids restarting the L-Connect service for normal apply operations because that service can also control fan behavior.
-
-## Language Support
-
-Language files are stored in:
+## Repository Structure
 
 ```text
-lang/en.json
-lang/tr.json
-lang/ru.json
-lang/zh.json
+Assets/                 UI background assets
+Models/                 Layer/template model classes
+Services/               PowerShell supporter bridge
+lang/                   UI language JSON files
+App.xaml(.cs)           App entry
+MainWindow.xaml(.cs)    Main editor UI and workflow
+ColorPickerDialog.*     Color picker UI
+supporter.exe           L-Connect template/profile helper used by releases
 ```
 
-If a UI string is missing or appears hardcoded, add it to all language JSON files and wire it through the localization helper in `editor.ps1`.
+Generated folders such as `bin/`, `obj/`, `dist/`, local logs, local settings, and release ZIPs are ignored by Git.
 
-## Settings
+## Changelog
 
-Local editor settings are stored in:
+### V 1.0 Beta
 
-```text
-theme_editor_settings.json
-```
-
-This can include:
-
-- selected language
-- selected UI theme
-- selected device model
-- shadow layer links
-
-Do not ship personal machine-specific settings if you are publishing a clean release.
-
-## Troubleshooting
-
-### Background applies but preview shows the wrong media
-
-Check whether the template has a custom background in the L-Connect profile. The helper now filters custom background paths by selected device model, because some template IDs exist in both LCD-S and LCD-C families.
-
-### Access denied
-
-Run PowerShell or the EXE as Administrator. L-Connect stores templates under `C:\ProgramData`, which may require elevated permissions.
+- Migrated the editor workflow from the original PowerShell UI to the C# WPF application.
+- Added the new glassmorphism layout with left layer list, central canvas, and right properties sidebar.
+- Added draggable layer cards and direct preview-canvas layer movement.
+- Added Add Layer popup flow for text, data, image, graph, and shadow-enabled layers.
+- Added L-Connect compatible `Export Theme` ZIP generation.
+- Added support for exporting/importing edited background media instead of falling back to the default template background.
+- Added JPG/JPEG/PNG support for background images in addition to GIF/MP4.
+- Added image layer sizing based on source image dimensions and safer image apply behavior.
+- Added graph style filtering and graph-specific controls for supported fields.
+- Added graph dimensions, fill color, track/background color, gradient color, subsection/split, direction, line width, column width, border width, and related supported settings.
+- Added live preview value handling for supported sensors.
+- Added FPS support through the L-Connect/HWiNFO `FPS_AVG` path.
+- Added CPU/GPU power, voltage, model, RAM, drive, pump, fan, upload/download, HDD, and GPU RAM data paths.
+- Added integer formatting for CPU Power and GPU Power values.
+- Added safer date/time/day format handling and removed unsupported date/weekday combinations.
+- Added live sample value preservation where possible when loading templates.
+- Added light and dark UI themes.
+- Added Ctrl + mouse wheel preview zoom and 100% to 300% zoom range.
+- Added startup active-template workflow.
+- Removed unsupported/no-op Font W and Font Gradient controls from the editor UI and apply path.
 
 ## Development Notes
 
-- `editor.ps1` contains the WPF UI and user workflow.
-- `supporter.ps1` performs low-level template/profile operations.
-- The editor prefers `supporter.exe` if present; otherwise it falls back to `supporter.ps1`.
-- Device-specific assets are resolved from both `ProgramData` and L-Connect `Assets`.
-- LCD-C uses the same template object model for default templates, but its preview should be treated as circular.
-- Some L-Connect custom theme/profile data is stored separately from default template `GraphList` layers.
+- Build with the .NET SDK on Windows.
+- The app targets `net10.0-windows` and uses WPF.
+- `supporter.exe` is required at runtime.
+- Use `dotnet publish` for release builds and keep the generated exe together with `supporter.exe` and `lang/`.
 
 ## Disclaimer
 
-Use at your own risk. Always keep backups before editing L-Connect templates. Fan and pump control are handled by L-Connect services, so avoid unnecessary service restarts while testing LCD theme changes.
-
+Use at your own risk. L-Connect controls LCD screens, fans, and pumps through its own services. Avoid unnecessary service restarts while editing and always keep backups of themes you care about.

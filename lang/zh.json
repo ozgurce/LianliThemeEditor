@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD 模板编辑器 V0.97"
+                "title":  "Lian Li LCD Template Editor V 1.0 Beta"
             },
     "common":  {
                    "apply":  "应用",
@@ -19,13 +19,18 @@
                    "save":  "保存",
                    "close":  "关闭",
                    "moveUp":  "上移",
-                   "moveDown":  "下移"
+                   "moveDown":  "下移",
+                   "undo":  "撤销",
+                   "redo":  "重做"
                },
     "top":  {
                 "useActiveTemplate":  "使用当前模板",
                 "device":  "设备",
                 "templateId":  "模板 ID",
                 "load":  "加载",
+                "exportTheme":  "导出主题",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "导入主题",
                 "restartLConnect":  "重启 L-Connect",
                 "templateNotLoaded":  "模板：未加载",
                 "templateLoaded":  "模板：{0}{1}"
@@ -36,7 +41,10 @@
                      "timeDateFormat":  "时间 / 日期格式",
                      "addNewLayer":  "添加新图层",
                      "dropShadow":  "阴影",
-                     "preview":  "预览"
+                     "preview":  "预览",
+                     "graphSettings":  "图表尺寸和样式",
+                     "imageSettings":  "图像设置",
+                     "advancedGraph":  "Advanced Graph"
                  },
     "grid":  {
                  "type":  "类型",
@@ -67,6 +75,8 @@
                    "thickness":  "厚度",
                    "fillColor":  "填充颜色",
                    "trackColor":  "轨道颜色",
+                   "gradientColor":  "渐变颜色",
+                   "useGradient":  "使用渐变",
                    "imageFile":  "图片文件",
                    "zoomRate":  "缩放",
                    "image":  "图片",
@@ -81,7 +91,18 @@
                    "layer":  "图层",
                    "background":  "背景",
                    "graph":  "图表",
-                   "description":  "说明"
+                   "description":  "说明",
+                   "columnWidth":  "COLUMN WIDTH",
+                   "fillBack":  "Fill back",
+                   "revert":  "Revert",
+                   "direction":  "DIRECTION",
+                   "subsection":  "Subsection",
+                   "borderWidth":  "BORDER WIDTH",
+                   "lineWidth":  "LINE WIDTH",
+                   "segmentsGap":  "SEGMENTS / GAP",
+                   "innerRadius":  "INNER RADIUS",
+                   "charSpacing":  "CHAR SPACING",
+                   "fillBackground":  "Fill background"
                },
     "edit":  {
                  "applyToShadow":  "应用到阴影",
@@ -90,6 +111,13 @@
                  "syncShadow":  "同步阴影"
              },
     "add":  {
+                "layerType":  "图层类型",
+                "typeText":  "文本",
+                "typeData":  "数据",
+                "typeImage":  "图像",
+                "typeGraph":  "图表",
+                "withShadow":  "添加阴影",
+                "shadowAutoHint":  "阴影将与图层一起自动添加。",
                 "addText":  "添加文本",
                 "addData":  "添加数据",
                 "chooseAddImage":  "选择并添加图片",
@@ -101,11 +129,15 @@
             },
     "shadow":  {
                    "addShadow":  "添加阴影",
+                   "options":  "阴影设置",
+                   "pair":  "关联阴影",
+                   "syncColor":  "同步颜色",
                    "note":  "未启用同步时，阴影颜色会单独保存。"
                },
     "preview":  {
-                    "gifMp4Layer":  "上传 GIF / MP4",
-                    "dragToReposition":  "拖动以调整位置"
+                    "gifMp4Layer":  "上传 JPG / GIF / MP4",
+                    "dragToReposition":  "拖动以调整位置",
+                    "uploadBackground":  "Upload Background (GIF / JPG / MP4)"
                 },
     "footer":  {
                    "language":  "语言",
@@ -172,13 +204,22 @@
                    "addingStreamGraph":  "正在添加流式图表...",
                    "streamGraphAdded":  "流式图表已添加。",
                    "undoApplied":  "撤销已应用。按“应用”写入模板。",
-                   "nothingToUndo":  "没有可撤销的操作。"
+                   "nothingToUndo":  "没有可撤销的操作。",
+                   "exportingTheme":  "正在导出主题...",
+                   "exportingLConnect":  "正在创建 L-Connect 包...",
+                   "themeExported":  "主题包已导出。",
+                   "lConnectExported":  "L-Connect 包已导出。",
+                   "exportFailed":  "导出失败。",
+                   "importingTheme":  "正在导入主题...",
+                   "themeImported":  "主题包已导入。",
+                   "importFailed":  "导入失败。"
                },
     "messages":  {
                      "loadFailed":  "加载失败",
                      "saveFailed":  "保存失败",
                      "backgroundFailed":  "背景加载失败",
                      "removeLayerConfirm":  "删除图层 {0}？",
+                     "removeLayersConfirm":  "删除选中的 {0} 个图层？",
                      "removeLayerTitle":  "删除图层",
                      "removeFailed":  "删除失败",
                      "shadowFailed":  "添加阴影失败",
@@ -200,9 +241,23 @@
                      "moveFailed":  "移动失败",
                      "chooseDataFirst":  "请先选择数据源。",
                      "layerNotFound":  "找不到图层。",
-                     "addStreamBarFailed":  "添加流式条失败"
+                     "addStreamBarFailed":  "添加流式条失败",
+                     "loadThemeFirst":  "请先加载主题。",
+                     "exportThemeFailed":  "主题导出失败",
+                     "exportLConnectFailed":  "L-Connect 包导出失败",
+                     "importThemeFailed":  "主题导入失败",
+                     "themeExported":  "主题已导出",
+                     "lConnectExported":  "L-Connect 包已导出",
+                     "lConnectImportHint":  "在 L-Connect 中打开 HydroShift 模板页面，选择导入模板，然后选择此 ZIP 文件。",
+                     "themeImported":  "主题已导入"
                  },
     "dialogs":  {
+                    "exportTheme":  "导出 Lian Li 主题",
+                    "exportLConnect":  "导出到 L-Connect",
+                    "importTheme":  "导入 Lian Li 主题",
+                    "themePackageFilter":  "Lian Li 主题包 (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "L-Connect 模板包 (*.zip)|*.zip",
+                    "chooseImage":  "选择 LCD 图像",
                     "chooseBackgroundMedia":  "选择 LCD 背景媒体",
                     "mediaFilter":  "媒体文件 (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|所有文件 (*.*)|*.*",
                     "imageFilter":  "图片文件 (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|所有文件 (*.*)|*.*"

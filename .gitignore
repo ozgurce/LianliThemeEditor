@@ -1,23 +1,33 @@
-# Local runtime output
+# Build output
+bin/
+obj/
+dist/
+publish/
+release/
+
+# Visual Studio / local IDE state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local tooling and temporary diagnostics
+.tools/
 *.log
-*.tmp
-*.bak
-*.bak-*
-*.backup
-*.ico
+startup_error.log
+unhandled_error.log
+parse.ps1
+temp_profile.json
+supporter.ps1
 
-# Personal/editor state
-theme_editor_settings.json
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store
 
-# Large local test artifacts
-_test_image_bitmap.template
-
-# Old local backup folder
-2lang/
-
-# Build archives
-EXE/*.zip
-EXE/Test.zip
-
-# Generated/copied release resources
-EXE/lang/
+# Packages / generated archives
+*.zip
+*.nupkg

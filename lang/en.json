@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD Template Editor V0.97"
+                "title":  "Lian Li LCD Template Editor V 1.0 Beta"
             },
     "common":  {
                    "apply":  "Apply",
@@ -8,6 +8,7 @@
                    "remove":  "Remove",
                    "change":  "Change...",
                    "bold":  "Bold",
+                   "italic":  "Italic",
                    "choose":  "Choose",
                    "browse":  "Browse",
                    "cancel":  "Cancel",
@@ -19,13 +20,18 @@
                    "save":  "Save",
                    "close":  "Close",
                    "moveUp":  "Move Up",
-                   "moveDown":  "Move Down"
+                   "moveDown":  "Move Down",
+                   "undo":  "Undo",
+                   "redo":  "Redo"
                },
     "top":  {
                 "useActiveTemplate":  "Use active template",
                 "device":  "DEVICE",
                 "templateId":  "TEMPLATE ID",
                 "load":  "Load",
+                "exportTheme":  "Export Theme",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "Import Theme",
                 "restartLConnect":  "Restart L-Connect",
                 "templateNotLoaded":  "Template: not loaded",
                 "templateLoaded":  "Template: {0}{1}"
@@ -36,7 +42,10 @@
                      "timeDateFormat":  "Time / Date Format",
                      "addNewLayer":  "Add New Layer",
                      "dropShadow":  "Drop Shadow",
-                     "preview":  "Preview"
+                     "preview":  "Preview",
+                     "graphSettings":  "Graph Dimensions \u0026 Styling",
+                     "imageSettings":  "Image Settings",
+                     "advancedGraph":  "Advanced Graph"
                  },
     "grid":  {
                  "type":  "TYPE",
@@ -67,7 +76,13 @@
                    "thickness":  "THICKNESS",
                    "fillColor":  "FILL COLOR",
                    "trackColor":  "TRACK COLOR",
+                   "gradientColor":  "GRADIENT COLOR",
+                   "fontGradientColor":  "FONT GRADIENT",
+                   "fontGradientDirection":  "GRADIENT DIR",
+                   "useGradient":  "Use gradient",
                    "imageFile":  "IMAGE FILE",
+                   "rotate":  "ROTATE",
+                   "rect":  "RECT",
                    "zoomRate":  "ZOOM RATE",
                    "image":  "IMAGE",
                    "progress":  "PROGRESS",
@@ -81,7 +96,18 @@
                    "layer":  "LAYER",
                    "background":  "BACKGROUND",
                    "graph":  "GRAPH",
-                   "description":  "DESCRIPTION"
+                   "description":  "DESCRIPTION",
+                   "columnWidth":  "COLUMN WIDTH",
+                   "fillBack":  "Fill back",
+                   "revert":  "Revert",
+                   "direction":  "DIRECTION",
+                   "subsection":  "Subsection",
+                   "borderWidth":  "BORDER WIDTH",
+                   "lineWidth":  "LINE WIDTH",
+                   "segmentsGap":  "SEGMENTS / GAP",
+                   "innerRadius":  "INNER RADIUS",
+                   "charSpacing":  "CHAR SPACING",
+                   "fillBackground":  "Fill background"
                },
     "edit":  {
                  "applyToShadow":  "Apply to shadow",
@@ -90,6 +116,13 @@
                  "syncShadow":  "Sync shadow"
              },
     "add":  {
+                "layerType":  "LAYER TYPE",
+                "typeText":  "Text",
+                "typeData":  "Data",
+                "typeImage":  "Image",
+                "typeGraph":  "Graph",
+                "withShadow":  "Add shadow",
+                "shadowAutoHint":  "Shadow will be added with the layer.",
                 "addText":  "Add Text",
                 "addData":  "Add Data",
                 "chooseAddImage":  "Choose \u0026 Add Image",
@@ -101,11 +134,15 @@
             },
     "shadow":  {
                    "addShadow":  "Add Shadow",
+                   "options":  "Shadow options",
+                   "pair":  "Pair shadow",
+                   "syncColor":  "Sync color",
                    "note":  "Shadow color is preserved separately unless Sync is checked."
                },
     "preview":  {
-                    "gifMp4Layer":  "Upload GIF / MP4",
-                    "dragToReposition":  "Drag to reposition"
+                    "gifMp4Layer":  "Upload JPG / GIF / MP4",
+                    "dragToReposition":  "Drag to reposition",
+                    "uploadBackground":  "Upload Background (GIF / JPG / MP4)"
                 },
     "footer":  {
                    "language":  "Language",
@@ -172,13 +209,22 @@
                    "undoApplied":  "Undo applied. Press Apply to write it to the template.",
                    "linearBarAdded":  "Linear progress bar added.",
                    "restartingLConnectApp":  "Restarting L-Connect app...",
-                   "addingArcBar":  "Adding arc progress bar..."
+                   "addingArcBar":  "Adding arc progress bar...",
+                   "exportingTheme":  "Exporting theme...",
+                   "exportingLConnect":  "Creating L-Connect package...",
+                   "themeExported":  "Theme package exported.",
+                   "lConnectExported":  "L-Connect package exported.",
+                   "exportFailed":  "Export failed.",
+                   "importingTheme":  "Importing theme...",
+                   "themeImported":  "Theme package imported.",
+                   "importFailed":  "Import failed."
                },
     "messages":  {
                      "loadFailed":  "Load failed",
                      "saveFailed":  "Save failed",
                      "backgroundFailed":  "Background failed",
                      "removeLayerConfirm":  "Remove layer {0}?",
+                     "removeLayersConfirm":  "Remove {0} selected layers?",
                      "removeLayerTitle":  "Remove layer",
                      "removeFailed":  "Remove failed",
                      "shadowFailed":  "Shadow failed",
@@ -200,9 +246,23 @@
                      "moveFailed":  "Move failed",
                      "chooseDataFirst":  "Choose a data source first.",
                      "layerNotFound":  "Layer could not be found.",
-                     "addStreamBarFailed":  "Add Stream Bar failed"
+                     "addStreamBarFailed":  "Add Stream Bar failed",
+                     "loadThemeFirst":  "Load a theme first.",
+                     "exportThemeFailed":  "Theme export failed",
+                     "exportLConnectFailed":  "L-Connect export failed",
+                     "importThemeFailed":  "Theme import failed",
+                     "themeExported":  "Theme exported",
+                     "lConnectExported":  "L-Connect package exported",
+                     "lConnectImportHint":  "In L-Connect, open the HydroShift template screen, choose Import Template, and select this ZIP.",
+                     "themeImported":  "Theme imported"
                  },
     "dialogs":  {
+                    "exportTheme":  "Export Lian Li theme",
+                    "exportLConnect":  "Export for L-Connect",
+                    "importTheme":  "Import Lian Li theme",
+                    "themePackageFilter":  "Lian Li theme package (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "L-Connect template package (*.zip)|*.zip",
+                    "chooseImage":  "Choose LCD image",
                     "chooseBackgroundMedia":  "Choose LCD background media",
                     "mediaFilter":  "Media files (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|All files (*.*)|*.*",
                     "imageFilter":  "Image files (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|All files (*.*)|*.*"
