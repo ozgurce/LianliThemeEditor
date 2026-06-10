@@ -10,7 +10,8 @@ The editor is built for Hydroshift II LCD devices and lets you inspect, edit, ad
 
 ## Screenshot
 
-<img width="2546" height="1370" alt="image" src="https://github.com/user-attachments/assets/3fd774bc-e45a-44eb-822d-a93642ade68a" />
+
+<img width="2537" height="1382" alt="image" src="https://github.com/user-attachments/assets/1dffbef5-7abc-4506-a1a4-6c3e908d5e52" />
 
 
 ## Features
@@ -35,7 +36,6 @@ The editor is built for Hydroshift II LCD devices and lets you inspect, edit, ad
 - Multi-language UI: English, Turkish, Russian, and Simplified Chinese.
 - Dark/light UI theme selection.
 - `Apply All` workflow for saving template changes and asking L-Connect to refresh without restarting the fan-control service.
-- Optional EXE build support through `ps2exe`.
 
 ## Supported Devices
 
