@@ -64,14 +64,16 @@ Universal Screen 8.8" support includes landscape and portrait editing, but has n
 
 ## Installation
 
-1. Download or clone this repository.
-2. Install the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) if it is not already installed.
-3. Make sure L-Connect 3 is installed.
-4. Keep the `EXE` and `lang` folders together.
-5. Run `EXE/LianLiThemeEditor.exe`.
+1. Open the [Releases](https://github.com/ozgurce/LianliThemeEditor/releases) page.
+2. Download the latest release ZIP.
+3. Extract the entire ZIP into a folder.
+4. Make sure L-Connect 3 is installed.
+5. Run `LianLiThemeEditor.exe`.
 6. Administrator rights are recommended because L-Connect stores templates under `C:\ProgramData`.
 
-The bundled `supporter.exe` performs the low-level L-Connect template operations and must remain beside the editor.
+Do not move individual files out of the extracted release folder. The bundled `supporter.exe` performs the low-level L-Connect template operations and must remain beside the editor. The `lang` folder contains the interface translations and must also remain with the application.
+
+The GitHub repository contains the current application binaries for reference, but regular users should install the packaged version from the Releases page.
 
 ## Basic Usage
 
