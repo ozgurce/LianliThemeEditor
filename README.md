@@ -1,214 +1,138 @@
 # Lian Li LCD Theme Editor
 
-**Languages:** [English](README.en.md) | [Türkçe](README.tr.md) | [Русский](README.ru.md) | [简体中文](README.zh.md)
+An unofficial visual theme editor for Lian Li LCD devices and L-Connect 3 templates.
 
-An unofficial Windows theme editor for Lian Li L-Connect 3 LCD templates.
+The project aims to make advanced LCD customization easier without requiring users to manually inspect or modify L-Connect template files. It provides a live visual workspace for editing existing themes, creating layers, changing media, and applying the result back to L-Connect.
 
-The editor is built for Hydroshift II LCD devices and lets you inspect, edit, add, reorder, preview, and apply LCD template layers without doing every change manually inside L-Connect.
-
-> This project is not affiliated with, endorsed by, or supported by Lian Li. I'm grateful to them for accepting my post on discord. But this is not an official app. If it didnt work for you, please don't blame them. It modifies local L-Connect 3 template/profile files, so keep backups of important themes.
-
-## Screenshot
-
-<img width="2546" height="1370" alt="image" src="https://github.com/user-attachments/assets/3fd774bc-e45a-44eb-822d-a93642ade68a" />
-
-
-## Features
-
-- Edit existing L-Connect 3 LCD template layers.
-- Supports Hydroshift II LCD-S and Hydroshift II LCD-C.
-- Automatic device detection fallback when the active template belongs to the other device family.
-- Square preview for LCD-S and circular preview mask for LCD-C.
-- Live preview for text, data, image, graph, GIF, and MP4 layers.
-- Background GIF/MP4 upload and apply workflow.
-- Layer list with editable index, type, data source, text, media, position, size, font, bold, color, and format fields.
-- Add static text layers.
-- Add live data layers such as CPU/GPU temperature, load, clocks, fan/pump data, time, date, and day fields.
-- Add image layers.
-- Add graph layers from available L-Connect modular graph styles.
-- Edit graph style, position, size, colors, and data source where supported.
-- Move layers up/down to control draw order.
-- Add and track shadow layers.
-- Sync shadow movement/color from the source layer.
-- Transparent color support through manual ARGB/hex values.
-- Date/time format controls, including formats such as `Y-M-D`, `D-M-Y`, `D.M.Y`, `00:00`, and `00:00:00`.
-- Multi-language UI: English, Turkish, Russian, and Simplified Chinese.
-- Dark/light UI theme selection.
-- `Apply All` workflow for saving template changes and asking L-Connect to refresh without restarting the fan-control service.
-- Optional EXE build support through `ps2exe`.
+> [!IMPORTANT]
+> This is an unofficial community project and is not affiliated with, endorsed by, or supported by Lian Li. This is an early beta release. Back up themes you care about before editing them.
 
 ## Supported Devices
 
-| Device | Status | Notes |
-| --- | --- | --- |
-| Hydroshift II LCD-S | Supported | Square LCD preview. |
-| Hydroshift II LCD-C | Supported | Circular preview mask. Uses C-specific template/modular assets. |
+| Device | Status |
+| --- | --- |
+| HydroShift II LCD-S | Supported |
+| HydroShift II LCD-C | Supported |
+| Universal Screen 8.8" | Experimental |
 
-The editor can seed missing ProgramData template/modular/theme/preview files from the installed L-Connect `Assets` directory when possible.
+Universal Screen 8.8" support includes landscape and portrait editing, but has not yet been verified on physical hardware.
 
-## Requirements
+## Features
 
-- Windows 10 or Windows 11.
-- L-Connect 3 installed.
-- PowerShell 5.1 or newer.
-- .NET/WPF support available through Windows PowerShell.
-- Administrator rights are recommended when writing to `C:\ProgramData\Lian-Li\L-Connect 3`.
-- `ffmpeg` is recommended for reliable background video conversion/preview workflows.
-- Optional: `ps2exe` if you want to build standalone EXE files.
+- Modern C# WPF editor with dark and light themes.
+- Live visual preview of the selected L-Connect template.
+- Automatic active-theme loading on startup.
+- Automatic fallback to the first available theme when no active theme can be found.
+- Device-aware preview dimensions and circular masking for compatible displays.
+- Landscape and portrait support for Universal Screen 8.8".
+- Zoom, scrolling, fit-to-screen, alignment guides, dragging, and resizing.
+- Cached device and theme thumbnails for faster browsing.
+- Layer visibility and locking controls.
+- Layer reordering, duplication, deletion, and direct selection from the preview.
+- Per-layer Apply and full-theme Apply All workflows.
+- Automatic local backups and manual Backup/Restore controls.
+- Progress feedback while applying changes.
 
-When running from `EXE/`, the editor is designed to look for resources in the parent folder when needed.
+### Layer Types
 
-## Running From PowerShell
+- Animation and background media
+- Static text
+- Live sensor data
+- Images
+- Status bars and segmented status bars
+- Dynamic status graphs
+- Curved/donut bars
+- Line and stream charts
 
-Open PowerShell and run:
+### Editing
 
-```powershell
-powershell -ExecutionPolicy Bypass -File editor.ps1
-```
+- Position, dimensions, rotation, zoom, and alignment
+- Fonts, size, bold, italic, spacing, and text formatting
+- Text colors and gradients
+- Graph colors, gradients, direction, radius, thickness, and subdivision settings
+- Layer shadows
+- Image and media replacement
+- Background image, GIF, MP4, and H.264 workflows
+- Live sample values for supported sensor sources
 
-If you installed the project somewhere else, change the path accordingly.
+### Languages
 
-## Building EXE Files
+- English
+- Turkish
+- Russian
+- Simplified Chinese
 
-Install/import `ps2exe`, then run these commands from the `ThemeEditor` folder.
+## Installation
 
+1. Download or clone this repository.
+2. Install the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) if it is not already installed.
+3. Make sure L-Connect 3 is installed.
+4. Keep the `EXE` and `lang` folders together.
+5. Run `EXE/LianLiThemeEditor.exe`.
+6. Administrator rights are recommended because L-Connect stores templates under `C:\ProgramData`.
+
+The bundled `supporter.exe` performs the low-level L-Connect template operations and must remain beside the editor.
 
 ## Basic Usage
 
-1. Open L-Connect 3 and select the LCD device.
-2. Select a template in L-Connect or leave the currently active template selected.
-3. Run Theme Editor.
-4. Choose the device type:
-   - `Hydroshift II LCD-S`
-   - `Hydroshift II LCD-C`
-5. Keep `Use active template` enabled, or enter a template ID manually.
-6. Click `Load`.
-7. Select a layer from the layer list or from the preview.
-8. Edit position, font, data source, text, size, color, format, or graph options.
-9. Click `Apply` for the selected layer.
-10. Use `Apply All` to write changes and trigger L-Connect to refresh.
-
-## Layer Types
-
-Common layer types include:
-
-- `GraphAnimation`: background video/GIF/image animation layer.
-- `GraphItem`: text or data text layer.
-- `GraphImage`: image layer.
-- `GraphStatuBar`: linear/progress-style bar.
-- `GraphArchBar`: circular/arc-style graph.
-- `GraphLine`: stream/line graph.
-- `GraphDynamicBar`: dynamic segmented/bar graph.
-
-Not every property exists on every L-Connect graph object. The editor shows and applies controls based on what the layer supports.
+1. Install and open L-Connect 3.
+2. Select the desired LCD device.
+3. Start `LianLiThemeEditor.exe`.
+4. The editor loads the active theme when available, otherwise it loads the first theme found for that device.
+5. Select a layer from the list or directly from the preview.
+6. Edit its properties and press **Apply**.
+7. Use **Apply All** to apply the complete theme.
+8. Use **Export Theme** to create an L-Connect-compatible package.
 
 ## Data Sources
 
-The editor only keeps practical data sources that L-Connect templates can actually use or display. Common examples:
+The editor supports common L-Connect sensor and system values, including:
 
-- `CPUTEMP`
-- `CPUCLOCK`
-- `CPULOAD`
-- `CPUFAN`
-- `GPUTEMP`
-- `GPUCLOCK`
-- `GPULOAD`
-- `RAMLOAD`
-- `DRVLOAD`
-- `WATERPUMP`
-- `TIME`
-- `DATE`
-- `DAY`
-- `APM`
-- `StaticText`
+- CPU/GPU temperature, load, clock, fan, power, and voltage
+- CPU/GPU model information
+- RAM usage, total memory, and model
+- GPU memory values
+- Pump and water-pump data
+- Drive and HDD data
+- Upload and download speed
+- FPS
+- Time, date, and day
+- Static text
 
-Some values depend on the hardware, L-Connect version, and available sensor data.
+Available values still depend on L-Connect, connected hardware, and the sensor providers available on the system.
 
-## Date And Time Formats
+## Notes
 
-Time examples:
-
-```text
-00:00
-00:00:00
-```
-
-Date examples:
-
-```text
-Y-M-D
-D-M-Y
-D.M.Y
-M
-D
-```
-
-Date and time layers should stay dynamic. They are not intended to be saved as fixed static text.
-
-## Background Media
-
-The editor supports GIF/MP4 background selection. When a background is applied, the helper attempts to mirror the way L-Connect stores uploaded background media.
-
-Useful paths:
-
-```text
-C:\ProgramData\Lian-Li\L-Connect 3\uploaded
-C:\ProgramData\Lian-Li\L-Connect 3\hydroshift-ii-lcd-s
-C:\ProgramData\Lian-Li\L-Connect 3\hydroshift-ii-lcd-c
-```
-
-The editor avoids restarting the L-Connect service for normal apply operations because that service can also control fan behavior.
-
-## Language Support
-
-Language files are stored in:
-
-```text
-lang/en.json
-lang/tr.json
-lang/ru.json
-lang/zh.json
-```
-
-If a UI string is missing or appears hardcoded, add it to all language JSON files and wire it through the localization helper in `editor.ps1`.
-
-## Settings
-
-Local editor settings are stored in:
-
-```text
-theme_editor_settings.json
-```
-
-This can include:
-
-- selected language
-- selected UI theme
-- selected device model
-- shadow layer links
-
-Do not ship personal machine-specific settings if you are publishing a clean release.
+- Theme files are edited inside the normal L-Connect data folders.
+- The editor creates automatic backups before template changes.
+- Background video processing may take longer than normal layer edits.
+- Some properties are only available on specific L-Connect layer classes.
+- Device communication still relies on L-Connect's existing services.
 
 ## Troubleshooting
 
-### Background applies but preview shows the wrong media
-
-Check whether the template has a custom background in the L-Connect profile. The helper now filters custom background paths by selected device model, because some template IDs exist in both LCD-S and LCD-C families.
-
 ### Access denied
 
-Run PowerShell or the EXE as Administrator. L-Connect stores templates under `C:\ProgramData`, which may require elevated permissions.
+Run the editor as Administrator.
 
-## Development Notes
+### A theme does not appear
 
-- `editor.ps1` contains the WPF UI and user workflow.
-- `supporter.ps1` performs low-level template/profile operations.
-- The editor prefers `supporter.exe` if present; otherwise it falls back to `supporter.ps1`.
-- Device-specific assets are resolved from both `ProgramData` and L-Connect `Assets`.
-- LCD-C uses the same template object model for default templates, but its preview should be treated as circular.
-- Some L-Connect custom theme/profile data is stored separately from default template `GraphList` layers.
+Open the device once in L-Connect and confirm that its templates exist under:
+
+```text
+C:\ProgramData\Lian-Li\L-Connect 3
+```
+
+### A sensor value is unavailable
+
+The value must be exposed by L-Connect or its supported sensor provider. The editor may display a sample value when live data is unavailable.
+
+## Current Release
+
+**Version:** 1.0 Beta
+
+This first public beta focuses on visual editing, practical L-Connect integration, performance with complex themes, and support for the HydroShift II LCD family. Feedback, bug reports, device testing, and theme samples are welcome.
 
 ## Disclaimer
 
-Use at your own risk. Always keep backups before editing L-Connect templates. Fan and pump control are handled by L-Connect services, so avoid unnecessary service restarts while testing LCD theme changes.
-
+Use this software at your own risk. L-Connect controls hardware including LCD screens, fans, and pumps. Keep backups and avoid interrupting L-Connect while a theme is being written.

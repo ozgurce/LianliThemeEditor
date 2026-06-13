@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD 模板编辑器 V0.97"
+                "title":  "Lian Li LCD Template Editor V 1.0 Beta"
             },
     "common":  {
                    "apply":  "应用",
@@ -19,16 +19,32 @@
                    "save":  "保存",
                    "close":  "关闭",
                    "moveUp":  "上移",
-                   "moveDown":  "下移"
+                   "moveDown":  "下移",
+                   "undo":  "撤销",
+                   "redo":  "重做",
+                   "italic":  "斜体",
+                   "left":  "靠左",
+                   "right":  "靠右",
+                   "center":  "居中",
+                   "duplicate": "复制"
                },
     "top":  {
                 "useActiveTemplate":  "使用当前模板",
                 "device":  "设备",
                 "templateId":  "模板 ID",
                 "load":  "加载",
+                "backup":  "备份",
+                "restore":  "恢复",
+                "exportTheme":  "导出主题",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "导入主题",
                 "restartLConnect":  "重启 L-Connect",
                 "templateNotLoaded":  "模板：未加载",
                 "templateLoaded":  "模板：{0}{1}"
+                ,"templateLoadedSimple": "模板已加载"
+                ,"templateLoadedSimpleWithId": "模板：{0}"
+                ,"backgroundEmpty": "背景：-"
+                ,"backgroundLoaded": "背景：{0}"
             },
     "sections":  {
                      "layers":  "图层",
@@ -36,7 +52,10 @@
                      "timeDateFormat":  "时间 / 日期格式",
                      "addNewLayer":  "添加新图层",
                      "dropShadow":  "阴影",
-                     "preview":  "预览"
+                     "preview":  "预览",
+                     "graphSettings":  "图表尺寸和样式",
+                     "imageSettings":  "图像设置",
+                     "advancedGraph":  "高级图表设置"
                  },
     "grid":  {
                  "type":  "类型",
@@ -67,6 +86,8 @@
                    "thickness":  "厚度",
                    "fillColor":  "填充颜色",
                    "trackColor":  "轨道颜色",
+                   "gradientColor":  "渐变颜色",
+                   "useGradient":  "使用渐变",
                    "imageFile":  "图片文件",
                    "zoomRate":  "缩放",
                    "image":  "图片",
@@ -81,7 +102,52 @@
                    "layer":  "图层",
                    "background":  "背景",
                    "graph":  "图表",
-                   "description":  "说明"
+                   "description":  "说明",
+                   "columnWidth":  "COLUMN WIDTH",
+                   "fillBack":  "Fill back",
+                   "revert":  "Revert",
+                   "direction":  "DIRECTION",
+                   "subsection":  "Subsection",
+                   "borderWidth":  "BORDER WIDTH",
+                   "lineWidth":  "LINE WIDTH",
+                   "segmentsGap":  "SEGMENTS / GAP",
+                   "innerRadius":  "INNER RADIUS",
+                   "charSpacing":  "CHAR SPACING",
+                   "fillBackground":  "Fill background",
+                   "fontGradientColor":  "字体渐变颜色",
+                   "fontGradientDirection":  "渐变方向",
+                   "rotate":  "旋转",
+                   "rect":  "裁剪区域",
+                   "backAlpha":  "后层透明度",
+                   "hide":  "隐藏",
+                   "layerOptions":  "图层选项",
+                   "transparent":  "透明度",
+                   "positionSize":  "位置与大小",
+                   "ringBorder":  "环状边框",
+                   "gradient":  "渐变",
+                   "subtype":  "子类型",
+                   "addLayer":  "添加图层",
+                   "round":  "圆角",
+                   "chooseContent":  "选择画布内容类型。",
+                   "invertDirection":  "反向",
+                   "visibility":  "可见性",
+                   "frontAlpha":  "前层透明度",
+                   "transparentBG":  "透明背景",
+                   "length": "长度",
+                   "cornerRadius": "圆角半径",
+                   "border": "边框",
+                   "sliderRadius": "滑块半径",
+                   "blockAngleSpacing": "区块角度 / 间距",
+                   "blockWidthSpacing": "区块宽度 / 间距",
+                   "lineColor": "线条颜色",
+                   "frontColor": "前景颜色",
+                   "borderColor": "边框颜色",
+                   "borderBackgroundColor": "边框 / 背景颜色",
+                   "backgroundFile": "背景文件",
+                   "alignment": "对齐",
+                   "maxValue": "最大值",
+                   "startPercentage": "起始百分比",
+                   "totalAngle": "总角度"
                },
     "edit":  {
                  "applyToShadow":  "应用到阴影",
@@ -90,6 +156,13 @@
                  "syncShadow":  "同步阴影"
              },
     "add":  {
+                "layerType":  "图层类型",
+                "typeText":  "文本",
+                "typeData":  "数据",
+                "typeImage":  "图像",
+                "typeGraph":  "图表",
+                "withShadow":  "添加阴影",
+                "shadowAutoHint":  "阴影将与图层一起自动添加。",
                 "addText":  "添加文本",
                 "addData":  "添加数据",
                 "chooseAddImage":  "选择并添加图片",
@@ -97,15 +170,38 @@
                 "addArcBar":  "添加弧形条",
                 "addImage":  "添加图片",
                 "add":  "添加",
-                "addGraph":  "添加图表"
+                "addGraph":  "添加图表",
+                "descStatusBar":  "分段进度条",
+                "typeCurvedBar":  "弧形进度条",
+                "typeStatusBar":  "状态条",
+                "descChart":  "流式图表",
+                "descDynamicStatus":  "滑块式状态条",
+                "typeDynamicStatus":  "动态状态",
+                "descAnimation":  "背景媒体",
+                "typeChart":  "图表",
+                "descText":  "静态文本",
+                "descData":  "实时传感器数值",
+                "descCurvedBar":  "环状或弧形进度条",
+                "descImage":  "PNG 或 JPG 图像",
+                "typeAnimation":  "动画",
+                "chooseBackground": "选择背景",
+                "addTypedLayer": "添加{0}"
             },
     "shadow":  {
                    "addShadow":  "添加阴影",
+                   "options":  "阴影设置",
+                   "pair":  "关联阴影",
+                   "syncColor":  "同步颜色",
                    "note":  "未启用同步时，阴影颜色会单独保存。"
                },
     "preview":  {
-                    "gifMp4Layer":  "上传 GIF / MP4",
-                    "dragToReposition":  "拖动以调整位置"
+                    "gifMp4Layer":  "上传 JPG / GIF / MP4",
+                    "dragToReposition":  "拖动以调整位置",
+                    "uploadBackground":  "上传背景 (GIF / JPG / MP4)",
+                    "fit":  "适应",
+                    "orientation":  "方向",
+                    "landscape":  "横向",
+                    "portrait":  "纵向"
                 },
     "footer":  {
                    "language":  "语言",
@@ -135,7 +231,7 @@
                    "backgroundCommandSent":  "背景命令已发送。模板当前报告：{0}",
                    "backgroundChangeFailed":  "背景更改失败。",
                    "loadingLayers":  "正在加载图层...",
-                   "layersLoaded":  "已从 {1} 加载 {0} 个图层。",
+                   "layersLoaded":  "已加载 {0} 个图层。",
                    "noLayerChanges":  "没有需要保存的图层更改。",
                    "layersSaved":  "已应用。已保存 {0} 个图层。",
                    "layerRemoved":  "图层已删除。",
@@ -172,13 +268,57 @@
                    "addingStreamGraph":  "正在添加流式图表...",
                    "streamGraphAdded":  "流式图表已添加。",
                    "undoApplied":  "撤销已应用。按“应用”写入模板。",
-                   "nothingToUndo":  "没有可撤销的操作。"
+                   "nothingToUndo":  "没有可撤销的操作。",
+                   "exportingTheme":  "正在导出主题...",
+                   "exportingLConnect":  "正在创建 L-Connect 包...",
+                   "themeExported":  "主题包已导出。",
+                   "lConnectExported":  "L-Connect 包已导出。",
+                   "exportFailed":  "导出失败。",
+                   "importingTheme":  "正在导入主题...",
+                   "themeImported":  "主题包已导入。",
+                   "importFailed":  "导入失败。",
+                   "templateChangedReloaded":  "模板已在 L-Connect 中更改。图层已刷新。",
+                   "layerDuplicated":  "图层已复制。",
+                   "applyingChanges":  "正在应用更改的图层...",
+                   "redoApplied":  "重做已应用。点击应用保存到磁盘。",
+                   "movingLayerDirection":  "正在将图层向 {0} 移动...",
+                   "layerReorderFailed":  "图层重新排序失败。",
+                   "duplicateFailed":  "复制失败。",
+                   "layerMovedDirection":  "图层已向 {0} 移动。",
+                   "sendingApplyAll":  "正在发送全部应用...",
+                   "redoingChange":  "正在重做更改...",
+                   "reorderingLayer":  "正在重新排序图层...",
+                   "dataLayerAdded":  "数据图层已添加。",
+                   "removingLayers":  "正在删除图层...",
+                   "layerOrderUpdated":  "图层顺序已更新。",
+                   "undoingChange":  "正在撤销更改...",
+                   "duplicatingLayer":  "正在复制图层...",
+                   "textLayerAdded":  "文本图层已添加。",
+                   "graphLayerAdded":  "{0} 图层已添加。",
+                   "applyAllFailed":  "全部应用失败。",
+                   "addingData":  "正在添加数据...",
+                   "addingText":  "正在添加文本...",
+                   "exportCancelled":  "导出已取消。",
+                   "backupCreated":  "已创建备份：{0}",
+                   "restoringBackup":  "正在恢复备份...",
+                   "backupRestored":  "备份已恢复。",
+                   "restoreFailed":  "恢复失败。",
+                   "checkingTemplate":  "正在检查模板...",
+                   "savingLayerChanges":  "正在保存图层更改...",
+                   "updatingThemePreview":  "正在更新主题预览...",
+                   "sendingToDevice":  "正在将更改发送到设备...",
+                   "reloadingTemplate":  "正在重新加载模板...",
+                   "layerHidden":  "图层已隐藏。按“保存”以应用。",
+                   "layerShown":  "图层已显示。按“保存”以应用。",
+                   "layerLocked":  "图层已在预览中锁定。",
+                   "layerUnlocked":  "图层已在预览中解锁。"
                },
     "messages":  {
                      "loadFailed":  "加载失败",
                      "saveFailed":  "保存失败",
                      "backgroundFailed":  "背景加载失败",
                      "removeLayerConfirm":  "删除图层 {0}？",
+                     "removeLayersConfirm":  "删除选中的 {0} 个图层？",
                      "removeLayerTitle":  "删除图层",
                      "removeFailed":  "删除失败",
                      "shadowFailed":  "添加阴影失败",
@@ -200,15 +340,87 @@
                      "moveFailed":  "移动失败",
                      "chooseDataFirst":  "请先选择数据源。",
                      "layerNotFound":  "找不到图层。",
-                     "addStreamBarFailed":  "添加流式条失败"
+                     "addStreamBarFailed":  "添加流式条失败",
+                     "loadThemeFirst":  "请先加载主题。",
+                     "exportThemeFailed":  "主题导出失败",
+                     "exportLConnectFailed":  "L-Connect 包导出失败",
+                     "importThemeFailed":  "主题导入失败",
+                     "themeExported":  "主题已导出",
+                     "lConnectExported":  "L-Connect 包已导出",
+                     "lConnectImportHint":  "在 L-Connect 中打开 HydroShift 模板页面，选择导入模板，然后选择此 ZIP 文件。",
+                     "themeImported":  "主题已导入",
+                     "templateChangedReloaded":  "该模板已被 L-Connect 或其他操作更改。当前图层列表已刷新，请重新应用您的更改。",
+                     "templateChangedTitle":  "模板已刷新",
+                     "applyFailed":  "应用失败",
+                     "addTextFailed":  "添加文本失败",
+                     "restartTitle":  "重启 L-Connect",
+                     "applyAllFailed":  "全部应用失败",
+                     "undoFailed":  "撤销失败",
+                     "redoFailed":  "重做失败",
+                     "addDataFailed":  "添加数据失败",
+                     "initializationFailed":  "初始化失败",
+                     "addImageFailed":  "添加图片失败",
+                     "duplicateFailed":  "复制失败",
+                     "backupFailed":  "备份失败",
+                     "noBackupFound":  "此主题没有手动备份。",
+                     "restoreBackupConfirm":  "是否恢复此主题最近的手动备份？",
+                     "restoreBackupTitle":  "恢复备份",
+                     "restoreFailed":  "恢复失败",
+                     "deviceRefreshRejected":  "图层已保存，但 L-Connect 未接受刷新命令。"
+                     ,"linkOpenFailed": "无法打开链接。\n\n{0}"
+                     ,"linkOpenFailedTitle": "无法打开链接"
                  },
     "dialogs":  {
+                    "exportTheme":  "导出 Lian Li 主题",
+                    "exportLConnect":  "导出到 L-Connect",
+                    "importTheme":  "导入 Lian Li 主题",
+                    "themePackageFilter":  "Lian Li 主题包 (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "L-Connect 模板包 (*.zip)|*.zip",
+                    "chooseImage":  "选择 LCD 图像",
                     "chooseBackgroundMedia":  "选择 LCD 背景媒体",
                     "mediaFilter":  "媒体文件 (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|所有文件 (*.*)|*.*",
-                    "imageFilter":  "图片文件 (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|所有文件 (*.*)|*.*"
+                    "imageFilter":  "图片文件 (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|所有文件 (*.*)|*.*",
+                    "exportThemeName":  "导出主题名称",
+                    "exportThemeNamePrompt":  "在 L-Connect 中使用的主题名称:"
                 },
     "buttons":  {
                     "useTime":  "使用时间",
                     "useDate":  "使用日期"
-                }
+                },
+    "tooltips":  {
+                     "toggleLayerVisibility":  "显示或隐藏此图层",
+                     "toggleLayerLock":  "在预览中锁定或解锁此图层",
+                     "fitPreview":  "使预览适应可用区域",
+                     "graphSplitBlock": "根据图表样式设置分段数量或区块宽度",
+                     "graphSplitGap": "区块之间的模板像素间距",
+                     "imageRect": "源区域：x、y、宽度、高度"
+                     ,"switchDark": "切换到深色主题"
+                     ,"switchLight": "切换到浅色主题"
+                     ,"undo": "撤销上一次主题更改 (Ctrl+Z)"
+                     ,"redo": "恢复主题更改 (Ctrl+Y)"
+                 },
+    "properties":  {
+                       "noLayerSelected":  "选择一个图层",
+                       "noLayerSelectedHint":  "从左侧列表中选择一个图层进行编辑。"
+                   },
+    "window": { "minimize": "最小化", "maximize": "最大化" },
+    "dataSources": {
+        "APM": "上午 / 下午", "CPUCLOCK": "CPU 频率 (MHz)", "CPUCLOCK_G": "CPU 频率 (GHz)", "CPUFAN": "CPU 风扇", "CPULOAD": "CPU 负载", "CPUMODEL": "CPU 型号", "CPUPWR": "CPU 功耗", "CPUTEMP": "CPU 温度", "CPUTEMP_F": "CPU 温度 (°F)", "CPUVOLTAGE": "CPU 电压",
+        "DATE": "日期", "DAY": "星期", "DOWNDSPEED": "下载速度", "DRVLOAD": "磁盘负载", "FPS_AVG": "平均 FPS", "GPUCLOCK": "GPU 频率 (MHz)", "GPUCLOCK_G": "GPU 频率 (GHz)", "GPUFAN": "GPU 风扇", "GPULOAD": "GPU 负载", "GPUMODEL": "GPU 型号", "GPUPWR": "GPU 功耗",
+        "GPURAM": "已用 GPU 显存 (MB)", "GPURAMLOAD": "GPU 显存负载", "GPURAMTOTAL": "GPU 总显存 (MB)", "GPUTEMP": "GPU 温度", "GPUTEMP_F": "GPU 温度 (°F)", "GPUVOLTAGE": "GPU 电压", "HDDTEMP": "磁盘温度", "HDDTEMP_F": "磁盘温度 (°F)", "HDDUSED": "磁盘已用空间",
+        "PUMP": "水泵", "RAM": "已用内存", "RAM_GB": "已用内存 (GB)", "RAMLOAD": "内存负载", "RAMTOTAL": "总内存", "RAMTOTAL_GB": "总内存 (GB)", "RAMVALID": "可用内存", "RAMVALID_GB": "可用内存 (GB)", "STATICTEXT": "静态文本", "TIME": "时间", "UPSPEED": "上传速度", "WATERPUMP": "水冷泵", "WATERTEMPC": "水温 (°C)", "WATERTEMPF": "水温 (°F)"
+    },
+    "gradient":  {
+                     "topRightToBottomLeft":  "右上到左下",
+                     "topLeftToBottomRight":  "左上到右下",
+                     "topToBottom":  "上下渐变",
+                     "leftToRight":  "左右渐变",
+                     "none":  "无渐变"
+                 },
+    "direction":  {
+                      "left":  "1 - 向左",
+                      "right":  "0 - 向右",
+                      "down":  "2 - 向下",
+                      "up":  "3 - 向上"
+                  }
 }

@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD Template Editor V0.97"
+                "title":  "Lian Li LCD Template Editor V 1.0 Beta"
             },
     "common":  {
                    "apply":  "Apply",
@@ -8,6 +8,7 @@
                    "remove":  "Remove",
                    "change":  "Change...",
                    "bold":  "Bold",
+                   "italic":  "Italic",
                    "choose":  "Choose",
                    "browse":  "Browse",
                    "cancel":  "Cancel",
@@ -19,16 +20,31 @@
                    "save":  "Save",
                    "close":  "Close",
                    "moveUp":  "Move Up",
-                   "moveDown":  "Move Down"
+                   "moveDown":  "Move Down",
+                   "undo":  "Undo",
+                   "redo":  "Redo",
+                   "left":  "Left",
+                   "right":  "Right",
+                   "center":  "Center",
+                   "duplicate": "Duplicate"
                },
     "top":  {
                 "useActiveTemplate":  "Use active template",
                 "device":  "DEVICE",
                 "templateId":  "TEMPLATE ID",
                 "load":  "Load",
+                "backup":  "Backup",
+                "restore":  "Restore",
+                "exportTheme":  "Export Theme",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "Import Theme",
                 "restartLConnect":  "Restart L-Connect",
                 "templateNotLoaded":  "Template: not loaded",
                 "templateLoaded":  "Template: {0}{1}"
+                ,"templateLoadedSimple": "Template: loaded"
+                ,"templateLoadedSimpleWithId": "Template: {0}"
+                ,"backgroundEmpty": "Background: -"
+                ,"backgroundLoaded": "Background: {0}"
             },
     "sections":  {
                      "layers":  "Layers",
@@ -36,7 +52,10 @@
                      "timeDateFormat":  "Time / Date Format",
                      "addNewLayer":  "Add New Layer",
                      "dropShadow":  "Drop Shadow",
-                     "preview":  "Preview"
+                     "preview":  "Preview",
+                     "graphSettings":  "Graph Dimensions \u0026 Styling",
+                     "imageSettings":  "Image Settings",
+                     "advancedGraph":  "Advanced Graph"
                  },
     "grid":  {
                  "type":  "TYPE",
@@ -67,7 +86,13 @@
                    "thickness":  "THICKNESS",
                    "fillColor":  "FILL COLOR",
                    "trackColor":  "TRACK COLOR",
+                   "gradientColor":  "GRADIENT COLOR",
+                   "fontGradientColor":  "FONT GRADIENT",
+                   "fontGradientDirection":  "GRADIENT DIR",
+                   "useGradient":  "Use gradient",
                    "imageFile":  "IMAGE FILE",
+                   "rotate":  "ROTATE",
+                   "rect":  "RECT",
                    "zoomRate":  "ZOOM RATE",
                    "image":  "IMAGE",
                    "progress":  "PROGRESS",
@@ -81,7 +106,48 @@
                    "layer":  "LAYER",
                    "background":  "BACKGROUND",
                    "graph":  "GRAPH",
-                   "description":  "DESCRIPTION"
+                   "description":  "DESCRIPTION",
+                   "columnWidth":  "COLUMN WIDTH",
+                   "fillBack":  "Fill back",
+                   "revert":  "Revert",
+                   "direction":  "DIRECTION",
+                   "subsection":  "Subsection",
+                   "borderWidth":  "BORDER WIDTH",
+                   "lineWidth":  "LINE WIDTH",
+                   "segmentsGap":  "SEGMENTS / GAP",
+                   "innerRadius":  "INNER RADIUS",
+                   "charSpacing":  "CHAR SPACING",
+                   "fillBackground":  "Fill background",
+                   "backAlpha":  "BACK ALPHA",
+                   "hide":  "Hide",
+                   "layerOptions":  "LAYER OPTIONS",
+                   "transparent":  "TRANSPARENT",
+                   "positionSize":  "POSITION \u0026 SIZE",
+                   "ringBorder":  "Ring Border",
+                   "gradient":  "GRADIENT",
+                   "subtype":  "SUBTYPE",
+                   "addLayer":  "Add Layer",
+                   "round":  "Round",
+                   "chooseContent":  "Choose content for the canvas.",
+                   "invertDirection":  "Invert Direction",
+                   "visibility":  "VISIBILITY",
+                   "frontAlpha":  "FRONT ALPHA",
+                   "transparentBG":  "Transparent background",
+                   "length": "LENGTH",
+                   "cornerRadius": "CORNER RADIUS",
+                   "border": "BORDER",
+                   "sliderRadius": "SLIDER RADIUS",
+                   "blockAngleSpacing": "BLOCK ANGLE / SPACING",
+                   "blockWidthSpacing": "BLOCK WIDTH / SPACING",
+                   "lineColor": "LINE COLOR",
+                   "frontColor": "FRONT COLOR",
+                   "borderColor": "BORDER COLOR",
+                   "borderBackgroundColor": "BORDER / BACKGROUND COLOR",
+                   "backgroundFile": "BACKGROUND FILE",
+                   "alignment": "ALIGNMENT",
+                   "maxValue": "MAX VALUE",
+                   "startPercentage": "START %",
+                   "totalAngle": "TOTAL ANGLE"
                },
     "edit":  {
                  "applyToShadow":  "Apply to shadow",
@@ -90,6 +156,13 @@
                  "syncShadow":  "Sync shadow"
              },
     "add":  {
+                "layerType":  "LAYER TYPE",
+                "typeText":  "Text",
+                "typeData":  "Data",
+                "typeImage":  "Image",
+                "typeGraph":  "Graph",
+                "withShadow":  "Add shadow",
+                "shadowAutoHint":  "Shadow will be added with the layer.",
                 "addText":  "Add Text",
                 "addData":  "Add Data",
                 "chooseAddImage":  "Choose \u0026 Add Image",
@@ -97,15 +170,38 @@
                 "addArcBar":  "Add Arc Bar",
                 "addImage":  "Add Image",
                 "add":  "Add",
-                "addGraph":  "Add Graph"
+                "addGraph":  "Add Graph",
+                "descStatusBar":  "Segmented bar",
+                "typeCurvedBar":  "Curved Bar",
+                "typeStatusBar":  "Status Bar",
+                "descChart":  "Stream chart",
+                "descDynamicStatus":  "Slider style bar",
+                "typeDynamicStatus":  "Dynamic Status",
+                "descAnimation":  "Background media",
+                "typeChart":  "Chart",
+                "descText":  "Static content",
+                "descData":  "Live sensor value",
+                "descCurvedBar":  "Donut or arc",
+                "descImage":  "PNG or JPG",
+                "typeAnimation":  "Animation",
+                "chooseBackground": "Choose Background",
+                "addTypedLayer": "Add {0}"
             },
     "shadow":  {
                    "addShadow":  "Add Shadow",
+                   "options":  "Shadow options",
+                   "pair":  "Pair shadow",
+                   "syncColor":  "Sync color",
                    "note":  "Shadow color is preserved separately unless Sync is checked."
                },
     "preview":  {
-                    "gifMp4Layer":  "Upload GIF / MP4",
-                    "dragToReposition":  "Drag to reposition"
+                    "gifMp4Layer":  "Upload JPG / GIF / MP4",
+                    "dragToReposition":  "Drag to reposition",
+                    "uploadBackground":  "Upload Background (GIF / JPG / MP4)",
+                    "fit":  "Fit",
+                    "orientation":  "ORIENTATION",
+                    "landscape":  "Landscape",
+                    "portrait":  "Portrait"
                 },
     "footer":  {
                    "language":  "Language",
@@ -163,7 +259,7 @@
                    "loadingLayers":  "Loading layers...",
                    "backgroundCommandSent":  "Background command sent. Template currently reports: {0}",
                    "addingImageLayer":  "Adding image layer...",
-                   "layersLoaded":  "Loaded {0} layers from {1}.",
+                   "layersLoaded":  "Loaded {0} layer(s).",
                    "noLayerChanges":  "No layer changes to save.",
                    "layerAdded":  "{0} layer added.",
                    "shadowFailed":  "Shadow failed.",
@@ -172,13 +268,57 @@
                    "undoApplied":  "Undo applied. Press Apply to write it to the template.",
                    "linearBarAdded":  "Linear progress bar added.",
                    "restartingLConnectApp":  "Restarting L-Connect app...",
-                   "addingArcBar":  "Adding arc progress bar..."
+                   "addingArcBar":  "Adding arc progress bar...",
+                   "exportingTheme":  "Exporting theme...",
+                   "exportingLConnect":  "Creating L-Connect package...",
+                   "themeExported":  "Theme package exported.",
+                   "lConnectExported":  "L-Connect package exported.",
+                   "exportFailed":  "Export failed.",
+                   "importingTheme":  "Importing theme...",
+                   "themeImported":  "Theme package imported.",
+                   "importFailed":  "Import failed.",
+                   "templateChangedReloaded":  "The template changed in L-Connect. Layers were refreshed.",
+                   "layerDuplicated":  "Layer duplicated.",
+                   "applyingChanges":  "Applying changed layers...",
+                   "redoApplied":  "Redo applied. Click Apply to save to disk.",
+                   "movingLayerDirection":  "Moving layer {0}...",
+                   "layerReorderFailed":  "Layer reorder failed.",
+                   "duplicateFailed":  "Duplicate failed.",
+                   "layerMovedDirection":  "Layer moved {0}.",
+                   "sendingApplyAll":  "Sending Apply All...",
+                   "redoingChange":  "Redoing change...",
+                   "reorderingLayer":  "Reordering layer...",
+                   "dataLayerAdded":  "Data layer added.",
+                   "removingLayers":  "Removing layer(s)...",
+                   "layerOrderUpdated":  "Layer order updated.",
+                   "undoingChange":  "Undoing change...",
+                   "duplicatingLayer":  "Duplicating layer...",
+                   "textLayerAdded":  "Text layer added.",
+                   "graphLayerAdded":  "{0} layer added.",
+                   "applyAllFailed":  "Apply All failed.",
+                   "addingData":  "Adding data...",
+                   "addingText":  "Adding text...",
+                   "exportCancelled":  "Export cancelled.",
+                   "backupCreated":  "Backup created: {0}",
+                   "restoringBackup":  "Restoring backup...",
+                   "backupRestored":  "Backup restored.",
+                   "restoreFailed":  "Restore failed.",
+                   "checkingTemplate":  "Checking template...",
+                   "savingLayerChanges":  "Saving layer changes...",
+                   "updatingThemePreview":  "Updating theme preview...",
+                   "sendingToDevice":  "Sending changes to device...",
+                   "reloadingTemplate":  "Reloading template...",
+                   "layerHidden":  "Layer hidden. Press Save to apply.",
+                   "layerShown":  "Layer shown. Press Save to apply.",
+                   "layerLocked":  "Layer locked in the preview.",
+                   "layerUnlocked":  "Layer unlocked in the preview."
                },
     "messages":  {
                      "loadFailed":  "Load failed",
                      "saveFailed":  "Save failed",
                      "backgroundFailed":  "Background failed",
                      "removeLayerConfirm":  "Remove layer {0}?",
+                     "removeLayersConfirm":  "Remove {0} selected layers?",
                      "removeLayerTitle":  "Remove layer",
                      "removeFailed":  "Remove failed",
                      "shadowFailed":  "Shadow failed",
@@ -200,15 +340,87 @@
                      "moveFailed":  "Move failed",
                      "chooseDataFirst":  "Choose a data source first.",
                      "layerNotFound":  "Layer could not be found.",
-                     "addStreamBarFailed":  "Add Stream Bar failed"
+                     "addStreamBarFailed":  "Add Stream Bar failed",
+                     "loadThemeFirst":  "Load a theme first.",
+                     "exportThemeFailed":  "Theme export failed",
+                     "exportLConnectFailed":  "L-Connect export failed",
+                     "importThemeFailed":  "Theme import failed",
+                     "themeExported":  "Theme exported",
+                     "lConnectExported":  "L-Connect package exported",
+                     "lConnectImportHint":  "In L-Connect, open the HydroShift template screen, choose Import Template, and select this ZIP.",
+                     "themeImported":  "Theme imported",
+                     "templateChangedReloaded":  "The template was changed by L-Connect or another operation. The current layer list has been refreshed; please apply your change again.",
+                     "templateChangedTitle":  "Template refreshed",
+                     "applyFailed":  "Apply failed",
+                     "addTextFailed":  "Add text failed",
+                     "restartTitle":  "Restart L-Connect",
+                     "applyAllFailed":  "Apply All failed",
+                     "undoFailed":  "Undo failed",
+                     "redoFailed":  "Redo failed",
+                     "addDataFailed":  "Add data failed",
+                     "initializationFailed":  "Initialization failed",
+                     "addImageFailed":  "Add image failed",
+                     "duplicateFailed":  "Duplicate failed",
+                     "backupFailed":  "Backup failed",
+                     "noBackupFound":  "No manual backup exists for this template.",
+                     "restoreBackupConfirm":  "Restore the last manual backup for this template?",
+                     "restoreBackupTitle":  "Restore backup",
+                     "restoreFailed":  "Restore failed",
+                     "deviceRefreshRejected":  "The layer was saved, but L-Connect did not accept the refresh command."
+                     ,"linkOpenFailed": "The link could not be opened.\n\n{0}"
+                     ,"linkOpenFailedTitle": "Link could not be opened"
                  },
     "dialogs":  {
+                    "exportTheme":  "Export Lian Li theme",
+                    "exportLConnect":  "Export for L-Connect",
+                    "importTheme":  "Import Lian Li theme",
+                    "themePackageFilter":  "Lian Li theme package (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "L-Connect template package (*.zip)|*.zip",
+                    "chooseImage":  "Choose LCD image",
                     "chooseBackgroundMedia":  "Choose LCD background media",
                     "mediaFilter":  "Media files (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|All files (*.*)|*.*",
-                    "imageFilter":  "Image files (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|All files (*.*)|*.*"
+                    "imageFilter":  "Image files (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|All files (*.*)|*.*",
+                    "exportThemeName":  "Export theme name",
+                    "exportThemeNamePrompt":  "Theme name to use in L-Connect:"
                 },
     "buttons":  {
                     "useTime":  "Use Time",
                     "useDate":  "Use Date"
-                }
+                },
+    "tooltips":  {
+                     "toggleLayerVisibility":  "Show or hide this layer",
+                     "toggleLayerLock":  "Lock or unlock this layer in the preview",
+                     "fitPreview":  "Fit the preview to the available area",
+                     "graphSplitBlock": "Segment count or block width, depending on the graph style",
+                     "graphSplitGap": "Gap between blocks in template pixels",
+                     "imageRect": "Source rectangle: x, y, width, height"
+                     ,"switchDark": "Switch to dark theme"
+                     ,"switchLight": "Switch to light theme"
+                     ,"undo": "Revert last template change (Ctrl+Z)"
+                     ,"redo": "Restore template change (Ctrl+Y)"
+                 },
+    "properties":  {
+                       "noLayerSelected":  "Select a layer",
+                       "noLayerSelectedHint":  "Select a layer from the list on the left to edit."
+                   },
+    "window": { "minimize": "Minimize", "maximize": "Maximize" },
+    "dataSources": {
+        "APM": "AM / PM", "CPUCLOCK": "CPU Clock (MHz)", "CPUCLOCK_G": "CPU Clock (GHz)", "CPUFAN": "CPU Fan", "CPULOAD": "CPU Load", "CPUMODEL": "CPU Model", "CPUPWR": "CPU Power", "CPUTEMP": "CPU Temperature", "CPUTEMP_F": "CPU Temperature (°F)", "CPUVOLTAGE": "CPU Voltage",
+        "DATE": "Date", "DAY": "Day", "DOWNDSPEED": "Download Speed", "DRVLOAD": "Drive Load", "FPS_AVG": "Average FPS", "GPUCLOCK": "GPU Clock (MHz)", "GPUCLOCK_G": "GPU Clock (GHz)", "GPUFAN": "GPU Fan", "GPULOAD": "GPU Load", "GPUMODEL": "GPU Model", "GPUPWR": "GPU Power",
+        "GPURAM": "GPU Memory Used (MB)", "GPURAMLOAD": "GPU Memory Load", "GPURAMTOTAL": "GPU Memory Total (MB)", "GPUTEMP": "GPU Temperature", "GPUTEMP_F": "GPU Temperature (°F)", "GPUVOLTAGE": "GPU Voltage", "HDDTEMP": "Drive Temperature", "HDDTEMP_F": "Drive Temperature (°F)", "HDDUSED": "Drive Used",
+        "PUMP": "Pump", "RAM": "RAM Used", "RAM_GB": "RAM Used (GB)", "RAMLOAD": "RAM Load", "RAMTOTAL": "RAM Total", "RAMTOTAL_GB": "RAM Total (GB)", "RAMVALID": "RAM Available", "RAMVALID_GB": "RAM Available (GB)", "STATICTEXT": "Static Text", "TIME": "Time", "UPSPEED": "Upload Speed", "WATERPUMP": "Water Pump", "WATERTEMPC": "Water Temperature (°C)", "WATERTEMPF": "Water Temperature (°F)"
+    },
+    "gradient":  {
+                     "topRightToBottomLeft":  "Top-rightToBottom-Left",
+                     "topLeftToBottomRight":  "Top-leftToBottom-right",
+                     "topToBottom":  "TopToBottom",
+                     "leftToRight":  "LeftToRight",
+                     "none":  "No Gradient"
+                 },
+    "direction":  {
+                      "left":  "1 - Left",
+                      "right":  "0 - Right",
+                      "down":  "2 - Down",
+                      "up":  "3 - Up"
+                  }
 }

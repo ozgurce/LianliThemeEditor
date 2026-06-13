@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD Tema Editörü V0.97"
+                "title":  "Lian Li LCD Tema Editörü V 1.0 Beta"
             },
     "common":  {
                    "apply":  "Uygula",
@@ -8,6 +8,7 @@
                    "remove":  "Kaldır",
                    "change":  "Değiştir...",
                    "bold":  "Kalın",
+                   "italic":  "İtalik",
                    "choose":  "Seç",
                    "browse":  "Gözat",
                    "cancel":  "İptal",
@@ -19,16 +20,31 @@
                    "save":  "Kaydet",
                    "close":  "Kapat",
                    "moveUp":  "Yukarı Taşı",
-                   "moveDown":  "Aşağı Taşı"
+                   "moveDown":  "Aşağı Taşı",
+                   "undo":  "Geri Al",
+                   "redo":  "Yinele",
+                   "left":  "Sol",
+                   "right":  "Sağ",
+                   "center":  "Orta",
+                   "duplicate": "Kopyala"
                },
     "top":  {
                 "useActiveTemplate":  "Aktif temayı kullan",
                 "device":  "CİHAZ",
                 "templateId":  "TEMA ID",
                 "load":  "Yükle",
+                "backup":  "Yedekle",
+                "restore":  "Geri Yükle",
+                "exportTheme":  "Temayı Dışa Aktar",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "Temayı İçe Aktar",
                 "restartLConnect":  "L-Connect\u0027i Yeniden Başlat",
                 "templateNotLoaded":  "Tema: yüklenmedi",
                 "templateLoaded":  "Tema: {0}{1}"
+                ,"templateLoadedSimple": "Tema: yüklendi"
+                ,"templateLoadedSimpleWithId": "Tema: {0}"
+                ,"backgroundEmpty": "Arka plan: -"
+                ,"backgroundLoaded": "Arka plan: {0}"
             },
     "sections":  {
                      "layers":  "Katmanlar",
@@ -36,7 +52,10 @@
                      "timeDateFormat":  "Saat / Tarih Biçimi",
                      "addNewLayer":  "Yeni Katman Ekle",
                      "dropShadow":  "Gölge",
-                     "preview":  "Önizleme"
+                     "preview":  "Önizleme",
+                     "graphSettings":  "Grafik Boyutları ve Görünümü",
+                     "imageSettings":  "Görsel Ayarları",
+                     "advancedGraph":  "Gelişmiş Grafik"
                  },
     "grid":  {
                  "type":  "TÜR",
@@ -67,7 +86,13 @@
                    "thickness":  "KALINLIK",
                    "fillColor":  "DOLGU RENGİ",
                    "trackColor":  "ZEMİN RENGİ",
+                   "gradientColor":  "GEÇİŞ RENGİ",
+                   "fontGradientColor":  "YAZI GEÇİŞ RENGİ",
+                   "fontGradientDirection":  "GEÇİŞ YÖNÜ",
+                   "useGradient":  "Renk geçişi kullan",
                    "imageFile":  "GÖRSEL DOSYASI",
+                   "rotate":  "DÖNDÜR",
+                   "rect":  "KIRPMA ALANI",
                    "zoomRate":  "YAKINLAŞTIRMA",
                    "image":  "GÖRSEL",
                    "progress":  "İLERLEME ÇUBUĞU",
@@ -81,7 +106,48 @@
                    "layer":  "KATMAN",
                    "background":  "ARKA PLAN",
                    "graph":  "GRAFİK",
-                   "description":  "AÇIKLAMA"
+                   "description":  "AÇIKLAMA",
+                   "columnWidth":  "BÖLME GENİŞLİĞİ",
+                   "fillBack":  "Arka planı doldur",
+                   "revert":  "Ters çevir",
+                   "direction":  "YÖN",
+                   "subsection":  "Alt bölüm",
+                   "borderWidth":  "KENAR KALINLIĞI",
+                   "lineWidth":  "ÇİZGİ KALINLIĞI",
+                   "segmentsGap":  "BÖLME / BOŞLUK",
+                   "innerRadius":  "İÇ YARIÇAP",
+                   "charSpacing":  "KARAKTER ARALIĞI",
+                   "fillBackground":  "Arka planı doldur",
+                   "backAlpha":  "ARKA ŞEFFAFLIK",
+                   "hide":  "Gizle",
+                   "layerOptions":  "KATMAN SEÇENEKLERİ",
+                   "transparent":  "ŞEFFAFLIK (1-255)",
+                   "positionSize":  "KONUM \u0026 BOYUT",
+                   "ringBorder":  "Halka Çerçeve",
+                   "gradient":  "RENK GEÇİŞİ",
+                   "subtype":  "ALT TÜR",
+                   "addLayer":  "Katman Ekle",
+                   "round":  "Yuvarla",
+                   "chooseContent":  "Tuval için içerik türü seçin.",
+                   "invertDirection":  "Yönü Ters Çevir",
+                   "visibility":  "GÖRÜNÜRLÜK",
+                   "frontAlpha":  "ÖN ŞEFFAFLIK",
+                   "transparentBG":  "Şeffaf Arka Plan",
+                   "length": "UZUNLUK",
+                   "cornerRadius": "KÖŞE YARIÇAPI",
+                   "border": "KENARLIK",
+                   "sliderRadius": "SÜRGÜ YARIÇAPI",
+                   "blockAngleSpacing": "BLOK AÇISI / BOŞLUK",
+                   "blockWidthSpacing": "BLOK GENİŞLİĞİ / BOŞLUK",
+                   "lineColor": "ÇİZGİ RENGİ",
+                   "frontColor": "ÖN RENK",
+                   "borderColor": "KENARLIK RENGİ",
+                   "borderBackgroundColor": "KENARLIK / ARKA PLAN RENGİ",
+                   "backgroundFile": "ARKA PLAN DOSYASI",
+                   "alignment": "HİZALAMA",
+                   "maxValue": "EN YÜKSEK DEĞER",
+                   "startPercentage": "BAŞLANGIÇ %",
+                   "totalAngle": "TOPLAM AÇI"
                },
     "edit":  {
                  "applyToShadow":  "Gölgeye de uygula",
@@ -90,6 +156,13 @@
                  "syncShadow":  "Gölgeyle eşitle"
              },
     "add":  {
+                "layerType":  "KATMAN TÜRÜ",
+                "typeText":  "Yazı",
+                "typeData":  "Veri",
+                "typeImage":  "Görsel",
+                "typeGraph":  "Grafik",
+                "withShadow":  "Gölge ekle",
+                "shadowAutoHint":  "Gölge, katmanla birlikte otomatik eklenecek.",
                 "addText":  "Yazı Ekle",
                 "addData":  "Veri Katmanı Ekle",
                 "chooseAddImage":  "Görsel Seç ve Ekle",
@@ -97,15 +170,38 @@
                 "addArcBar":  "Yay Gösterge Ekle",
                 "addImage":  "Görsel Ekle",
                 "add":  "Ekle",
-                "addGraph":  "Grafik Ekle"
+                "addGraph":  "Grafik Ekle",
+                "descStatusBar":  "Bölmeli gösterge",
+                "typeCurvedBar":  "Yay Göstergesi",
+                "typeStatusBar":  "Durum Çubuğu",
+                "descChart":  "Akış grafiği",
+                "descDynamicStatus":  "Kaydırma çubuğu",
+                "typeDynamicStatus":  "Dinamik Durum",
+                "descAnimation":  "Arka plan medyası",
+                "typeChart":  "Grafik",
+                "descText":  "Statik metin",
+                "descData":  "Anlık sensör değeri",
+                "descCurvedBar":  "Halka veya yay",
+                "descImage":  "PNG veya JPG görsel",
+                "typeAnimation":  "Animasyon",
+                "chooseBackground": "Arka Plan Seç",
+                "addTypedLayer": "{0} Ekle"
             },
     "shadow":  {
                    "addShadow":  "Gölge Ekle",
+                   "options":  "Gölge seçenekleri",
+                   "pair":  "Gölgeyi eşleştir",
+                   "syncColor":  "Rengi eşitle",
                    "note":  "Gölgeyle eşitle kapalıysa gölge rengi ayrı tutulur."
                },
     "preview":  {
-                    "gifMp4Layer":  "GIF / MP4 Yükle",
-                    "dragToReposition":  "Konumu değiştirmek için sürükle"
+                    "gifMp4Layer":  "JPG / GIF / MP4 Yükle",
+                    "dragToReposition":  "Konumu değiştirmek için sürükle",
+                    "uploadBackground":  "Arka Plan Yükle (GIF / JPG / MP4)",
+                    "fit":  "Sığdır",
+                    "orientation":  "YÖN",
+                    "landscape":  "Yatay",
+                    "portrait":  "Dikey"
                 },
     "footer":  {
                    "language":  "Dil",
@@ -162,7 +258,7 @@
                    "nothingToUndo":  "Geri alınacak işlem yok.",
                    "loadingLayers":  "Katmanlar yükleniyor...",
                    "backgroundCommandSent":  "Arka plan komutu gönderildi. Tema şu anda şunu bildiriyor: {0}",
-                   "layersLoaded":  "{1} temasından {0} katman yüklendi.",
+                   "layersLoaded":  "{0} katman yüklendi.",
                    "noLayerChanges":  "Kaydedilecek katman değişikliği yok.",
                    "layerAdded":  "{0} katmanı eklendi.",
                    "shadowFailed":  "Gölge eklenemedi.",
@@ -172,13 +268,57 @@
                    "undoApplied":  "Geri alma uygulandı. Temaya yazmak için Uygula\u0027ya basın.",
                    "linearBarAdded":  "Çubuk gösterge eklendi.",
                    "restartingLConnectApp":  "L-Connect uygulaması yeniden başlatılıyor...",
-                   "addingArcBar":  "Yay gösterge ekleniyor..."
+                   "addingArcBar":  "Yay gösterge ekleniyor...",
+                   "exportingTheme":  "Tema dışa aktarılıyor...",
+                   "exportingLConnect":  "L-Connect paketi oluşturuluyor...",
+                   "themeExported":  "Tema paketi dışa aktarıldı.",
+                   "lConnectExported":  "L-Connect paketi dışa aktarıldı.",
+                   "exportFailed":  "Dışa aktarma başarısız.",
+                   "importingTheme":  "Tema içe aktarılıyor...",
+                   "themeImported":  "Tema paketi içe aktarıldı.",
+                   "importFailed":  "İçe aktarma başarısız.",
+                   "templateChangedReloaded":  "Şablon L-Connect\u0027te değişti. Katmanlar yenilendi.",
+                   "layerDuplicated":  "Katman kopyalandı.",
+                   "applyingChanges":  "Değişen katmanlar uygulanıyor...",
+                   "redoApplied":  "Yineleme uygulandı. Diske kaydetmek için Uygula\u0027ya tıklayın.",
+                   "movingLayerDirection":  "Katman {0} yönüne taşınıyor...",
+                   "layerReorderFailed":  "Katman sıralanamadı.",
+                   "duplicateFailed":  "Katman kopyalanamadı.",
+                   "layerMovedDirection":  "Katman {0} yönüne taşındı.",
+                   "sendingApplyAll":  "Tümünü Uygula komutu gönderiliyor...",
+                   "redoingChange":  "İşlem yineleniyor...",
+                   "reorderingLayer":  "Katman sıralanıyor...",
+                   "dataLayerAdded":  "Veri katmanı eklendi.",
+                   "removingLayers":  "Katman(lar) kaldırılıyor...",
+                   "layerOrderUpdated":  "Katman sırası güncellendi.",
+                   "undoingChange":  "İşlem geri alınıyor...",
+                   "duplicatingLayer":  "Katman kopyalanıyor...",
+                   "textLayerAdded":  "Metin katmanı eklendi.",
+                   "graphLayerAdded":  "{0} katmanı eklendi.",
+                   "applyAllFailed":  "Tümünü uygula başarısız.",
+                   "addingData":  "Veri ekleniyor...",
+                   "addingText":  "Metin ekleniyor...",
+                   "exportCancelled":  "Dışa aktarma iptal edildi.",
+                   "backupCreated":  "Yedek oluşturuldu: {0}",
+                   "restoringBackup":  "Yedek geri yükleniyor...",
+                   "backupRestored":  "Yedek geri yüklendi.",
+                   "restoreFailed":  "Geri yükleme başarısız.",
+                   "checkingTemplate":  "Tema kontrol ediliyor...",
+                   "savingLayerChanges":  "Katman değişiklikleri kaydediliyor...",
+                   "updatingThemePreview":  "Tema önizlemesi güncelleniyor...",
+                   "sendingToDevice":  "Değişiklikler cihaza gönderiliyor...",
+                   "reloadingTemplate":  "Tema yeniden yükleniyor...",
+                   "layerHidden":  "Katman gizlendi. Uygulamak için Kaydet'e basın.",
+                   "layerShown":  "Katman gösterildi. Uygulamak için Kaydet'e basın.",
+                   "layerLocked":  "Katman önizlemede kilitlendi.",
+                   "layerUnlocked":  "Katmanın önizleme kilidi kaldırıldı."
                },
     "messages":  {
                      "loadFailed":  "Yükleme başarısız",
                      "saveFailed":  "Kaydetme başarısız",
                      "backgroundFailed":  "Arka plan yüklenemedi",
                      "removeLayerConfirm":  "{0} numaralı katman kaldırılsın mı?",
+                     "removeLayersConfirm":  "Seçili {0} katman kaldırılsın mı?",
                      "removeLayerTitle":  "Katmanı kaldır",
                      "removeFailed":  "Katman kaldırılamadı",
                      "shadowFailed":  "Gölge eklenemedi",
@@ -200,15 +340,87 @@
                      "moveFailed":  "Katman taşınamadı",
                      "chooseDataFirst":  "Önce bir veri kaynağı seçin.",
                      "layerNotFound":  "Katman bulunamadı.",
-                     "addStreamBarFailed":  "Akış grafiği eklenemedi"
+                     "addStreamBarFailed":  "Akış grafiği eklenemedi",
+                     "loadThemeFirst":  "Önce bir tema yükleyin.",
+                     "exportThemeFailed":  "Tema dışa aktarılamadı",
+                     "exportLConnectFailed":  "L-Connect paketi dışa aktarılamadı",
+                     "importThemeFailed":  "Tema içe aktarılamadı",
+                     "themeExported":  "Tema dışa aktarıldı",
+                     "lConnectExported":  "L-Connect paketi dışa aktarıldı",
+                     "lConnectImportHint":  "L-Connect içinde HydroShift tema ekranını açın, Tema İçe Aktar seçeneğine basın ve bu ZIP dosyasını seçin.",
+                     "themeImported":  "Tema içe aktarıldı",
+                     "templateChangedReloaded":  "Şablon L-Connect veya başka bir işlem tarafından değiştirildi. Mevcut katman listesi yenilendi; lütfen değişikliğinizi tekrar uygulayın.",
+                     "templateChangedTitle":  "Şablon Yenilendi",
+                     "applyFailed":  "Değişiklikleri uygulama başarısız",
+                     "addTextFailed":  "Metin ekleme başarısız",
+                     "restartTitle":  "L-Connect\u0027i Yeniden Başlat",
+                     "applyAllFailed":  "Tümünü uygula başarısız",
+                     "undoFailed":  "Geri alma başarısız",
+                     "redoFailed":  "Yineleme başarısız",
+                     "addDataFailed":  "Veri ekleme başarısız",
+                     "initializationFailed":  "Başlatma başarısız",
+                     "addImageFailed":  "Görsel ekleme başarısız",
+                     "duplicateFailed":  "Kopyalama başarısız",
+                     "backupFailed":  "Yedekleme başarısız",
+                     "noBackupFound":  "Bu tema için manuel yedek bulunamadı.",
+                     "restoreBackupConfirm":  "Bu temanın son manuel yedeği geri yüklensin mi?",
+                     "restoreBackupTitle":  "Yedeği Geri Yükle",
+                     "restoreFailed":  "Geri yükleme başarısız",
+                     "deviceRefreshRejected":  "Katman kaydedildi ancak L-Connect yenileme komutunu kabul etmedi."
+                     ,"linkOpenFailed": "Bağlantı açılamadı.\n\n{0}"
+                     ,"linkOpenFailedTitle": "Bağlantı açılamadı"
                  },
     "dialogs":  {
+                    "exportTheme":  "Lian Li temasını dışa aktar",
+                    "exportLConnect":  "L-Connect için dışa aktar",
+                    "importTheme":  "Lian Li temasını içe aktar",
+                    "themePackageFilter":  "Lian Li tema paketi (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "L-Connect tema paketi (*.zip)|*.zip",
+                    "chooseImage":  "LCD görselini seç",
                     "chooseBackgroundMedia":  "LCD arka plan medyasını seç",
                     "mediaFilter":  "Medya dosyaları (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|Tüm dosyalar (*.*)|*.*",
-                    "imageFilter":  "Görsel dosyaları (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Tüm dosyalar (*.*)|*.*"
+                    "imageFilter":  "Görsel dosyaları (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Tüm dosyalar (*.*)|*.*",
+                    "exportThemeName":  "Tema Adını Belirle",
+                    "exportThemeNamePrompt":  "L-Connect\u0027te kullanılacak tema adı:"
                 },
     "buttons":  {
                     "useTime":  "Saati Kullan",
                     "useDate":  "Tarihi Kullan"
-                }
+                },
+    "tooltips":  {
+                     "toggleLayerVisibility":  "Bu katmanı göster veya gizle",
+                     "toggleLayerLock":  "Katmanın önizlemedeki kilidini aç veya kapat",
+                     "fitPreview":  "Önizlemeyi kullanılabilir alana sığdır",
+                     "graphSplitBlock": "Grafik stiline göre parça sayısı veya blok genişliği",
+                     "graphSplitGap": "Şablon pikseli cinsinden bloklar arası boşluk",
+                     "imageRect": "Kaynak alanı: x, y, genişlik, yükseklik"
+                     ,"switchDark": "Koyu temaya geç"
+                     ,"switchLight": "Açık temaya geç"
+                     ,"undo": "Son tema değişikliğini geri al (Ctrl+Z)"
+                     ,"redo": "Tema değişikliğini yinele (Ctrl+Y)"
+                 },
+    "properties":  {
+                       "noLayerSelected":  "Bir katman seçin",
+                       "noLayerSelectedHint":  "Düzenlemek için soldaki listeden bir katman seçin."
+                   },
+    "window": { "minimize": "Küçült", "maximize": "Büyüt" },
+    "dataSources": {
+        "APM": "ÖÖ / ÖS", "CPUCLOCK": "CPU Hızı (MHz)", "CPUCLOCK_G": "CPU Hızı (GHz)", "CPUFAN": "CPU Fanı", "CPULOAD": "CPU Kullanımı", "CPUMODEL": "CPU Modeli", "CPUPWR": "CPU Gücü", "CPUTEMP": "CPU Sıcaklığı", "CPUTEMP_F": "CPU Sıcaklığı (°F)", "CPUVOLTAGE": "CPU Voltajı",
+        "DATE": "Tarih", "DAY": "Gün", "DOWNDSPEED": "İndirme Hızı", "DRVLOAD": "Disk Kullanımı", "FPS_AVG": "Ortalama FPS", "GPUCLOCK": "GPU Hızı (MHz)", "GPUCLOCK_G": "GPU Hızı (GHz)", "GPUFAN": "GPU Fanı", "GPULOAD": "GPU Kullanımı", "GPUMODEL": "GPU Modeli", "GPUPWR": "GPU Gücü",
+        "GPURAM": "Kullanılan GPU Belleği (MB)", "GPURAMLOAD": "GPU Bellek Kullanımı", "GPURAMTOTAL": "Toplam GPU Belleği (MB)", "GPUTEMP": "GPU Sıcaklığı", "GPUTEMP_F": "GPU Sıcaklığı (°F)", "GPUVOLTAGE": "GPU Voltajı", "HDDTEMP": "Disk Sıcaklığı", "HDDTEMP_F": "Disk Sıcaklığı (°F)", "HDDUSED": "Kullanılan Disk",
+        "PUMP": "Pompa", "RAM": "Kullanılan RAM", "RAM_GB": "Kullanılan RAM (GB)", "RAMLOAD": "RAM Kullanımı", "RAMTOTAL": "Toplam RAM", "RAMTOTAL_GB": "Toplam RAM (GB)", "RAMVALID": "Kullanılabilir RAM", "RAMVALID_GB": "Kullanılabilir RAM (GB)", "STATICTEXT": "Sabit Metin", "TIME": "Saat", "UPSPEED": "Yükleme Hızı", "WATERPUMP": "Su Pompası", "WATERTEMPC": "Su Sıcaklığı (°C)", "WATERTEMPF": "Su Sıcaklığı (°F)"
+    },
+    "gradient":  {
+                     "topRightToBottomLeft":  "Sağ Üstten Sol Alta",
+                     "topLeftToBottomRight":  "Sol Üstten Sağ Alta",
+                     "topToBottom":  "Yukarıdan Aşağıya",
+                     "leftToRight":  "Soldan Sağa",
+                     "none":  "Geçiş Yok"
+                 },
+    "direction":  {
+                      "left":  "1 - Sol",
+                      "right":  "0 - Sağ",
+                      "down":  "2 - Aşağı",
+                      "up":  "3 - Yukarı"
+                  }
 }

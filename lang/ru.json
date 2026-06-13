@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Редактор LCD-шаблонов Lian Li V0.97"
+                "title":  "Lian Li LCD Template Editor V 1.0 Beta"
             },
     "common":  {
                    "apply":  "Применить",
@@ -8,6 +8,7 @@
                    "remove":  "Удалить",
                    "change":  "Изменить...",
                    "bold":  "Жирный",
+                   "italic":  "Курсив",
                    "choose":  "Выбрать",
                    "browse":  "Обзор",
                    "cancel":  "Отмена",
@@ -19,16 +20,31 @@
                    "save":  "Сохранить",
                    "close":  "Закрыть",
                    "moveUp":  "Вверх",
-                   "moveDown":  "Вниз"
+                   "moveDown":  "Вниз",
+                   "undo":  "Отменить",
+                   "redo":  "Повторить",
+                   "left":  "Слева",
+                   "right":  "Справа",
+                   "center":  "По центру",
+                   "duplicate": "Дублировать"
                },
     "top":  {
                 "useActiveTemplate":  "Использовать активный шаблон",
                 "device":  "УСТРОЙСТВО",
                 "templateId":  "ID ШАБЛОНА",
                 "load":  "Загрузить",
+                "backup":  "Резервная копия",
+                "restore":  "Восстановить",
+                "exportTheme":  "Экспорт темы",
+                "exportLConnect":  "L-Connect ZIP",
+                "importTheme":  "Импорт темы",
                 "restartLConnect":  "Перезапустить L-Connect",
                 "templateNotLoaded":  "Шаблон: не загружен",
                 "templateLoaded":  "Шаблон: {0}{1}"
+                ,"templateLoadedSimple": "Шаблон загружен"
+                ,"templateLoadedSimpleWithId": "Шаблон: {0}"
+                ,"backgroundEmpty": "Фон: -"
+                ,"backgroundLoaded": "Фон: {0}"
             },
     "sections":  {
                      "layers":  "Слои",
@@ -36,7 +52,10 @@
                      "timeDateFormat":  "Формат времени / даты",
                      "addNewLayer":  "Добавить новый слой",
                      "dropShadow":  "Тень",
-                     "preview":  "Предпросмотр"
+                     "preview":  "Предпросмотр",
+                     "graphSettings":  "Размеры и оформление графика",
+                     "imageSettings":  "Настройки изображения",
+                     "advancedGraph":  "Расширенные настройки графика"
                  },
     "grid":  {
                  "type":  "ТИП",
@@ -67,6 +86,12 @@
                    "thickness":  "ТОЛЩИНА",
                    "fillColor":  "ЦВЕТ ЗАЛИВКИ",
                    "trackColor":  "ЦВЕТ ДОРОЖКИ",
+                   "gradientColor":  "ЦВЕТ ГРАДИЕНТА",
+                   "useGradient":  "Использовать градиент",
+                   "fontGradientColor":  "ГРАДИЕНТ ШРИФТА",
+                   "fontGradientDirection":  "НАПРАВЛЕНИЕ ГРАДИЕНТА",
+                   "rotate":  "ПОВОРОТ",
+                   "rect":  "ОБРЕЗКА",
                    "imageFile":  "ФАЙЛ ИЗОБРАЖЕНИЯ",
                    "zoomRate":  "МАСШТАБ",
                    "image":  "ИЗОБРАЖЕНИЕ",
@@ -81,7 +106,48 @@
                    "layer":  "СЛОЙ",
                    "background":  "ФОН",
                    "graph":  "ГРАФИК",
-                   "description":  "ОПИСАНИЕ"
+                   "description":  "ОПИСАНИЕ",
+                   "columnWidth":  "COLUMN WIDTH",
+                   "fillBack":  "Fill back",
+                   "revert":  "Revert",
+                   "direction":  "DIRECTION",
+                   "subsection":  "Subsection",
+                   "borderWidth":  "BORDER WIDTH",
+                   "lineWidth":  "LINE WIDTH",
+                   "segmentsGap":  "SEGMENTS / GAP",
+                   "innerRadius":  "INNER RADIUS",
+                   "charSpacing":  "CHAR SPACING",
+                   "fillBackground":  "Fill background",
+                   "backAlpha":  "ПРОЗРАЧНОСТЬ ЗАДНЕГО ПЛАНА",
+                   "hide":  "Скрыть",
+                   "layerOptions":  "НАСТРОЙКИ СЛОЯ",
+                   "transparent":  "ПРОЗРАЧНОСТЬ",
+                   "positionSize":  "ПОЛОЖЕНИЕ И РАЗМЕР",
+                   "ringBorder":  "Круглая рамка",
+                   "gradient":  "ГРАДИЕНТ",
+                   "subtype":  "ПОДТИП",
+                   "addLayer":  "Добавить слой",
+                   "round":  "Округление",
+                   "chooseContent":  "Выберите содержимое для холста.",
+                   "invertDirection":  "Обратное направление",
+                   "visibility":  "ВИДИМОСТЬ",
+                   "frontAlpha":  "ПРОЗРАЧНОСТЬ ПЕРЕДНЕГО ПЛАНА",
+                   "transparentBG":  "Прозрачный фон",
+                   "length": "ДЛИНА",
+                   "cornerRadius": "РАДИУС УГЛА",
+                   "border": "ГРАНИЦА",
+                   "sliderRadius": "РАДИУС ПОЛЗУНКА",
+                   "blockAngleSpacing": "УГОЛ БЛОКА / ИНТЕРВАЛ",
+                   "blockWidthSpacing": "ШИРИНА БЛОКА / ИНТЕРВАЛ",
+                   "lineColor": "ЦВЕТ ЛИНИИ",
+                   "frontColor": "ЦВЕТ ПЕРЕДНЕГО ПЛАНА",
+                   "borderColor": "ЦВЕТ ГРАНИЦЫ",
+                   "borderBackgroundColor": "ЦВЕТ ГРАНИЦЫ / ФОНА",
+                   "backgroundFile": "ФАЙЛ ФОНА",
+                   "alignment": "ВЫРАВНИВАНИЕ",
+                   "maxValue": "МАКС. ЗНАЧЕНИЕ",
+                   "startPercentage": "НАЧАЛО %",
+                   "totalAngle": "ОБЩИЙ УГОЛ"
                },
     "edit":  {
                  "applyToShadow":  "Применить к тени",
@@ -90,6 +156,13 @@
                  "syncShadow":  "Синхронизировать тень"
              },
     "add":  {
+                "layerType":  "ТИП СЛОЯ",
+                "typeText":  "Текст",
+                "typeData":  "Данные",
+                "typeImage":  "Изображение",
+                "typeGraph":  "График",
+                "withShadow":  "Добавить тень",
+                "shadowAutoHint":  "Тень будет добавлена вместе со слоем.",
                 "addText":  "Добавить текст",
                 "addData":  "Добавить данные",
                 "chooseAddImage":  "Выбрать и добавить изображение",
@@ -97,15 +170,38 @@
                 "addArcBar":  "Добавить дуговой индикатор",
                 "addImage":  "Добавить изображение",
                 "add":  "Добавить",
-                "addGraph":  "Добавить график"
+                "addGraph":  "Добавить график",
+                "descStatusBar":  "Сегментированный индикатор",
+                "typeCurvedBar":  "Дуговой индикатор",
+                "typeStatusBar":  "Индикатор состояния",
+                "descChart":  "Потоковый график",
+                "descDynamicStatus":  "Ползунковый индикатор",
+                "typeDynamicStatus":  "Динамический статус",
+                "descAnimation":  "Фоновое медиа",
+                "typeChart":  "График",
+                "descText":  "Статический текст",
+                "descData":  "Показания датчика",
+                "descCurvedBar":  "Кольцо или дуга",
+                "descImage":  "PNG или JPG изображение",
+                "typeAnimation":  "Анимация",
+                "chooseBackground": "Выбрать фон",
+                "addTypedLayer": "Добавить: {0}"
             },
     "shadow":  {
                    "addShadow":  "Добавить тень",
+                   "options":  "Настройки тени",
+                   "pair":  "Связать тень",
+                   "syncColor":  "Синхронизировать цвет",
                    "note":  "Цвет тени сохраняется отдельно, если синхронизация выключена."
                },
     "preview":  {
-                    "gifMp4Layer":  "Загрузить GIF / MP4",
-                    "dragToReposition":  "Перетащите для изменения позиции"
+                    "gifMp4Layer":  "Загрузить JPG / GIF / MP4",
+                    "dragToReposition":  "Перетащите для изменения позиции",
+                    "uploadBackground":  "Загрузить фон (GIF / JPG / MP4)",
+                    "fit":  "Вписать",
+                    "orientation":  "ОРИЕНТАЦИЯ",
+                    "landscape":  "Альбомная",
+                    "portrait":  "Портретная"
                 },
     "footer":  {
                    "language":  "Язык",
@@ -135,7 +231,7 @@
                    "backgroundCommandSent":  "Команда фона отправлена. Сейчас шаблон сообщает: {0}",
                    "backgroundChangeFailed":  "Не удалось изменить фон.",
                    "loadingLayers":  "Загрузка слоёв...",
-                   "layersLoaded":  "Загружено слоёв: {0} из {1}.",
+                   "layersLoaded":  "Загружено слоев: {0}.",
                    "noLayerChanges":  "Нет изменений слоёв для сохранения.",
                    "layersSaved":  "Применено. Сохранено слоёв: {0}.",
                    "layerRemoved":  "Слой удалён.",
@@ -172,13 +268,57 @@
                    "addingStreamGraph":  "Добавление потокового графика...",
                    "streamGraphAdded":  "Потоковый график добавлен.",
                    "undoApplied":  "Отмена применена. Нажмите «Применить», чтобы записать изменения в шаблон.",
-                   "nothingToUndo":  "Нечего отменять."
+                   "nothingToUndo":  "Нечего отменять.",
+                   "exportingTheme":  "Экспорт темы...",
+                   "exportingLConnect":  "Создание пакета L-Connect...",
+                   "themeExported":  "Пакет темы экспортирован.",
+                   "lConnectExported":  "Пакет L-Connect экспортирован.",
+                   "exportFailed":  "Ошибка экспорта.",
+                   "importingTheme":  "Импорт темы...",
+                   "themeImported":  "Пакет темы импортирован.",
+                   "importFailed":  "Ошибка импорта.",
+                   "templateChangedReloaded":  "Шаблон изменен в L-Connect. Слои обновлены.",
+                   "layerDuplicated":  "Слой скопирован.",
+                   "applyingChanges":  "Применение измененных слоев...",
+                   "redoApplied":  "Повторение применено. Нажмите «Применить», чтобы записать на диск.",
+                   "movingLayerDirection":  "Перемещение слоя {0}...",
+                   "layerReorderFailed":  "Не удалось изменить порядок слоев.",
+                   "duplicateFailed":  "Не удалось скопировать слой.",
+                   "layerMovedDirection":  "Слой перемещен {0}.",
+                   "sendingApplyAll":  "Отправка «Применить всё»...",
+                   "redoingChange":  "Повторение изменения...",
+                   "reorderingLayer":  "Изменение порядка слоев...",
+                   "dataLayerAdded":  "Слой данных добавлен.",
+                   "removingLayers":  "Удаление слоя(ев)...",
+                   "layerOrderUpdated":  "Порядок слоев обновлен.",
+                   "undoingChange":  "Отмена изменения...",
+                   "duplicatingLayer":  "Копирование слоя...",
+                   "textLayerAdded":  "Текстовый слой добавлен.",
+                   "graphLayerAdded":  "Слой {0} добавлен.",
+                   "applyAllFailed":  "Не удалось применить всё.",
+                   "addingData":  "Добавление данных...",
+                   "addingText":  "Добавление текста...",
+                   "exportCancelled":  "Экспорт отменен.",
+                   "backupCreated":  "Резервная копия создана: {0}",
+                   "restoringBackup":  "Восстановление резервной копии...",
+                   "backupRestored":  "Резервная копия восстановлена.",
+                   "restoreFailed":  "Не удалось восстановить резервную копию.",
+                   "checkingTemplate":  "Проверка шаблона...",
+                   "savingLayerChanges":  "Сохранение изменений слоев...",
+                   "updatingThemePreview":  "Обновление предпросмотра темы...",
+                   "sendingToDevice":  "Отправка изменений на устройство...",
+                   "reloadingTemplate":  "Повторная загрузка шаблона...",
+                   "layerHidden":  "Слой скрыт. Нажмите «Сохранить», чтобы применить.",
+                   "layerShown":  "Слой показан. Нажмите «Сохранить», чтобы применить.",
+                   "layerLocked":  "Слой заблокирован в предпросмотре.",
+                   "layerUnlocked":  "Слой разблокирован в предпросмотре."
                },
     "messages":  {
                      "loadFailed":  "Ошибка загрузки",
                      "saveFailed":  "Ошибка сохранения",
                      "backgroundFailed":  "Не удалось загрузить фон",
                      "removeLayerConfirm":  "Удалить слой {0}?",
+                     "removeLayersConfirm":  "Удалить выбранные слои ({0})?",
                      "removeLayerTitle":  "Удалить слой",
                      "removeFailed":  "Не удалось удалить слой",
                      "shadowFailed":  "Не удалось добавить тень",
@@ -200,15 +340,87 @@
                      "moveFailed":  "Не удалось переместить слой",
                      "chooseDataFirst":  "Сначала выберите источник данных.",
                      "layerNotFound":  "Слой не найден.",
-                     "addStreamBarFailed":  "Не удалось добавить потоковый график"
+                     "addStreamBarFailed":  "Не удалось добавить потоковый график",
+                     "loadThemeFirst":  "Сначала загрузите тему.",
+                     "exportThemeFailed":  "Не удалось экспортировать тему",
+                     "exportLConnectFailed":  "Не удалось экспортировать пакет L-Connect",
+                     "importThemeFailed":  "Не удалось импортировать тему",
+                     "themeExported":  "Тема экспортирована",
+                     "lConnectExported":  "Пакет L-Connect экспортирован",
+                     "lConnectImportHint":  "В L-Connect откройте экран шаблонов HydroShift, выберите импорт шаблона и укажите этот ZIP-файл.",
+                     "themeImported":  "Тема импортирована",
+                     "templateChangedReloaded":  "Шаблон был изменен L-Connect или другой операцией. Текущий список слоев обновлен; пожалуйста, примените изменения снова.",
+                     "templateChangedTitle":  "Шаблон обновлен",
+                     "applyFailed":  "Ошибка применения",
+                     "addTextFailed":  "Не удалось добавить текст",
+                     "restartTitle":  "Перезапуск L-Connect",
+                     "applyAllFailed":  "Не удалось применить всё",
+                     "undoFailed":  "Не удалось отменить",
+                     "redoFailed":  "Не удалось повторить",
+                     "addDataFailed":  "Не удалось добавить данные",
+                     "initializationFailed":  "Ошибка инициализации",
+                     "addImageFailed":  "Не удалось добавить изображение",
+                     "duplicateFailed":  "Ошибка копирования",
+                     "backupFailed":  "Не удалось создать резервную копию",
+                     "noBackupFound":  "Для этой темы нет ручной резервной копии.",
+                     "restoreBackupConfirm":  "Восстановить последнюю ручную резервную копию этой темы?",
+                     "restoreBackupTitle":  "Восстановить резервную копию",
+                     "restoreFailed":  "Не удалось восстановить",
+                     "deviceRefreshRejected":  "Слой сохранен, но L-Connect не принял команду обновления."
+                     ,"linkOpenFailed": "Не удалось открыть ссылку.\n\n{0}"
+                     ,"linkOpenFailedTitle": "Не удалось открыть ссылку"
                  },
     "dialogs":  {
+                    "exportTheme":  "Экспорт темы Lian Li",
+                    "exportLConnect":  "Экспорт для L-Connect",
+                    "importTheme":  "Импорт темы Lian Li",
+                    "themePackageFilter":  "Пакет темы Lian Li (*.lltheme)|*.lltheme",
+                    "lConnectTemplateFilter":  "Пакет шаблона L-Connect (*.zip)|*.zip",
+                    "chooseImage":  "Выберите изображение LCD",
                     "chooseBackgroundMedia":  "Выберите фоновое медиа для LCD",
                     "mediaFilter":  "Медиафайлы (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|Все файлы (*.*)|*.*",
-                    "imageFilter":  "Изображения (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Все файлы (*.*)|*.*"
+                    "imageFilter":  "Изображения (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Все файлы (*.*)|*.*",
+                    "exportThemeName":  "Имя экспортируемой темы",
+                    "exportThemeNamePrompt":  "Имя темы для использования в L-Connect:"
                 },
     "buttons":  {
                     "useTime":  "Использовать время",
                     "useDate":  "Использовать дату"
-                }
+                },
+    "tooltips":  {
+                     "toggleLayerVisibility":  "Показать или скрыть этот слой",
+                     "toggleLayerLock":  "Заблокировать или разблокировать слой в предпросмотре",
+                     "fitPreview":  "Вписать предпросмотр в доступную область",
+                     "graphSplitBlock": "Количество сегментов или ширина блока в зависимости от стиля графика",
+                     "graphSplitGap": "Интервал между блоками в пикселях шаблона",
+                     "imageRect": "Исходная область: x, y, ширина, высота"
+                     ,"switchDark": "Переключить на тёмную тему"
+                     ,"switchLight": "Переключить на светлую тему"
+                     ,"undo": "Отменить последнее изменение темы (Ctrl+Z)"
+                     ,"redo": "Повторить изменение темы (Ctrl+Y)"
+                 },
+    "properties":  {
+                       "noLayerSelected":  "Выберите слой",
+                       "noLayerSelectedHint":  "Выберите слой из списка слева для редактирования."
+                   },
+    "window": { "minimize": "Свернуть", "maximize": "Развернуть" },
+    "dataSources": {
+        "APM": "ДП / ПП", "CPUCLOCK": "Частота CPU (МГц)", "CPUCLOCK_G": "Частота CPU (ГГц)", "CPUFAN": "Вентилятор CPU", "CPULOAD": "Загрузка CPU", "CPUMODEL": "Модель CPU", "CPUPWR": "Мощность CPU", "CPUTEMP": "Температура CPU", "CPUTEMP_F": "Температура CPU (°F)", "CPUVOLTAGE": "Напряжение CPU",
+        "DATE": "Дата", "DAY": "День", "DOWNDSPEED": "Скорость загрузки", "DRVLOAD": "Загрузка диска", "FPS_AVG": "Средний FPS", "GPUCLOCK": "Частота GPU (МГц)", "GPUCLOCK_G": "Частота GPU (ГГц)", "GPUFAN": "Вентилятор GPU", "GPULOAD": "Загрузка GPU", "GPUMODEL": "Модель GPU", "GPUPWR": "Мощность GPU",
+        "GPURAM": "Использовано памяти GPU (МБ)", "GPURAMLOAD": "Загрузка памяти GPU", "GPURAMTOTAL": "Всего памяти GPU (МБ)", "GPUTEMP": "Температура GPU", "GPUTEMP_F": "Температура GPU (°F)", "GPUVOLTAGE": "Напряжение GPU", "HDDTEMP": "Температура диска", "HDDTEMP_F": "Температура диска (°F)", "HDDUSED": "Использовано на диске",
+        "PUMP": "Помпа", "RAM": "Использовано RAM", "RAM_GB": "Использовано RAM (ГБ)", "RAMLOAD": "Загрузка RAM", "RAMTOTAL": "Всего RAM", "RAMTOTAL_GB": "Всего RAM (ГБ)", "RAMVALID": "Доступно RAM", "RAMVALID_GB": "Доступно RAM (ГБ)", "STATICTEXT": "Статический текст", "TIME": "Время", "UPSPEED": "Скорость отдачи", "WATERPUMP": "Водяная помпа", "WATERTEMPC": "Температура воды (°C)", "WATERTEMPF": "Температура воды (°F)"
+    },
+    "gradient":  {
+                     "topRightToBottomLeft":  "С правого верхнего в левый нижний",
+                     "topLeftToBottomRight":  "С левого верхнего в правый нижний",
+                     "topToBottom":  "Сверху вниз",
+                     "leftToRight":  "Слева направо",
+                     "none":  "Без градиента"
+                 },
+    "direction":  {
+                      "left":  "1 - Влево",
+                      "right":  "0 - Вправо",
+                      "down":  "2 - Вниз",
+                      "up":  "3 - Вверх"
+                  }
 }
