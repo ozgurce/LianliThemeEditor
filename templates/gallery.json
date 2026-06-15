@@ -476,6 +476,33 @@
                        "deviceName":  "Hydroshift II LCD-C",
                        "previewUrl":  "previews/hydroshift-c-rog.png",
                        "packageUrl":  "packages/hydroshift-c-rog.lltheme"
+                   },
+                   {
+                       "id":  "universal-88-car-cruise-night",
+                       "name":  "Car Cruise Night",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8 Universal Screen",
+                       "previewUrl":  "previews/universal-88-car-cruise-night.png",
+                       "packageUrl":  "packages/universal-88-car-cruise-night.lltheme"
+                   },
+                   {
+                       "id":  "universal-88-gs-theme-hor",
+                       "name":  "Gs Theme HOR",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8 Universal Screen",
+                       "previewUrl":  "previews/universal-88-gs-theme-hor.png",
+                       "packageUrl":  "packages/universal-88-gs-theme-hor.lltheme"
+                   },
+                   {
+                       "id":  "universal-88-rick-and-morty-h",
+                       "name":  "Rick and Morty H",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8 Universal Screen",
+                       "previewUrl":  "previews/universal-88-rick-and-morty-h.png",
+                       "packageUrl":  "packages/universal-88-rick-and-morty-h.lltheme"
                    }
                ]
 }
