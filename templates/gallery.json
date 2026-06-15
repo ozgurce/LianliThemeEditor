@@ -503,6 +503,15 @@
                        "deviceName":  "8.8 Universal Screen",
                        "previewUrl":  "previews/universal-88-rick-and-morty-h.png",
                        "packageUrl":  "packages/universal-88-rick-and-morty-h.lltheme"
+                   },
+                   {
+                       "id":  "arc-raiders-v2lc",
+                       "name":  "Arc raiders V2LC",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8\" Universal Screen",
+                       "previewUrl":  "previews/arc-raiders-v2lc.png",
+                       "packageUrl":  "packages/arc-raiders-v2lc.lltheme"
                    }
                ]
 }
