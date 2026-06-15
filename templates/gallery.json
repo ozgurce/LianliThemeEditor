@@ -1,0 +1,32 @@
+﻿{
+    "themes":  [
+                   {
+                       "id":  "cyberpunk2077-dark-88",
+                       "name":  "Cyberpunk 2077 Dark Version",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8\" Universal Screen",
+                       "previewUrl":  "previews/cyberpunk2077-dark-88.png",
+                       "packageUrl":  "packages/cyberpunk2077-dark-88.lltheme"
+                   },
+                   {
+                       "id":  "purple-gold-panel-88",
+                       "name":  "Purple and Gold Panel",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8\" Universal Screen",
+                       "previewUrl":  "previews/purple-gold-panel-88.png",
+                       "packageUrl":  "packages/purple-gold-panel-88.lltheme"
+                   },
+                   {
+                       "id":  "hs2-ozgur-theme",
+                       "name":  "HS2 Theme",
+                       "author":  "Özgür Yalçın",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hs2-ozgur-theme.png",
+                       "packageUrl":  "packages/hs2-ozgur-theme.lltheme"
+                   }
+               ]
+}
+
