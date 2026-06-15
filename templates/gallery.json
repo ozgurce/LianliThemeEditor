@@ -26,7 +26,456 @@
                        "deviceName":  "Hydroshift II LCD-S",
                        "previewUrl":  "previews/hs2-ozgur-theme.png",
                        "packageUrl":  "packages/hs2-ozgur-theme.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-25",
+                       "name":  "Hydroshift 25",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-25.png",
+                       "packageUrl":  "packages/hydroshift-s-25.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-25",
+                       "name":  "Hydroshift 25",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-25.png",
+                       "packageUrl":  "packages/hydroshift-c-25.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-26",
+                       "name":  "Hydroshift 26",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-26.png",
+                       "packageUrl":  "packages/hydroshift-s-26.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-26",
+                       "name":  "Hydroshift 26",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-26.png",
+                       "packageUrl":  "packages/hydroshift-c-26.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-27",
+                       "name":  "Hydroshift 27",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-27.png",
+                       "packageUrl":  "packages/hydroshift-s-27.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-27",
+                       "name":  "Hydroshift 27",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-27.png",
+                       "packageUrl":  "packages/hydroshift-c-27.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-28",
+                       "name":  "Hydroshift 28",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-28.png",
+                       "packageUrl":  "packages/hydroshift-s-28.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-28",
+                       "name":  "Hydroshift 28",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-28.png",
+                       "packageUrl":  "packages/hydroshift-c-28.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-29",
+                       "name":  "Hydroshift 29",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-29.png",
+                       "packageUrl":  "packages/hydroshift-s-29.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-29",
+                       "name":  "Hydroshift 29",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-29.png",
+                       "packageUrl":  "packages/hydroshift-c-29.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-30",
+                       "name":  "Hydroshift 30",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-30.png",
+                       "packageUrl":  "packages/hydroshift-s-30.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-30",
+                       "name":  "Hydroshift 30",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-30.png",
+                       "packageUrl":  "packages/hydroshift-c-30.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-31",
+                       "name":  "Hydroshift 31",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-31.png",
+                       "packageUrl":  "packages/hydroshift-s-31.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-31",
+                       "name":  "Hydroshift 31",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-31.png",
+                       "packageUrl":  "packages/hydroshift-c-31.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-32",
+                       "name":  "Hydroshift 32",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-32.png",
+                       "packageUrl":  "packages/hydroshift-s-32.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-32",
+                       "name":  "Hydroshift 32",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-32.png",
+                       "packageUrl":  "packages/hydroshift-c-32.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-33",
+                       "name":  "Hydroshift 33",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-33.png",
+                       "packageUrl":  "packages/hydroshift-s-33.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-33",
+                       "name":  "Hydroshift 33",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-33.png",
+                       "packageUrl":  "packages/hydroshift-c-33.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-35",
+                       "name":  "Hydroshift 35",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-35.png",
+                       "packageUrl":  "packages/hydroshift-s-35.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-35",
+                       "name":  "Hydroshift 35",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-35.png",
+                       "packageUrl":  "packages/hydroshift-c-35.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-36",
+                       "name":  "Hydroshift 36",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-36.png",
+                       "packageUrl":  "packages/hydroshift-s-36.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-36",
+                       "name":  "Hydroshift 36",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-36.png",
+                       "packageUrl":  "packages/hydroshift-c-36.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-39",
+                       "name":  "Hydroshift 39",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-39.png",
+                       "packageUrl":  "packages/hydroshift-s-39.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-39",
+                       "name":  "Hydroshift 39",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-39.png",
+                       "packageUrl":  "packages/hydroshift-c-39.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-43",
+                       "name":  "Hydroshift 43",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-43.png",
+                       "packageUrl":  "packages/hydroshift-s-43.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-43",
+                       "name":  "Hydroshift 43",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-43.png",
+                       "packageUrl":  "packages/hydroshift-c-43.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-47",
+                       "name":  "Hydroshift 47",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-47.png",
+                       "packageUrl":  "packages/hydroshift-s-47.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-47",
+                       "name":  "Hydroshift 47",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-47.png",
+                       "packageUrl":  "packages/hydroshift-c-47.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-48",
+                       "name":  "Hydroshift 48",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-48.png",
+                       "packageUrl":  "packages/hydroshift-s-48.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-48",
+                       "name":  "Hydroshift 48",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-48.png",
+                       "packageUrl":  "packages/hydroshift-c-48.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-49",
+                       "name":  "Hydroshift 49",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-49.png",
+                       "packageUrl":  "packages/hydroshift-s-49.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-49",
+                       "name":  "Hydroshift 49",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-49.png",
+                       "packageUrl":  "packages/hydroshift-c-49.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-50",
+                       "name":  "Hydroshift 50",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-50.png",
+                       "packageUrl":  "packages/hydroshift-s-50.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-50",
+                       "name":  "Hydroshift 50",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-50.png",
+                       "packageUrl":  "packages/hydroshift-c-50.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-51",
+                       "name":  "Hydroshift 51",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-51.png",
+                       "packageUrl":  "packages/hydroshift-s-51.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-51",
+                       "name":  "Hydroshift 51",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-51.png",
+                       "packageUrl":  "packages/hydroshift-c-51.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-52-rgb",
+                       "name":  "52 Rgb",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-52-rgb.png",
+                       "packageUrl":  "packages/hydroshift-s-52-rgb.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-52-rgb",
+                       "name":  "52 Rgb",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-52-rgb.png",
+                       "packageUrl":  "packages/hydroshift-c-52-rgb.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-53",
+                       "name":  "Hydroshift 53",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-53.png",
+                       "packageUrl":  "packages/hydroshift-s-53.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-53",
+                       "name":  "Hydroshift 53",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-53.png",
+                       "packageUrl":  "packages/hydroshift-c-53.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-aorus",
+                       "name":  "Aorus",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-aorus.png",
+                       "packageUrl":  "packages/hydroshift-s-aorus.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-aorus",
+                       "name":  "Aorus",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-aorus.png",
+                       "packageUrl":  "packages/hydroshift-c-aorus.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-clock-v2",
+                       "name":  "Clock V2",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-clock-v2.png",
+                       "packageUrl":  "packages/hydroshift-s-clock-v2.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-clock-v2",
+                       "name":  "Clock V2",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-clock-v2.png",
+                       "packageUrl":  "packages/hydroshift-c-clock-v2.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-clock",
+                       "name":  "Clock",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-clock.png",
+                       "packageUrl":  "packages/hydroshift-s-clock.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-clock",
+                       "name":  "Clock",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-clock.png",
+                       "packageUrl":  "packages/hydroshift-c-clock.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-msi",
+                       "name":  "Msi",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-msi.png",
+                       "packageUrl":  "packages/hydroshift-s-msi.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-msi",
+                       "name":  "Msi",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-msi.png",
+                       "packageUrl":  "packages/hydroshift-c-msi.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-s-rog",
+                       "name":  "Rog",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "Hydroshift II LCD-S",
+                       "previewUrl":  "previews/hydroshift-s-rog.png",
+                       "packageUrl":  "packages/hydroshift-s-rog.lltheme"
+                   },
+                   {
+                       "id":  "hydroshift-c-rog",
+                       "name":  "Rog",
+                       "author":  "Lian Li",
+                       "deviceModel":  "hydroshift-ii-lcd-c",
+                       "deviceName":  "Hydroshift II LCD-C",
+                       "previewUrl":  "previews/hydroshift-c-rog.png",
+                       "packageUrl":  "packages/hydroshift-c-rog.lltheme"
                    }
                ]
 }
-
