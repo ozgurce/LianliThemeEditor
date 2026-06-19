@@ -2,9 +2,11 @@
 
 **Current release:** V 1.2 Beta
 
-An unofficial Windows editor for Lian Li L-Connect 3 LCD templates. It lets you load an existing LCD template, edit its layers with a live preview, export the edited template as an L-Connect import package, and apply changes back to L-Connect.
+Lian Li LCD Template Editor is an unofficial Windows editor for L-Connect 3 LCD templates. It is built for editing, repairing, exporting, importing, previewing, sharing, and applying LCD themes without manually digging through L-Connect template/profile files.
 
-> This project is not affiliated with, endorsed by, or supported by Lian Li. It edits local L-Connect 3 template/profile files. Keep backups of important themes before experimenting.
+The app can load the active L-Connect theme, show every editable layer, let you change the layout visually, and write the result back through the bundled C# `supporter.exe` helper. It also includes a theme gallery, package validation, recovery snapshots, diagnostics, multi-language UI, and workflows for newer wide LCD screens.
+
+> This project is not affiliated with, endorsed by, or supported by Lian Li. It edits local L-Connect 3 template/profile files. Keep backups of themes you care about before experimenting.
 
 ## Supported Devices
 
@@ -20,114 +22,188 @@ The editor resolves templates, backgrounds, images, videos, graph modules, and p
 - Windows 10 or Windows 11
 - L-Connect 3 installed
 - Administrator rights recommended when writing into `C:\ProgramData\Lian-Li\L-Connect 3`
+- .NET desktop runtime for the editor build you use
 - .NET Framework 4.8 for the bundled C# template supporter
 
 ## Release Package
 
-The release ZIP should contain:
+Release ZIPs are intentionally small. They should contain:
 
 - `LianLiThemeEditor.exe`
-- `supporter.exe` (built from `SupporterCs`)
+- `supporter.exe`
+- `supporter.exe.config`
 - `lang/`
 - `README.md`
 
-Keep these files together in the same folder. The editor uses the bundled C# `supporter.exe` for low-level L-Connect template operations and `lang/*.json` for UI language text. Built-in gallery packages and previews are maintained in the repository `templates/` folder, but that folder is not bundled into release ZIPs.
+Keep these files together in the same folder. The release ZIP does **not** bundle the repository `templates/` directory. Gallery packages and previews are maintained in the repository and/or remote gallery sources, not copied into release ZIPs.
 
-## Basic Usage
+## What It Can Do
 
-1. Open L-Connect 3.
-2. Select your HydroShift LCD device and template.
-3. Start `LianLiThemeEditor.exe`.
-4. Keep `Use active template` enabled or choose a template manually.
-5. Click `Load`.
-6. Select a layer from the layer list or the preview canvas.
-7. Edit position, size, font, color, text/data source, graph settings, image settings, or background media.
-8. Use `Apply` for a single layer or `Apply All` for the current set of changes.
-9. Use `Export Theme` to create an L-Connect importable ZIP.
+### Template Loading
 
-## Main Features
+- Load the active L-Connect template automatically.
+- Manually choose a supported device and template.
+- Fall back to available local templates when the active template cannot be resolved.
+- Refresh layer state when L-Connect changes the template externally.
+- Keep current template path, template id, background path, and selected device state visible to the editor workflow.
+- Resolve ProgramData and installed asset folders for L-Connect template/media dependencies.
 
-- C# WPF interface with glassmorphism dark/light themes.
-- Layer list with drag-and-drop ordering.
-- Layer grouping, group visibility/lock actions, group duplication, and context menu movement.
-- Multi-select layer actions including batch edit, alignment, distribution, duplicate, hide/show, lock/unlock, and solo preview mode.
-- Undo/redo with edit history for template-side changes.
-- Live preview canvas with zoom, Ctrl + mouse wheel zoom, alignment guides, and direct layer dragging.
-- Right-side properties panel that only shows controls supported by the selected layer.
-- Add layer workflow for text, data, image, graph, and optional shadow layers.
-- Text/data layer editing: position, size, font, color, bold/italic, alignment, character spacing, line height, and format where supported.
-- Image layer editing: image file, size/zoom, rotate, and rect/crop fields where supported.
-- Graph editing: graph type, data source, dimensions, fill/track colors, gradient color, split/subsection options, direction, line/column/border settings, and supported graph-specific fields.
-- Background upload/export support for MP4, GIF, JPG/JPEG, and PNG.
-- L-Connect compatible export package generation.
-- Import and validation flow for `.lltheme` and L-Connect ZIP packages.
-- Built-in theme gallery with local packages, community stats, ratings, downloads, device filters, sorting, install/reinstall, and optional activation after install.
-- Community theme submission workflow for review.
-- Manual backup/restore and automatic recovery snapshots for unsaved work.
-- Diagnostic info/package generation for bug reports.
-- VM 9.2 conversion flow for compatible 8.8" L-Connect ZIP themes.
-- Active template loading on startup workflow.
-- Safer Apply/Apply All flow that refreshes layer state when L-Connect changes the template.
-- Multi-language UI: English, Turkish, Russian, and Simplified Chinese.
+### Visual Editor
 
-## Data Sources
+- WPF desktop UI with dark and light glass-style themes.
+- Device-aware preview canvas for square, round, 8.8", and VM 9.2 layouts.
+- Live canvas preview for backgrounds, text, data, image, graph, sensor, clock, and animation layers.
+- Zoom controls, fit-to-view, mouse-wheel zoom, and preview scrolling.
+- Direct preview selection and dragging.
+- Preview resize handles for supported layer types.
+- Alignment guide lines and canvas reference guides.
+- Right-click preview context menu for duplicate, hide/show, lock/unlock, bring forward, send backward, and solo selected.
+- Solo preview mode to temporarily isolate selected layer(s).
+- Landscape/portrait handling for the 8.8" Universal Screen.
+- VM 9.2 direct-apply warning and conversion workflow where applicable.
 
-The editor exposes practical L-Connect data sources with user-friendly names and keeps the internal L-Connect keys when saving.
+### Layer Management
 
-Common supported data sources include:
+- Layer list with visual cards, icons, dirty badges, lock state, and visibility state.
+- Multi-select support for layer actions.
+- Drag-and-drop style reordering through editor actions.
+- Move selected layer(s) up/down.
+- Duplicate one or multiple layers.
+- Remove one or multiple layers.
+- Hide/show layers without losing them.
+- Lock/unlock layers in the editor preview.
+- Select layers from the grid or directly from the preview canvas.
+- Preserve layer indexes and refresh them after template operations.
+- Protect background/animation base layers from unsafe operations.
 
-- CPU Clock
-- CPU Clock (GHz)
-- CPU Fan
-- CPU Load
-- CPU Model
-- CPU Power
-- CPU Temperature
-- CPU Temperature (F)
-- CPU Voltage
-- Date
-- Day
-- Drive Load
-- FPS
-- GPU Clock
-- GPU Clock (GHz)
-- GPU Fan
-- GPU Load
-- GPU Model
-- GPU Power
-- GPU RAM
-- GPU RAM Load
-- GPU Temperature
-- GPU Temperature (F)
-- GPU Valid RAM
-- GPU Voltage
-- HDD Temperature
-- HDD Temperature (F)
-- HDD Used
-- Pump / Water Pump
-- RAM
-- RAM Load
-- RAM Model
-- RAM Total
-- RAM Valid
+### Layer Groups
+
+- Create named layer groups.
+- Assign selected layers to a group.
+- Rename groups.
+- Duplicate whole groups.
+- Remove a group while keeping its layers.
+- Move selected layers into or out of groups.
+- Group visibility toggle.
+- Group lock/unlock toggle.
+- Group color labels.
+- Group expand/collapse state in the layer list.
+- Group selection by clicking group headers.
+- Group metadata persistence inside the template through editor metadata.
+- Option to disable layer grouping from Settings.
+
+### Batch And Alignment Tools
+
+- Batch edit selected layers.
+- Batch color change.
+- Batch font change where supported.
+- Batch position offset.
+- Batch visibility change.
+- Batch lock/unlock change.
+- Align selected layers to canvas left, center, right, top, middle, or bottom.
+- Distribute selected layers horizontally or vertically.
+- Mark edited layers dirty so Apply/Apply All can warn before writing.
+
+### Undo, Redo, And History
+
+- Undo and redo for editor-side template changes.
+- Ctrl+Z / Ctrl+Y support.
+- Edit history popup.
+- History labels for moves, resizes, properties, batch edits, alignment, visibility changes, group visibility, recovery restore, and grid edits.
+- Undo snapshots stored in memory while editing.
+- Dirty layer tracking after undo/redo so the user knows what still needs applying.
+
+### Add Layer Workflow
+
+- Add animation/background media layer.
+- Add static text layer.
+- Add data/sensor text layer.
+- Add image layer.
+- Add status bar / segmented bar graph.
+- Add dynamic status graph.
+- Add curved bar / donut / arc graph.
+- Add ring graph.
+- Add stream/chart graph.
+- Optional shadow creation during add flow.
+- Default positioning, font, color, alignment, and format values for safer new layers.
+- Automatic selection of the newly created editable layer.
+
+### Text And Data Editing
+
+- Edit X/Y position.
+- Edit text content.
+- Enable text override for data-backed text layers.
+- Edit font family.
+- Edit size.
+- Edit color.
+- Bold and italic where supported.
+- Alignment index/name handling.
+- Character spacing.
+- Line height.
+- Time, date, and day format controls.
+- Preserve valid L-Connect internal data keys while showing friendly names.
+- Hide unsupported font controls for layer types that cannot safely write them.
+
+### Image And Media Editing
+
+- Replace image media.
+- Replace background media.
+- Support PNG, JPG/JPEG, GIF, MP4, and H.264-style media workflows where L-Connect accepts them.
+- Edit image zoom rate.
+- Edit image rotation.
+- Edit image/source rect fields where supported.
+- Use source image dimensions for safer initial sizing.
+- Cache image dimensions and previews for faster redraw.
+- Extract missing embedded previews when possible.
+- Update theme preview images during export/apply flows.
+
+### Graph Editing
+
+- Filter graph styles to practical/useful H2 graph families instead of showing unstable duplicates.
+- Edit graph data source.
+- Edit width, height, radius, diameter, and thickness where supported.
+- Edit front/fill, back/track, line, border, and gradient colors.
+- Toggle gradients where supported.
+- Edit graph direction.
+- Edit line width, column width, border width.
+- Edit inner circle radius.
+- Edit split block width and split blank width.
+- Toggle subsection/split behavior.
+- Toggle fill back, revert, transparent background, ring border, round corners, block mode, and direction inversion where supported.
+- Edit front/back alpha, max value, start percentage, and total angle for supported graph classes.
+- Render richer local previews for supported graph styles.
+
+### Sensor Preview And Sensor Layers
+
+- Add and edit `GraphSensor` style layers.
+- Sensor style/type handling.
+- Sensor color 1, color 2, background color, main font color, top font color, and bottom font color.
+- Sensor font family and zoom rate.
+- Local sensor preview rendering through the supporter helper.
+- Live sample values and fallback preview values when L-Connect/HWiNFO data is unavailable.
+
+### Data Sources
+
+The editor exposes practical L-Connect data sources with user-friendly names while preserving the internal keys when saving.
+
+Common supported sources include:
+
 - Static Text
-- Time
-- Upload Speed
-- Download Speed
+- Time, Date, Day, AM/PM
+- FPS / `FPS_AVG`
+- CPU clock, load, temperature, fan, power, voltage, and model
+- GPU clock, load, temperature, fan, power, voltage, model, memory used, memory total, and memory load
+- RAM used, available, total, load, and model-related values
+- Drive load, drive used, drive temperature
+- Pump / water pump
+- Water temperature
+- Upload speed and download speed
 
-### FPS
+CPU Power and GPU Power are formatted as integers so compact LCD layouts do not get cluttered with decimal fractions.
 
-FPS uses the L-Connect/HWiNFO sensor path exposed as `FPS_AVG` internally and is displayed in the editor as `FPS`. If L-Connect or HWiNFO is not providing this sensor, the preview may fall back to a sample value.
+### Verified Date And Time Formats
 
-### Power Values
-
-CPU Power and GPU Power are formatted as integers in the editor and save path so decimal fractions from L-Connect sensors do not clutter compact LCD layouts.
-
-## Date And Time Formats
-
-Only formats verified to work with L-Connect are exposed.
-
-Time:
+Time formats:
 
 ```text
 00:00
@@ -140,7 +216,7 @@ AM
 PM
 ```
 
-Date:
+Date formats:
 
 ```text
 Y-M-D
@@ -150,96 +226,215 @@ M
 D
 ```
 
-Day:
+Day formats:
 
 ```text
 Day_en
 ddd
 ```
 
-## Graph Notes
+### Backgrounds
 
-The graph list is filtered to the useful H2 graph styles instead of showing duplicate or unsupported L-Connect module entries. The editor shows graph controls based on the selected graph object's supported fields.
+- Load current template background.
+- Upload a new background image/video.
+- Revert current template background.
+- Copy background media into L-Connect-compatible locations.
+- Wait for uploaded background files to become available.
+- Refresh preview once background media has been written.
+- Include edited background and generated preview assets in exported L-Connect packages.
 
-Known graph families:
+### Export, Import, And Install
 
-- Bar Chart: horizontal bar graph
-- Donut Bar: circular ring graph
-- Stream Bar: line/stream graph
+- Export `.lltheme` packages.
+- Export L-Connect-compatible ZIP packages.
+- Import `.lltheme` packages.
+- Import existing L-Connect ZIP packages.
+- Validate packages before install/import.
+- Detect corrupt packages.
+- Detect missing manifest/template files.
+- Detect unsafe paths in packages.
+- Detect missing background/image references.
+- Warn when a theme identity is already installed.
+- Resolve template identity aliases and internal IDs from template content.
+- Avoid duplicate imports when an installed template already matches the package.
+- Activate installed themes through L-Connect where supported.
+- Copy template backgrounds during activation/import.
 
-Some fields only apply to specific graph classes. Unsupported fields are intentionally hidden to avoid saving no-op or unstable values.
+### VM 9.2 And 8.8" Conversion
 
-## Background Media
+- 8.8" Universal Screen editing with orientation support.
+- VM 9.2 device selection and preview assets.
+- Convert compatible 8.8" L-Connect ZIP themes to VM 9.2 packages.
+- Show direct-apply limitations for VM 9.2 when L-Connect cannot accept the same live apply path.
 
-Backgrounds can be selected as:
+### Theme Gallery
 
-- MP4
-- GIF
-- JPG/JPEG
-- PNG
+- Built-in gallery tab.
+- Load local gallery metadata/packages/previews.
+- Load community gallery items from the Cloudflare-backed service.
+- Device filters for HydroShift II LCD-S, HydroShift II LCD-C, 8.8" Universal Screen, and VM 9.2 LCD.
+- "My devices" settings to show only relevant devices across editor and gallery.
+- Rating filter.
+- Sorting by default order, most downloaded, highest rated, most votes, and name A-Z.
+- Download/reinstall themes.
+- Track installed gallery items.
+- Optional activate-after-install behavior.
+- Download count display.
+- Average rating display.
+- Per-user star voting when the stats endpoint is configured.
+- Community theme details view.
+- Cache downloaded package bytes during the session.
 
-The export flow attempts to include the edited background and generated preview assets so L-Connect imports show the edited theme instead of the original default preview.
+### Community Submission
+
+- Send the current theme for review.
+- Submit an existing `.lltheme` or L-Connect ZIP package.
+- Validate selected packages before submission.
+- Prompt for theme name, author, contact, and description.
+- Upload through multipart form data to the gallery submission endpoint.
+- Receive a submission ID after successful upload.
+- Separate admin/review tooling exists under `tools/ThemeReview`.
+- Cloudflare Worker support for submissions, review, approved community themes, download stats, and votes.
+
+### Backup, Recovery, And Diagnostics
+
+- Manual template backup.
+- Manual restore from the latest template backup.
+- Automatic recovery snapshots for unsaved editor state.
+- Recovery prompt/card in About when unsaved work is found.
+- Restore or discard recovery snapshots.
+- Daily editor logs in the local app data folder.
+- Global unhandled exception logging.
+- Copy diagnostic info.
+- Create diagnostic ZIP packages with summary, logs, and selected files.
+- GitHub issue and feature-request shortcuts.
+- Check GitHub releases for updates from the About screen.
+
+### Settings
+
+- Choose UI language.
+- Choose dark/light theme.
+- Toggle layer grouping.
+- Choose owned devices.
+- Toggle automatic gallery theme activation after install.
+- Placeholder/help entry for mapping unused L-Connect sensors through future Python/themeengine work.
+- Settings are persisted locally.
+
+### Localization
+
+The UI currently includes:
+
+- English
+- Turkish
+- Russian
+- Simplified Chinese
+
+The test project checks localization quality by ensuring every locale has the same keys as `en.json`, no empty values, and matching `{0}`-style placeholders.
+
+## Basic Usage
+
+1. Open L-Connect 3.
+2. Select the LCD device/template you want to edit.
+3. Start `LianLiThemeEditor.exe`.
+4. Use `Active Theme` or choose a device/template manually.
+5. Click `Load`.
+6. Select a layer from the list or preview.
+7. Edit properties in the right panel.
+8. Use `Apply` for the selected layer or `Apply All` for pending changes.
+9. Export a theme package or send changes back to L-Connect.
+
+## Safer Editing Tips
+
+- Keep L-Connect installed and open when using active-template workflows.
+- Run as Administrator if Windows blocks writes to `C:\ProgramData`.
+- Create a manual backup before large experiments.
+- Use export/import for VM 9.2 paths when direct apply is unavailable.
+- If L-Connect changes the template while editing, reload before applying more changes.
+- Keep `supporter.exe`, `supporter.exe.config`, and `lang/` beside the editor executable.
 
 ## Repository Structure
 
 ```text
-Assets/                 UI background assets
-Models/                 Layer/template model classes
-Services/               C# supporter process bridge
-lang/                   UI language JSON files
-App.xaml(.cs)           App entry
-MainWindow.xaml(.cs)    Main editor UI and workflow
-ColorPickerDialog.*     Color picker UI
-supporter.exe           C# L-Connect template/profile helper used by releases
+Assets/                    UI and device images
+Models/                    Layer, gallery, group, template, and validation models
+Services/                  Supporter bridge, gallery, validation, recovery, diagnostics, install services
+SupporterCs/               C# helper used for low-level L-Connect template/profile operations
+UsbDeviceEmulator/         Local emulator/support tooling for device-side testing
+cloudflare/gallery-stats/  Worker, D1 schema, and R2-backed gallery stats/submission service
+lang/                      UI translations
+templates/                 Repository gallery metadata, packages, and previews
+tools/                     Gallery upload/review tooling
+Tests/                     Service and localization quality checks
+App.xaml(.cs)              WPF application entry
+MainWindow.xaml(.cs)       Main editor UI and workflow
+ColorPickerDialog.*        Color picker UI
+create_release.ps1         Release ZIP builder
 ```
 
-Generated folders such as `bin/`, `obj/`, `dist/`, local logs, local settings, and release ZIPs are ignored by Git.
+Generated folders such as `bin/`, `obj/`, `tmp/`, `artifacts/`, `Backups/`, and release ZIPs are local/build artifacts.
+
+## Build And Test
+
+Build the editor:
+
+```powershell
+dotnet build
+```
+
+Run the service/localization checks:
+
+```powershell
+dotnet run --project Tests\ThemeEditorCSharp.Tests.csproj
+```
+
+Create release ZIPs:
+
+```powershell
+.\create_release.ps1
+```
+
+The release script builds the editor and supporter, then creates versioned self-contained and framework-dependent ZIPs without bundling the repository `templates/` directory.
+
+## Cloudflare Gallery Service
+
+The `cloudflare/gallery-stats` folder contains the optional Worker used by the gallery for:
+
+- Theme download counts
+- Ratings and per-user vote lookup
+- Community theme listing
+- Theme submissions
+- Admin review actions
+- Approved/pending submission file serving through R2
+
+Theme packages and previews can live outside release ZIPs while the desktop app still reads gallery metadata and live stats.
 
 ## Changelog
 
 ### V 1.2 Beta
 
-- Added support for 8.8" Universal Screen and VM 9.2 LCD workflows.
-- Added built-in Theme Gallery with local packages, previews, device filters, sorting, download counts, ratings, and install/reinstall flow.
-- Added community theme submission support backed by the Cloudflare gallery service.
-- Added `.lltheme`/ZIP import validation and safer activation handling for already-installed theme identities.
-- Added VM 9.2 conversion flow for compatible 8.8" L-Connect ZIP packages.
-- Added layer grouping, group actions, batch editing, alignment/distribution tools, preview context menu actions, and solo preview mode.
-- Added undo/redo history and automatic recovery snapshots for unsaved layer edits.
-- Added diagnostic info and diagnostic package creation for support reports.
-- Added manual template backup/restore controls.
-- Added localization quality checks to keep language files structurally aligned.
-- Updated release packaging to include `lang/`, `supporter.exe`, and `README.md` with versioned ZIP names.
+- Added 8.8" Universal Screen and VM 9.2 workflows.
+- Added Theme Gallery with local/community items, downloads, ratings, filters, sorting, install/reinstall, and optional activation.
+- Added community theme submission flow.
+- Added package validation for `.lltheme` and L-Connect ZIP imports.
+- Added safer activation logic for already-installed template identities.
+- Added VM 9.2 conversion for compatible 8.8" L-Connect ZIP packages.
+- Added layer grouping, group actions, batch edit, alignment/distribution, preview context menu, and solo mode.
+- Added undo/redo history.
+- Added automatic recovery snapshots.
+- Added diagnostic info/package generation.
+- Added manual backup/restore controls.
+- Added localization quality checks.
+- Updated release packaging to include app files, supporter, `lang/`, and `README.md` while excluding repository `templates/`.
 
 ### V 1.0 Beta
 
-- Migrated the editor workflow from the original PowerShell UI to the C# WPF application.
-- Added the new glassmorphism layout with left layer list, central canvas, and right properties sidebar.
-- Added draggable layer cards and direct preview-canvas layer movement.
-- Added Add Layer popup flow for text, data, image, graph, and shadow-enabled layers.
-- Added L-Connect compatible `Export Theme` ZIP generation.
-- Added support for exporting/importing edited background media instead of falling back to the default template background.
-- Added JPG/JPEG/PNG support for background images in addition to GIF/MP4.
-- Added image layer sizing based on source image dimensions and safer image apply behavior.
-- Added graph style filtering and graph-specific controls for supported fields.
-- Added graph dimensions, fill color, track/background color, gradient color, subsection/split, direction, line width, column width, border width, and related supported settings.
-- Added live preview value handling for supported sensors.
-- Added FPS support through the L-Connect/HWiNFO `FPS_AVG` path.
-- Added CPU/GPU power, voltage, model, RAM, drive, pump, fan, upload/download, HDD, and GPU RAM data paths.
-- Added integer formatting for CPU Power and GPU Power values.
-- Added safer date/time/day format handling and removed unsupported date/weekday combinations.
-- Added live sample value preservation where possible when loading templates.
-- Added light and dark UI themes.
-- Added Ctrl + mouse wheel preview zoom and 100% to 300% zoom range.
-- Added startup active-template workflow.
-- Removed unsupported/no-op Font W and Font Gradient controls from the editor UI and apply path.
-
-## Development Notes
-
-- Build with the .NET SDK on Windows.
-- The app targets `net10.0-windows` and uses WPF.
-- `supporter.exe` is built automatically from `SupporterCs` and is required at runtime.
-- `dotnet build`, `dotnet run`, and `dotnet publish` build and bundle the C# supporter automatically.
+- Migrated the original workflow into a C# WPF application.
+- Added the main glass-style editor layout.
+- Added live preview and direct canvas movement.
+- Added text, data, image, graph, background, and shadow layer workflows.
+- Added L-Connect-compatible export generation.
+- Added graph/data-source support for practical HydroShift II themes.
+- Added dark/light themes and multilingual UI.
 
 ## Disclaimer
 
