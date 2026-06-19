@@ -1,166 +1,175 @@
-﻿{
-    "themes":  [
-                   {
-                       "id":  "purple-gold-panel-88",
-                       "name":  "Purple and Gold Panel",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/purple-gold-panel-88.png",
-                       "packageUrl":  "packages/purple-gold-panel-88.lltheme"
-                   },
-                   {
-                       "id":  "universal-88-car-cruise-night",
-                       "name":  "Car Cruise Night",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8 Universal Screen",
-                       "previewUrl":  "previews/universal-88-car-cruise-night.png",
-                       "packageUrl":  "packages/universal-88-car-cruise-night.lltheme"
-                   },
-                   {
-                       "id":  "universal-88-gs-theme-hor",
-                       "name":  "Gs Theme HOR",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8 Universal Screen",
-                       "previewUrl":  "previews/universal-88-gs-theme-hor.png",
-                       "packageUrl":  "packages/universal-88-gs-theme-hor.lltheme"
-                   },
-                   {
-                       "id":  "universal-88-rick-and-morty-h",
-                       "name":  "Rick and Morty H",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8 Universal Screen",
-                       "previewUrl":  "previews/universal-88-rick-and-morty-h.png",
-                       "packageUrl":  "packages/universal-88-rick-and-morty-h.lltheme"
-                   },
-                   {
-                       "id":  "arc-raiders-v2lc",
-                       "name":  "Arc raiders V2LC",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/arc-raiders-v2lc.png",
-                       "packageUrl":  "packages/arc-raiders-v2lc.lltheme"
-                   },
-                   {
-                       "id":  "007-fl-v1",
-                       "name":  "007 FL V1",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/007-fl-v1.png",
-                       "packageUrl":  "packages/007-fl-v1.lltheme"
-                   },
-                   {
-                       "id":  "007-fl-v2",
-                       "name":  "007 FL V2",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/007-fl-v2.png",
-                       "packageUrl":  "packages/007-fl-v2.lltheme"
-                   },
-                   {
-                       "id":  "cyberpunk2077-v5lc",
-                       "name":  "Cyberpunk2077_V5LC",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-v5lc.png",
-                       "packageUrl":  "packages/cyberpunk2077-v5lc.lltheme"
-                   },
-                   {
-                       "id":  "hades",
-                       "name":  "Hades",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/hades.png",
-                       "packageUrl":  "packages/hades.lltheme"
-                   },
-                   {
-                       "id":  "smb-v3",
-                       "name":  "SMB V3",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/smb-v3.png",
-                       "packageUrl":  "packages/smb-v3.lltheme"
-                   },
-                   {
-                       "id":  "gs-theme-rgb-hor-version",
-                       "name":  "Gs Theme RGB HOR version",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gs-theme-rgb-hor-version.png",
-                       "packageUrl":  "packages/gs-theme-rgb-hor-version.lltheme"
-                   },
-                   {
-                       "id":  "spaceship-dashboard-horisontal-remake",
-                       "name":  "Spaceship Dashboard Horisontal remake",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/spaceship-dashboard-horisontal-remake.png",
-                       "packageUrl":  "packages/spaceship-dashboard-horisontal-remake.lltheme"
-                   },
-                   {
-                       "id":  "predator",
-                       "name":  "Predator",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/predator.png",
-                       "packageUrl":  "packages/predator.lltheme"
-                   },
-                   {
-                       "id":  "smb-retro",
-                       "name":  "SMB Retro",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/smb-retro.png",
-                       "packageUrl":  "packages/smb-retro.lltheme"
-                   },
-                   {
-                       "id":  "gaming-rig-v2",
-                       "name":  "Gaming rig V2",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gaming-rig-v2.png",
-                       "packageUrl":  "packages/gaming-rig-v2.lltheme"
-                   },
-                   {
-                       "id":  "clockv3-a6bc9242",
-                       "name":  "ClockV3",
-                       "author":  "Ozgur",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "",
-                       "packageUrl":  "packages/clockv3-a6bc9242.zip"
-                   },
-                   {
-                       "id":  "clockv2-5c1bd1b5",
-                       "name":  "ClockV2",
-                       "author":  "Ozgur",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "",
-                       "packageUrl":  "packages/clockv2-5c1bd1b5.zip"
-                   },
-                   {
-                       "id":  "clockv1-1153bad5",
-                       "name":  "ClockV1",
-                       "author":  "Ozgur",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "",
-                       "packageUrl":  "packages/clockv1-1153bad5.zip"
-                   }
-               ]
+{
+  "themes": [
+    {
+      "id": "purple-gold-panel-88",
+      "name": "Purple and Gold Panel",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/purple-gold-panel-88.png",
+      "packageUrl": "packages/purple-gold-panel-88.lltheme"
+    },
+    {
+      "id": "universal-88-car-cruise-night",
+      "name": "Car Cruise Night",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8 Universal Screen",
+      "previewUrl": "previews/universal-88-car-cruise-night.png",
+      "packageUrl": "packages/universal-88-car-cruise-night.lltheme"
+    },
+    {
+      "id": "universal-88-gs-theme-hor",
+      "name": "Gs Theme HOR",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8 Universal Screen",
+      "previewUrl": "previews/universal-88-gs-theme-hor.png",
+      "packageUrl": "packages/universal-88-gs-theme-hor.lltheme"
+    },
+    {
+      "id": "universal-88-rick-and-morty-h",
+      "name": "Rick and Morty H",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8 Universal Screen",
+      "previewUrl": "previews/universal-88-rick-and-morty-h.png",
+      "packageUrl": "packages/universal-88-rick-and-morty-h.lltheme"
+    },
+    {
+      "id": "arc-raiders-v2lc",
+      "name": "Arc raiders V2LC",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/arc-raiders-v2lc.png",
+      "packageUrl": "packages/arc-raiders-v2lc.lltheme"
+    },
+    {
+      "id": "007-fl-v1",
+      "name": "007 FL V1",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/007-fl-v1.png",
+      "packageUrl": "packages/007-fl-v1.lltheme"
+    },
+    {
+      "id": "007-fl-v2",
+      "name": "007 FL V2",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/007-fl-v2.png",
+      "packageUrl": "packages/007-fl-v2.lltheme"
+    },
+    {
+      "id": "cyberpunk2077-v5lc",
+      "name": "Cyberpunk2077_V5LC",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyberpunk2077-v5lc.png",
+      "packageUrl": "packages/cyberpunk2077-v5lc.lltheme"
+    },
+    {
+      "id": "hades",
+      "name": "Hades",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/hades.png",
+      "packageUrl": "packages/hades.lltheme"
+    },
+    {
+      "id": "smb-v3",
+      "name": "SMB V3",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/smb-v3.png",
+      "packageUrl": "packages/smb-v3.lltheme"
+    },
+    {
+      "id": "gs-theme-rgb-hor-version",
+      "name": "Gs Theme RGB HOR version",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gs-theme-rgb-hor-version.png",
+      "packageUrl": "packages/gs-theme-rgb-hor-version.lltheme"
+    },
+    {
+      "id": "spaceship-dashboard-horisontal-remake",
+      "name": "Spaceship Dashboard Horisontal remake",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/spaceship-dashboard-horisontal-remake.png",
+      "packageUrl": "packages/spaceship-dashboard-horisontal-remake.lltheme"
+    },
+    {
+      "id": "predator",
+      "name": "Predator",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/predator.png",
+      "packageUrl": "packages/predator.lltheme"
+    },
+    {
+      "id": "smb-retro",
+      "name": "SMB Retro",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/smb-retro.png",
+      "packageUrl": "packages/smb-retro.lltheme"
+    },
+    {
+      "id": "gaming-rig-v2",
+      "name": "Gaming rig V2",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gaming-rig-v2.png",
+      "packageUrl": "packages/gaming-rig-v2.lltheme"
+    },
+    {
+      "id": "clockv3-a6bc9242",
+      "name": "ClockV3",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/clockv3-a6bc9242.zip"
+    },
+    {
+      "id": "clockv2-5c1bd1b5",
+      "name": "ClockV2",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/clockv2-5c1bd1b5.zip"
+    },
+    {
+      "id": "clockv1-1153bad5",
+      "name": "ClockV1",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/clockv1-1153bad5.zip"
+    },
+    {
+      "id": "portal-119ec48c",
+      "name": "Portal",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/portal-119ec48c.lltheme"
+    }
+  ]
 }
