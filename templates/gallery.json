@@ -161,6 +161,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "",
       "packageUrl": "packages/clockv2-5c1bd1b5.zip"
+    },
+    {
+      "id": "clockv1-1153bad5",
+      "name": "ClockV1",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/clockv1-1153bad5.zip"
     }
   ]
 }
