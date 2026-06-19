@@ -35,7 +35,7 @@ Release ZIPs are intentionally small. They should contain:
 - `lang/`
 - `README.md`
 
-Keep these files together in the same folder. The release ZIP does **not** bundle the repository `templates/` directory. Gallery packages and previews are maintained in the repository and/or remote gallery sources, not copied into release ZIPs.
+Keep these files together in the same folder. Gallery manifests, packages, and previews are fetched from GitHub at runtime and are never bundled with the application.
 
 ## What It Can Do
 
@@ -270,8 +270,9 @@ ddd
 ### Theme Gallery
 
 - Built-in gallery tab.
-- Load local gallery metadata/packages/previews.
-- Load community gallery items from the Cloudflare-backed service.
+- Load the official manifest, packages, and previews directly from GitHub over HTTPS.
+- Load community metadata from the Cloudflare-backed service while accepting only GitHub-hosted package and preview assets.
+- Never fall back to local gallery files; show a connection error when GitHub is unavailable.
 - Device filters for HydroShift II LCD-S, HydroShift II LCD-C, 8.8" Universal Screen, and VM 9.2 LCD.
 - "My devices" settings to show only relevant devices across editor and gallery.
 - Rating filter.
@@ -362,7 +363,6 @@ SupporterCs/               C# helper used for low-level L-Connect template/profi
 UsbDeviceEmulator/         Local emulator/support tooling for device-side testing
 cloudflare/gallery-stats/  Worker, D1 schema, and R2-backed gallery stats/submission service
 lang/                      UI translations
-templates/                 Repository gallery metadata, packages, and previews
 tools/                     Gallery upload/review tooling
 Tests/                     Service and localization quality checks
 App.xaml(.cs)              WPF application entry
@@ -393,7 +393,7 @@ Create release ZIPs:
 .\create_release.ps1
 ```
 
-The release script builds the editor and supporter, then creates versioned self-contained and framework-dependent ZIPs without bundling the repository `templates/` directory.
+The release script builds the editor and supporter, then creates versioned self-contained and framework-dependent ZIPs without bundling gallery assets.
 
 ## Cloudflare Gallery Service
 
@@ -424,7 +424,7 @@ Theme packages and previews can live outside release ZIPs while the desktop app 
 - Added diagnostic info/package generation.
 - Added manual backup/restore controls.
 - Added localization quality checks.
-- Updated release packaging to include app files, supporter, `lang/`, and `README.md` while excluding repository `templates/`.
+- Updated release packaging to include app files, supporter, `lang/`, and `README.md` while relying on GitHub-hosted gallery assets.
 
 ### V 1.0 Beta
 
