@@ -163,15 +163,6 @@
       "packageUrl": "packages/clockv1-1153bad5.zip"
     },
     {
-      "id": "portal-119ec48c",
-      "name": "Portal",
-      "author": "Ozgur",
-      "deviceModel": "hydroshift-ii-lcd-s",
-      "deviceName": "Hydroshift II LCD-S",
-      "previewUrl": "",
-      "packageUrl": "packages/portal-119ec48c.lltheme"
-    },
-    {
       "id": "m8-63ec7396",
       "name": "M8",
       "author": "Lian Li",
@@ -251,6 +242,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "",
       "packageUrl": "packages/m1-b759b8bd.zip"
+    },
+    {
+      "id": "portal-119ec48c",
+      "name": "Portal",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/portal-119ec48c.lltheme"
     }
   ]
 }
