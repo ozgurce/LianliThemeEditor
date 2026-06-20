@@ -224,6 +224,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "",
       "packageUrl": "packages/m2-bb1b86b8.zip"
+    },
+    {
+      "id": "m1-b759b8bd",
+      "name": "M1",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/m1-b759b8bd.zip"
     }
   ]
 }
