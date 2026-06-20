@@ -170,6 +170,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "",
       "packageUrl": "packages/portal-119ec48c.lltheme"
+    },
+    {
+      "id": "m10-467f5907",
+      "name": "M10",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/m10-467f5907.zip"
     }
   ]
 }
