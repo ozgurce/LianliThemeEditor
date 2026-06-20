@@ -182,6 +182,34 @@ Keep these files together in the same folder. Gallery manifests, packages, and p
 - Local sensor preview rendering through the supporter helper.
 - Live sample values and fallback preview values when L-Connect/HWiNFO data is unavailable.
 
+### Gauge Angle Calculation
+
+Gauge angles use the 12 o'clock position as `0°` and increase clockwise:
+
+| Clock position | Angle |
+| --- | ---: |
+| 12 o'clock | `0°` |
+| 3 o'clock | `90°` |
+| 6 o'clock | `180°` |
+| 9 o'clock | `-90°` or `270°` |
+
+`Start` is the needle angle at 0% and `Total` is the sweep range, not the final angle. The displayed angle is calculated as:
+
+```text
+Displayed angle = Start + (value / 100 × Total)
+```
+
+For example, to move from 9 o'clock at 0% to 3 o'clock at 100%:
+
+```text
+Start = -90
+Total = 180
+Rate Offset = 0
+Revert = Off
+```
+
+This produces 9 o'clock at 0%, 12 o'clock at 50%, and 3 o'clock at 100%. Each hour step on a clock face equals `30°`. Enable `Revert` to sweep in the opposite direction. `Rate Offset` shifts the normalized input rate before the sweep is calculated and should normally remain `0`.
+
 ### Data Sources
 
 The editor exposes practical L-Connect data sources with user-friendly names while preserving the internal keys when saving.
