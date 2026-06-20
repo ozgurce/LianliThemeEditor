@@ -163,15 +163,6 @@
       "packageUrl": "packages/clockv1-1153bad5.zip"
     },
     {
-      "id": "m6-c84d61b2",
-      "name": "M6",
-      "author": "Lian Li",
-      "deviceModel": "hydroshift-ii-lcd-s",
-      "deviceName": "Hydroshift II LCD-S",
-      "previewUrl": "",
-      "packageUrl": "packages/m6-c84d61b2.zip"
-    },
-    {
       "id": "m9-636d7a3b",
       "name": "M9",
       "author": "Lian Li",
@@ -251,6 +242,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "",
       "packageUrl": "packages/m8-63ec7396.zip"
+    },
+    {
+      "id": "m6-c84d61b2",
+      "name": "M6",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/m6-c84d61b2.zip"
     }
   ]
 }
