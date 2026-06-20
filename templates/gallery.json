@@ -181,15 +181,6 @@
       "packageUrl": "packages/m2-bb1b86b8.zip"
     },
     {
-      "id": "m9-636d7a3b",
-      "name": "M9",
-      "author": "Lian Li",
-      "deviceModel": "hydroshift-ii-lcd-s",
-      "deviceName": "Hydroshift II LCD-S",
-      "previewUrl": "",
-      "packageUrl": "packages/m9-636d7a3b.zip"
-    },
-    {
       "id": "m8-63ec7396",
       "name": "M8",
       "author": "Lian Li",
@@ -251,6 +242,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "",
       "packageUrl": "packages/m10-467f5907.zip"
+    },
+    {
+      "id": "m9-636d7a3b",
+      "name": "M9",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "",
+      "packageUrl": "packages/m9-636d7a3b.zip"
     }
   ]
 }
