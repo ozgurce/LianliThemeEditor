@@ -377,6 +377,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/clock-with-sensors-9f367ce3.png",
       "packageUrl": "packages/clock-with-sensors-9f367ce3.zip"
+    },
+    {
+      "id": "neon-board-76f041e6",
+      "name": "Neon Board",
+      "author": "Ozgur",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/neon-board-76f041e6.png",
+      "packageUrl": "packages/neon-board-76f041e6.lltheme"
     }
   ]
 }
