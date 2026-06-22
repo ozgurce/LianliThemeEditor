@@ -1,0 +1,69 @@
+# Build output
+bin/
+obj/
+dist/
+publish/
+release/
+artifacts/
+tmp/
+Backups/
+**/bin/
+**/obj/
+**/artifacts/
+**/tmp/
+
+# Visual Studio / local IDE state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local tooling and temporary diagnostics
+.agents/
+.codex/
+.tools/
+Tests/
+UsbDeviceEmulator/
+tools/
+8.8-APPLY-TEST-INSTRUCTIONS-TR.txt
+Launch-LatestThemeEditor.ps1
+*.log
+startup_error.log
+unhandled_error.log
+parse.ps1
+temp_profile.json
+supporter.ps1
+supporter.exe
+supporter.exe.config
+*.exe
+*.pdb
+active_layers*.json
+sensor_test_layers.json
+themeengine_inventory.txt
+themeengine_types.json
+
+# OS noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Packages / generated archives
+*.zip
+*.nupkg
+
+# Gallery assets are intentionally versioned.
+!templates/
+!templates/**
+
+# JavaScript / Cloudflare local state
+node_modules/
+cloudflare/**/node_modules/
+cloudflare/**/.wrangler/
+cloudflare/**/wrangler.toml
+!cloudflare/**/wrangler.toml.example
+
+# Proprietary or reverse-engineering scratch files
+PLUS/

@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>LianLiThemeEditor.TemplateWorker</AssemblyName>
+    <RootNamespace>ThemeEditorSupporter</RootNamespace>
+    <ApplicationIcon>..\editor.ico</ApplicationIcon>
+    <Version>1.3.0-beta</Version>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
+    <InformationalVersion>V 1.3 Beta</InformationalVersion>
+    <Title>Lian Li LCD Template Editor - Template Worker</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor - Template Worker</AssemblyTitle>
+    <Product>Lian Li LCD Template Editor</Product>
+    <Description>Template conversion and rendering worker for Lian Li LCD Template Editor</Description>
+    <Company>LianLiThemeEditor contributors</Company>
+    <Authors>LianLiThemeEditor contributors</Authors>
+    <Copyright>Copyright © LianLiThemeEditor contributors 2026</Copyright>
+    <Deterministic>true</Deterministic>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Drawing" />
+    <!-- Required at runtime by the installed L-Connect ThemeEngine assembly. -->
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>LianLiThemeEditor</AssemblyName>
+    <RootNamespace>ThemeEditorCSharp</RootNamespace>
+    <Version>1.3.0-beta</Version>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
+    <InformationalVersion>V 1.3 Beta</InformationalVersion>
+    <Title>Lian Li LCD Template Editor V 1.3 Beta</Title>
+    <Product>Lian Li LCD Template Editor</Product>
+    <Authors>LianLiThemeEditor contributors</Authors>
+    <ApplicationIcon>editor.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;tmp\**;release\**;cloudflare\**;bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="editor.ico" />
+    <Resource Include="Assets\glass-background.png" />
+    <Resource Include="Assets\glass-background-light.png" />
+    <Resource Include="Assets\Devices\hydroshift-ii-lcd-s.png" />
+    <Resource Include="Assets\Devices\hydroshift-ii-lcd-c.png" />
+    <Resource Include="Assets\Devices\universal-screen-8.8.png" />
+    <Resource Include="Assets\Devices\vm-9.2.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="lang\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe" Link="LianLiThemeEditor.TemplateWorker.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe.config" Link="LianLiThemeEditor.TemplateWorker.exe.config" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tmp\**\*.cs" />
+    <Compile Remove="artifacts\**\*.cs" />
+    <Compile Remove="Tools\**\*.cs" />
+    <Compile Remove="tools\ThemeUploader\**\*.cs" />
+    <Compile Remove="tools\ThemeReview\**\*.cs" />
+    <Compile Remove="SupporterCs\**\*.cs" />
+    <Compile Remove="UsbDeviceEmulator\**\*.cs" />
+    <Compile Remove="Backups\**\*.cs" />
+    <Compile Remove="PLUS\**\*.cs" />
+    <Compile Remove="Tests\**\*.cs" />
+    <Page Remove="Tools\**\*.xaml" />
+    <Page Remove="artifacts\**\*.xaml" />
+    <Page Remove="tools\ThemeUploader\**\*.xaml" />
+    <Page Remove="tools\ThemeReview\**\*.xaml" />
+    <Page Remove="Backups\**\*.xaml" />
+    <ApplicationDefinition Remove="Tools\**\App.xaml" />
+    <ApplicationDefinition Remove="Backups\**\App.xaml" />
+  </ItemGroup>
+
+  <Target Name="BuildCSharpSupporter" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipSupporterBuild)' != 'true'">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\SupporterCs\SupporterCs.csproj" Targets="Build" Properties="Configuration=$(Configuration)" RemoveProperties="RuntimeIdentifier;RuntimeIdentifiers;SelfContained" />
+  </Target>
+
+  <Target Name="GenerateBuildInfo" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <BuildTimestamp>$([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss zzz"))</BuildTimestamp>
+      <BuildInfoFile>$(IntermediateOutputPath)GeneratedBuildInfo.g.cs</BuildInfoFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <BuildInfoLines Include="// &lt;auto-generated /&gt;" />
+      <BuildInfoLines Include="namespace ThemeEditorCSharp" />
+      <BuildInfoLines Include="{" />
+      <BuildInfoLines Include="internal static class BuildInfo" />
+      <BuildInfoLines Include="{" />
+      <BuildInfoLines Include="    public const string BuiltAt = &quot;$(BuildTimestamp)&quot;%3B" />
+      <BuildInfoLines Include="}" />
+      <BuildInfoLines Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(BuildInfoFile)" Lines="@(BuildInfoLines)" Overwrite="true" Encoding="UTF-8" />
+    <ItemGroup>
+      <Compile Include="$(BuildInfoFile)" AutoGen="True" DesignTime="True" />
+    </ItemGroup>
+  </Target>
+
+</Project>

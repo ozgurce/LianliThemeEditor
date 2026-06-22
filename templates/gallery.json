@@ -1,0 +1,382 @@
+{
+  "themes": [
+    {
+      "id": "purple-gold-panel-88",
+      "name": "Purple and Gold Panel",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/purple-gold-panel-88.png",
+      "packageUrl": "packages/purple-gold-panel-88.lltheme"
+    },
+    {
+      "id": "universal-88-car-cruise-night",
+      "name": "Car Cruise Night",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8 Universal Screen",
+      "previewUrl": "previews/universal-88-car-cruise-night.png",
+      "packageUrl": "packages/universal-88-car-cruise-night.lltheme"
+    },
+    {
+      "id": "universal-88-gs-theme-hor",
+      "name": "Gs Theme HOR",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8 Universal Screen",
+      "previewUrl": "previews/universal-88-gs-theme-hor.png",
+      "packageUrl": "packages/universal-88-gs-theme-hor.lltheme"
+    },
+    {
+      "id": "universal-88-rick-and-morty-h",
+      "name": "Rick and Morty H",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8 Universal Screen",
+      "previewUrl": "previews/universal-88-rick-and-morty-h.png",
+      "packageUrl": "packages/universal-88-rick-and-morty-h.lltheme"
+    },
+    {
+      "id": "arc-raiders-v2lc",
+      "name": "Arc raiders V2LC",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/arc-raiders-v2lc.png",
+      "packageUrl": "packages/arc-raiders-v2lc.lltheme"
+    },
+    {
+      "id": "007-fl-v1",
+      "name": "007 FL V1",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/007-fl-v1.png",
+      "packageUrl": "packages/007-fl-v1.lltheme"
+    },
+    {
+      "id": "007-fl-v2",
+      "name": "007 FL V2",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/007-fl-v2.png",
+      "packageUrl": "packages/007-fl-v2.lltheme"
+    },
+    {
+      "id": "cyberpunk2077-v5lc",
+      "name": "Cyberpunk2077_V5LC",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyberpunk2077-v5lc.png",
+      "packageUrl": "packages/cyberpunk2077-v5lc.lltheme"
+    },
+    {
+      "id": "hades",
+      "name": "Hades",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/hades.png",
+      "packageUrl": "packages/hades.lltheme"
+    },
+    {
+      "id": "smb-v3",
+      "name": "SMB V3",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/smb-v3.png",
+      "packageUrl": "packages/smb-v3.lltheme"
+    },
+    {
+      "id": "gs-theme-rgb-hor-version",
+      "name": "Gs Theme RGB HOR version",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gs-theme-rgb-hor-version.png",
+      "packageUrl": "packages/gs-theme-rgb-hor-version.lltheme"
+    },
+    {
+      "id": "spaceship-dashboard-horisontal-remake",
+      "name": "Spaceship Dashboard Horisontal remake",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/spaceship-dashboard-horisontal-remake.png",
+      "packageUrl": "packages/spaceship-dashboard-horisontal-remake.lltheme"
+    },
+    {
+      "id": "predator",
+      "name": "Predator",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/predator.png",
+      "packageUrl": "packages/predator.lltheme"
+    },
+    {
+      "id": "smb-retro",
+      "name": "SMB Retro",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/smb-retro.png",
+      "packageUrl": "packages/smb-retro.lltheme"
+    },
+    {
+      "id": "gaming-rig-v2",
+      "name": "Gaming rig V2",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gaming-rig-v2.png",
+      "packageUrl": "packages/gaming-rig-v2.lltheme"
+    },
+    {
+      "id": "clockv1-hydroshift-c",
+      "name": "ClockV1 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-clockv1.png",
+      "packageUrl": "packages/hydroshift-clockv1.zip"
+    },
+    {
+      "id": "clockv1-hydroshift-s",
+      "name": "ClockV1 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-clockv1.png",
+      "packageUrl": "packages/hydroshift-clockv1.zip"
+    },
+    {
+      "id": "clockv2-hydroshift-c",
+      "name": "ClockV2 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-clockv2.png",
+      "packageUrl": "packages/hydroshift-clockv2.zip"
+    },
+    {
+      "id": "clockv2-hydroshift-s",
+      "name": "ClockV2 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-clockv2.png",
+      "packageUrl": "packages/hydroshift-clockv2.zip"
+    },
+    {
+      "id": "clockv3-hydroshift-c",
+      "name": "ClockV3 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-clockv3.png",
+      "packageUrl": "packages/hydroshift-clockv3.zip"
+    },
+    {
+      "id": "clockv3-hydroshift-s",
+      "name": "ClockV3 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-clockv3.png",
+      "packageUrl": "packages/hydroshift-clockv3.zip"
+    },
+    {
+      "id": "m1-hydroshift-c",
+      "name": "m1 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m1.png",
+      "packageUrl": "packages/hydroshift-m1.zip"
+    },
+    {
+      "id": "m1-hydroshift-s",
+      "name": "m1 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m1.png",
+      "packageUrl": "packages/hydroshift-m1.zip"
+    },
+    {
+      "id": "m10-hydroshift-c",
+      "name": "m10 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m10.png",
+      "packageUrl": "packages/hydroshift-m10.zip"
+    },
+    {
+      "id": "m10-hydroshift-s",
+      "name": "m10 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m10.png",
+      "packageUrl": "packages/hydroshift-m10.zip"
+    },
+    {
+      "id": "m2-hydroshift-c",
+      "name": "m2 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m2.png",
+      "packageUrl": "packages/hydroshift-m2.zip"
+    },
+    {
+      "id": "m2-hydroshift-s",
+      "name": "m2 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m2.png",
+      "packageUrl": "packages/hydroshift-m2.zip"
+    },
+    {
+      "id": "m3-hydroshift-c",
+      "name": "m3 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m3.png",
+      "packageUrl": "packages/hydroshift-m3.zip"
+    },
+    {
+      "id": "m3-hydroshift-s",
+      "name": "m3 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m3.png",
+      "packageUrl": "packages/hydroshift-m3.zip"
+    },
+    {
+      "id": "m4-hydroshift-c",
+      "name": "m4 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m4.png",
+      "packageUrl": "packages/hydroshift-m4.zip"
+    },
+    {
+      "id": "m4-hydroshift-s",
+      "name": "m4 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m4.png",
+      "packageUrl": "packages/hydroshift-m4.zip"
+    },
+    {
+      "id": "m5-hydroshift-c",
+      "name": "m5 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m5.png",
+      "packageUrl": "packages/hydroshift-m5.zip"
+    },
+    {
+      "id": "m5-hydroshift-s",
+      "name": "m5 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m5.png",
+      "packageUrl": "packages/hydroshift-m5.zip"
+    },
+    {
+      "id": "m6-hydroshift-c",
+      "name": "m6 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m6.png",
+      "packageUrl": "packages/hydroshift-m6.zip"
+    },
+    {
+      "id": "m6-hydroshift-s",
+      "name": "m6 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m6.png",
+      "packageUrl": "packages/hydroshift-m6.zip"
+    },
+    {
+      "id": "m7-hydroshift-c",
+      "name": "m7 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m7.png",
+      "packageUrl": "packages/hydroshift-m7.zip"
+    },
+    {
+      "id": "m7-hydroshift-s",
+      "name": "m7 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m7.png",
+      "packageUrl": "packages/hydroshift-m7.zip"
+    },
+    {
+      "id": "m8-hydroshift-c",
+      "name": "m8 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m8.png",
+      "packageUrl": "packages/hydroshift-m8.zip"
+    },
+    {
+      "id": "m8-hydroshift-s",
+      "name": "m8 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m8.png",
+      "packageUrl": "packages/hydroshift-m8.zip"
+    },
+    {
+      "id": "m9-hydroshift-c",
+      "name": "m9 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m9.png",
+      "packageUrl": "packages/hydroshift-m9.zip"
+    },
+    {
+      "id": "m9-hydroshift-s",
+      "name": "m9 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m9.png",
+      "packageUrl": "packages/hydroshift-m9.zip"
+    },
+    {
+      "id": "clock-with-sensors-9f367ce3",
+      "name": "Clock_With_Sensors",
+      "author": "Community",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/clock-with-sensors-9f367ce3.png",
+      "packageUrl": "packages/clock-with-sensors-9f367ce3.zip"
+    }
+  ]
+}
