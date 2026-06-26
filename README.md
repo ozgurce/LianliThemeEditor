@@ -1,6 +1,6 @@
 # Lian Li LCD Template Editor
 
-**Current release:** V 1.3 Beta
+**Current release:** V 1.4
 
 Lian Li LCD Template Editor is an unofficial Windows editor for L-Connect 3 LCD templates. It is built for editing, repairing, exporting, importing, previewing, sharing, and applying LCD themes without manually digging through L-Connect template/profile files.
 
@@ -433,6 +433,20 @@ This project is licensed under the PolyForm Noncommercial License 1.0.0.
 You may use, copy, modify, and distribute it for noncommercial purposes. Commercial use, resale, paid distribution, or use in a commercial product or service requires a separate written commercial license from the copyright holder.
 
 ## Changelog
+
+### V 1.4
+
+- Fixed 8.8" Universal Screen background export/import compatibility. L-Connect packages now reference the raw `.h264` background, with `.h264` encoded as 480x1920 Constrained Baseline and `.mp4` kept as the 1920x480 preview companion.
+- Updated GitHub gallery 8.8" theme packages so downloaded gallery themes apply their backgrounds correctly through L-Connect.
+- Added safer 8.8" background media normalization for both editor exports and in-editor background changes.
+- Added Offline Mode so themes can be edited against a local working copy without repeatedly talking to the device.
+- Improved Apply and Apply All performance by reducing unnecessary L-Connect refresh/probing work and batching layer writes more efficiently.
+- Fixed cross-thread Apply All failures seen during L-Connect refresh operations.
+- Improved 8.8" text preview calibration so editor text placement is closer to the actual device output.
+- Added Ctrl multi-select support in the preview and added horizontal/vertical value matching alignment actions.
+- Reworked the right-side layer editor expanders, including separate Data and Text/Format sections, batch bold/size editing, and stable open/closed state behavior.
+- Added a Thanks tab to credit community members who helped test, translate, share themes, and improve the editor.
+- Added a log-delta L-Connect background tracing tool used to diagnose import/apply/background behavior without collecting huge video/template folders.
 
 ### V 1.3 Beta
 

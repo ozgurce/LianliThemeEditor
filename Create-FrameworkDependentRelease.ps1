@@ -44,6 +44,10 @@ try {
     if (Test-Path -LiteralPath $readme) {
         Copy-Item -LiteralPath $readme -Destination $publishDir
     }
+    $changelog = Join-Path $projectRoot 'CHANGELOG.md'
+    if (Test-Path -LiteralPath $changelog) {
+        Copy-Item -LiteralPath $changelog -Destination $publishDir
+    }
 
     $zipPath = Join-Path $desktop "LianLiThemeEditor_${versionLabel}_FrameworkDependent_$stamp.zip"
     Compress-Archive -Path (Join-Path $publishDir '*') -DestinationPath $zipPath -CompressionLevel Optimal

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using ThemeEditorCSharp.Models;
 
 namespace ThemeEditorCSharp.Services;
@@ -78,7 +79,10 @@ public sealed class SupporterBridge
         return styles ?? new List<GraphStyleOption>();
     }
 
-    public async Task ApplyLayerAsync(string deviceModel, string templatePath, LayerRow layer, CancellationToken cancellationToken = default)
+    private static string NormalizeLayerText(string value) =>
+        Regex.Replace((value ?? "").Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), @"\s{2,}", " ").Trim();
+
+    private List<string> BuildApplyLayerArgs(string deviceModel, string templatePath, LayerRow layer)
     {
         var args = BaseTemplateArgs(deviceModel, templatePath);
         args.AddRange(new[]
@@ -135,7 +139,7 @@ public sealed class SupporterBridge
         else if (isText && (source == "StaticText" || layer.ForceText))
         {
             args.Add("-LayerText");
-            args.Add(string.IsNullOrEmpty(layer.Text) ? " " : layer.Text);
+            args.Add(string.IsNullOrEmpty(layer.Text) ? " " : NormalizeLayerText(layer.Text));
         }
 
         if (isGraph &&
@@ -205,7 +209,7 @@ public sealed class SupporterBridge
             AddIfPresent(args, "-LayerSensorFont", layer.SensorFontFamily);
             AddIfPresent(args, "-LayerZoomRate", layer.ZoomRate);
             AddIfPresent(args, "-LayerSensorZoom", layer.SensorZoomRate);
-            AddIfPresent(args, "-LayerText", string.IsNullOrWhiteSpace(layer.Text) ? "52" : layer.Text);
+            AddIfPresent(args, "-LayerText", string.IsNullOrWhiteSpace(layer.Text) ? "52" : NormalizeLayerText(layer.Text));
         }
 
         if (isImage || isAnimation || isClock)
@@ -242,7 +246,34 @@ public sealed class SupporterBridge
             }
         }
 
-        await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+        return args;
+    }
+
+    public async Task ApplyLayerAsync(string deviceModel, string templatePath, LayerRow layer, CancellationToken cancellationToken = default)
+    {
+        await RunSupporterAsync(BuildApplyLayerArgs(deviceModel, templatePath, layer), cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task ApplyLayersAsync(string deviceModel, string templatePath, IEnumerable<LayerRow> layers, CancellationToken cancellationToken = default)
+    {
+        var batch = layers
+            .Where(layer => layer != null)
+            .Select(layer => BuildApplyLayerArgs(deviceModel, templatePath, layer))
+            .ToList();
+        if (batch.Count == 0) return;
+
+        var batchPath = Path.Combine(Path.GetTempPath(), $"lianli_layer_batch_{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(batchPath, JsonSerializer.Serialize(batch), Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var args = BaseTemplateArgs(deviceModel, templatePath);
+            args.AddRange(new[] { "-ApplyLayerBatchJson", batchPath, "-FastLayerBatch" });
+            await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            try { File.Delete(batchPath); } catch { }
+        }
     }
 
     public async Task AddSensorAsync(
@@ -414,7 +445,7 @@ public sealed class SupporterBridge
         var args = BaseTemplateArgs(deviceModel, templatePath);
         args.AddRange(new[]
         {
-            "-AddText", text,
+            "-AddText", NormalizeLayerText(text),
             "-AddX", x,
             "-AddY", y,
             "-AddSize", size,
@@ -1050,11 +1081,13 @@ public sealed class SupporterBridge
     private static string NormalizeDisplayText(string value)
     {
         return (value ?? "")
-            .Replace("Â°", "°", StringComparison.Ordinal)
-            .Replace("â„ƒ", "℃", StringComparison.Ordinal)
-            .Replace("â„‰", "℉", StringComparison.Ordinal)
-            .Replace("Ã—", "×", StringComparison.Ordinal)
-            .Replace("âˆ’", "−", StringComparison.Ordinal);
+            .Replace("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°", "ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°", StringComparison.Ordinal)
+            .Replace("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬ÂÃ‚Â¢", "ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€Â¢", StringComparison.Ordinal)
+            .Replace("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚ÂÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â°", "ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â°", StringComparison.Ordinal)
+            .Replace("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â", "ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â", StringComparison.Ordinal)
+            .Replace("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¹ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚ÂÃƒâ€šÃ‚Â¢", "ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¹ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬ÂÃ‚Â¢", StringComparison.Ordinal);
     }
 }
+
+
 

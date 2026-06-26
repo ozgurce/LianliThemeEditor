@@ -1,6 +1,6 @@
 ﻿{
     "app":  {
-                "title":  "Lian Li LCD Template Editor V 1.3 Beta"
+                "title":  "Lian Li LCD Template Editor V 1.4"
             },
     "common":  {
                    "apply":  "Uygula",
@@ -57,6 +57,10 @@
                      "imageSettings":  "Görsel Ayarları",
                      "advancedGraph":  "Gelişmiş Grafik"
                  },
+    "align":  {
+                  "matchHorizontal":  "Yatay=",
+                  "matchVertical":  "Dikey="
+              },
     "grid":  {
                  "type":  "TÜR",
                  "data":  "VERİ KAYNAĞI",
@@ -526,11 +530,11 @@
                      "myDevicesDesc":  "Yalnızca seçtiğiniz cihazlar editörde ve tema galerisinde görünür.",
                      "languageTheme":  "Dil ve tema",
                      "languageThemeDesc":  "Bu seçimler alt çubuktaki kontrolleri de günceller.",
-                      "themeGallery":  "Tema Galerisi",
-                      "themeGalleryDesc":  "İndirilen temalar kurulumdan sonra otomatik uygulansın.",
-                      "applyAutomatically":  "Otomatik uygula",
-                      "playAnimatedPreviews":  "Animasyonlu önizlemeleri oynat",
-                      "unusedSensorsTitle":  "Kullanılmayan L-Connect sensörlerini bağla",
+                     "themeGallery":  "Tema Galerisi",
+                     "themeGalleryDesc":  "İndirilen temalar kurulumdan sonra otomatik uygulansın.",
+                     "applyAutomatically":  "Otomatik uygula",
+                     "playAnimatedPreviews":  "Animasyonlu önizlemeleri oynat",
+                     "unusedSensorsTitle":  "Kullanılmayan L-Connect sensörlerini bağla",
                      "unusedSensorsDesc":  "Kullanılmayan L-Connect Sensörlerini başka değerlere bağla",
                      "unusedSensorsHelp":  "Volume, RamModel ve Weather öğeleri L-Connect tarafında çalışmadığı için bu sensörleri farklı sensörlere bağlayın. Örneğin; RamModel\u0027i şu an çalan şarkıya, Volume\u0027yi gerçek ses değerine, RamModeli ise lrclib senkron şarkı sözlerine bağlayabilirsiniz. Bu özellik ileride geliştirilecek olup, pyhton altyapısı ve themeengine.dll\u0027ye yama yaparak çalışacaktır. Tüm sorumluluk size aittir. L-Connect geliştiricilerinin onayı olmadan bu değişikliği yapabilme hakkı kullanıma açılmaycaktır",
                      "comingSoon":  "Yakında",
@@ -607,7 +611,8 @@
                  "gallery":  "Tema Galerisi",
                  "settings":  "Ayarlar",
                  "diagnostics":  "Tanılama",
-                 "about":  "Hakkında"
+                 "about":  "Hakkında",
+                 "thanks":  "Thanks"
              },
     "groups":  {
                    "name":  "Grup adı",

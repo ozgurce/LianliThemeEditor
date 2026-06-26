@@ -112,6 +112,13 @@ public partial class MainWindow : Window
         public List<string> ImagePaths { get; init; } = new();
     }
 
+    private sealed class PreparedExportBackground
+    {
+        public string Path { get; init; } = "";
+        public List<string> TemporaryPaths { get; init; } = new();
+        public bool IsTemporary => TemporaryPaths.Count > 0;
+    }
+
     private sealed class GroupingMetadata
     {
         public int Version { get; set; } = 1;
@@ -151,6 +158,8 @@ public partial class MainWindow : Window
     private readonly SupporterBridge _supporter;
     private string _currentTemplatePath = "";
     private string _currentTemplateId = "";
+    private DateTime _currentTemplateWriteStampUtc = DateTime.MinValue;
+    private bool IsOfflineMode => OfflineModeCheck?.IsChecked == true;
     private string _currentBackgroundPath = "";
     private string _selectedBackgroundSourcePath = "";
     private bool _isLoading;
@@ -631,6 +640,38 @@ public partial class MainWindow : Window
         await LoadLayersAsync(false);
     }
 
+    private async void OfflineModeCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isLoading || !IsLoaded)
+        {
+            return;
+        }
+
+        if (OfflineModeCheck.IsChecked == true)
+        {
+            try
+            {
+                SetBusy(true, GetLanguageText("status.creatingOfflineCopy", "Creating offline copy..."));
+                var wasLoading = _isLoading;
+                _isLoading = true;
+                UseActiveCheck.IsChecked = false;
+                _isLoading = wasLoading;
+                await EnsureOfflineTemplateCopyAsync(GetSelectedDeviceModel(), GetSelectedTemplatePath());
+                await LoadLayersAsync(true);
+                SetBusy(false, GetLanguageText("status.offlineModeReady", "Offline mode is using a local copy."));
+            }
+            catch (Exception ex)
+            {
+                SetBusy(false, GetLanguageText("status.loadFailed", "Load failed."));
+                MessageBox.Show(this, ex.Message, GetLanguageText("messages.loadFailed", "Load failed"), MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        else
+        {
+            SetStatus(GetLanguageText("status.offlineModeDisabled", "Offline mode disabled."));
+        }
+    }
+
     private async void ExportThemeButton_Click(object sender, RoutedEventArgs e)
     {
         if (UseActiveCheck.IsChecked != true &&
@@ -657,20 +698,7 @@ public partial class MainWindow : Window
             SetBusy(true, GetLanguageText("status.exportingTheme", "Exporting theme..."));
             var target = await ResolveTemplateTargetAsync();
             var deviceModel = target.DeviceModel;
-            if (_dirtyLayers.Count > 0)
-            {
-                if (LayerGrid.SelectedItem is LayerRow selected && _dirtyLayers.Contains(selected))
-                {
-                    UpdateLayerFromInputs(selected);
-                }
-                foreach (var layer in _dirtyLayers.OrderBy(item =>
-                             int.TryParse(item.Index, out var index) ? index : int.MaxValue).ToList())
-                {
-                    await Task.Run(() => _supporter.ApplyLayerAsync(
-                        deviceModel, target.TemplatePath, layer));
-                }
-                ClearDirtyLayers();
-            }
+            await ApplyDirtyLayersAsync(deviceModel, target.TemplatePath);
             var exportSnapshot = CreateThemeExportSnapshot(deviceModel);
             await ExportThemePackageAsync(dialog.FileName, exportSnapshot);
             SetBusy(false, GetLanguageText("status.themeExported", "Theme package exported."));
@@ -780,30 +808,19 @@ public partial class MainWindow : Window
             var animationMedia = Layers
                 .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))
                 ?.Media ?? "";
-            var backgroundSource = File.Exists(_selectedBackgroundSourcePath)
-                ? _selectedBackgroundSourcePath
-                : ResolveBackgroundPath(_currentBackgroundPath, animationMedia);
+            var resolvedCurrentBackground = ResolveBackgroundPath(_currentBackgroundPath, animationMedia);
+            var backgroundSource = File.Exists(resolvedCurrentBackground)
+                ? resolvedCurrentBackground
+                : File.Exists(_selectedBackgroundSourcePath)
+                    ? _selectedBackgroundSourcePath
+                    : resolvedCurrentBackground;
             var preparedExportBackground = await PrepareExportBackgroundAsync(
                 deviceModel, backgroundSource, exportTemplateId);
             var exportBackground = preparedExportBackground.Path;
 
             try
             {
-                if (_dirtyLayers.Count > 0)
-                {
-                    if (LayerGrid.SelectedItem is LayerRow selected && _dirtyLayers.Contains(selected))
-                    {
-                        UpdateLayerFromInputs(selected);
-                    }
-
-                    var templatePath = target.TemplatePath;
-                    foreach (var layer in _dirtyLayers.OrderBy(item =>
-                                 int.TryParse(item.Index, out var index) ? index : int.MaxValue).ToList())
-                    {
-                        await Task.Run(() => _supporter.ApplyLayerAsync(deviceModel, templatePath, layer));
-                    }
-                    ClearDirtyLayers();
-                }
+                await ApplyDirtyLayersAsync(deviceModel, target.TemplatePath);
 
                 var refreshed = await Task.Run(() => _supporter.LoadTemplatePathAsync(
                     deviceModel, target.TemplatePath));
@@ -861,7 +878,10 @@ public partial class MainWindow : Window
             {
                 if (preparedExportBackground.IsTemporary)
                 {
-                    TryDeleteFile(preparedExportBackground.Path);
+                    foreach (var temporaryPath in preparedExportBackground.TemporaryPaths)
+                    {
+                        TryDeleteFile(temporaryPath);
+                    }
                 }
             }
 
@@ -945,7 +965,16 @@ public partial class MainWindow : Window
             SetBusy(true, GetLanguageText("status.loadingLayers", "Loading layers..."));
             var deviceModel = GetSelectedDeviceModel();
             TemplateLoadResult result;
-            if (UseActiveCheck.IsChecked == true)
+            if (IsOfflineMode)
+            {
+                var selectedOption = TemplateCombo.SelectedItem as TemplateOption;
+                var sourcePath = useCurrentTemplate && File.Exists(_currentTemplatePath)
+                    ? _currentTemplatePath
+                    : selectedOption?.Path ?? _currentTemplatePath;
+                var offlinePath = await EnsureOfflineTemplateCopyAsync(deviceModel, sourcePath);
+                result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, offlinePath));
+            }
+            else if (UseActiveCheck.IsChecked == true)
             {
                 var activeTemplateId = await TryGetActiveTemplateIdFromLConnectAsync(deviceModel);
                 var activeTemplatePath = ResolveTemplatePathByIdOrAlias(deviceModel, activeTemplateId);
@@ -1080,6 +1109,11 @@ public partial class MainWindow : Window
                     Layers.Add(layer);
                     continue;
                 }
+                if (NormalizeLayerTextForDevice(layer))
+                {
+                    layer.IsDirty = true;
+                    _dirtyLayers.Add(layer);
+                }
                 if (int.TryParse(layer.Index, out var index) && _shadowLinks.TryGetValue(index, out var sourceIndex))
                 {
                     layer.Description = FormatLanguageText("layers.shadowOfLayer", "Shadow of Layer {0}", sourceIndex);
@@ -1095,6 +1129,7 @@ public partial class MainWindow : Window
                 ? "Template ID: -"
                 : $"Template ID: {_currentTemplateId}";
             TemplatePathText.Text = _currentTemplatePath;
+            _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(_currentTemplatePath);
             var displayBackground = !string.IsNullOrWhiteSpace(result.Background)
                 ? result.Background
                 : Layers.FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))?.Media ?? "";
@@ -1127,7 +1162,6 @@ public partial class MainWindow : Window
         if (!wasLoading)
         {
             PopulateEditorFromSelection();
-            CollapseLayerEditorExpanders();
         }
         RequestPreviewDraw();
     }
@@ -1135,6 +1169,12 @@ public partial class MainWindow : Window
     private async Task<(string DeviceModel, string TemplatePath)> ResolveTemplateTargetAsync()
     {
         var deviceModel = GetSelectedDeviceModel();
+        if (IsOfflineMode)
+        {
+            var offlinePath = await EnsureOfflineTemplateCopyAsync(deviceModel, GetSelectedTemplatePath());
+            return (deviceModel, offlinePath);
+        }
+
         if (UseActiveCheck.IsChecked == true)
         {
             // L-Connect can switch the active theme while the editor remains open. Resolve
@@ -1192,6 +1232,66 @@ public partial class MainWindow : Window
         }
 
         return (deviceModel, _currentTemplatePath);
+    }
+
+    private async Task<string> EnsureOfflineTemplateCopyAsync(string deviceModel, string sourceTemplatePath)
+    {
+        if (!string.IsNullOrWhiteSpace(_currentTemplatePath) &&
+            File.Exists(_currentTemplatePath) &&
+            IsOfflineTemplatePath(_currentTemplatePath))
+        {
+            return _currentTemplatePath;
+        }
+
+        var sourcePath = !string.IsNullOrWhiteSpace(sourceTemplatePath) && File.Exists(sourceTemplatePath)
+            ? sourceTemplatePath
+            : _currentTemplatePath;
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+        {
+            throw new InvalidOperationException(GetLanguageText("messages.loadThemeFirst", "Load a theme first."));
+        }
+
+        if (IsOfflineTemplatePath(sourcePath))
+        {
+            _currentTemplatePath = sourcePath;
+            _currentTemplateId = Path.GetFileNameWithoutExtension(sourcePath);
+            TemplateIdBox.Text = _currentTemplateId;
+            TemplatePathText.Text = sourcePath;
+            return sourcePath;
+        }
+
+        var templateRoot = GetTemplateRoot(deviceModel);
+        Directory.CreateDirectory(templateRoot);
+        var sourceId = Path.GetFileNameWithoutExtension(sourcePath);
+        var offlineId = SanitizeFileName(sourceId + "_offline");
+        if (string.IsNullOrWhiteSpace(offlineId)) offlineId = "OfflineTheme";
+        var offlinePath = Path.Combine(templateRoot, offlineId + ".template");
+
+        if (!File.Exists(offlinePath))
+        {
+            File.Copy(sourcePath, offlinePath, false);
+            var sourceMetadata = sourcePath + ".themeeditor.json";
+            if (File.Exists(sourceMetadata))
+            {
+                File.Copy(sourceMetadata, offlinePath + ".themeeditor.json", false);
+            }
+            await _supporter.NormalizeTemplateIdentityAsync(deviceModel, offlinePath, offlineId);
+        }
+
+        _currentTemplatePath = offlinePath;
+        _currentTemplateId = offlineId;
+        TemplateIdBox.Text = offlineId;
+        TemplatePathText.Text = offlinePath;
+        TemplateTitleText.Text = $"Template ID: {offlineId}";
+        RefreshTemplateList();
+        SelectTemplateCombo(offlinePath);
+        return offlinePath;
+    }
+
+    private static bool IsOfflineTemplatePath(string templatePath)
+    {
+        var id = Path.GetFileNameWithoutExtension(templatePath);
+        return id.EndsWith("_offline", StringComparison.OrdinalIgnoreCase);
     }
 
     private string GetSelectedTemplatePath()
@@ -1284,6 +1384,28 @@ public partial class MainWindow : Window
         return true;
     }
 
+    private static DateTime GetTemplateWriteStampUtc(string templatePath)
+    {
+        try
+        {
+            return string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath)
+                ? DateTime.MinValue
+                : File.GetLastWriteTimeUtc(templatePath);
+        }
+        catch
+        {
+            return DateTime.MinValue;
+        }
+    }
+
+    private bool HasTemplateChangedSinceLastLoad(string templatePath)
+    {
+        var currentStamp = GetTemplateWriteStampUtc(templatePath);
+        return currentStamp != DateTime.MinValue &&
+               _currentTemplateWriteStampUtc != DateTime.MinValue &&
+               currentStamp != _currentTemplateWriteStampUtc;
+    }
+
     private void SelectLayerByIndex(string index)
     {
         var layer = Layers.FirstOrDefault(item => string.Equals(item.Index, index, StringComparison.OrdinalIgnoreCase));
@@ -1311,17 +1433,7 @@ public partial class MainWindow : Window
         AddLayerExpander.IsExpanded = false;
         AddLayerExpander.Visibility = Visibility.Collapsed;
         PopulateEditorFromSelection();
-        CollapseLayerEditorExpanders();
         RequestPreviewDraw();
-    }
-
-    private void CollapseLayerEditorExpanders()
-    {
-        GeneralPropertiesCard.IsExpanded = false;
-        LayerOptionsCard.IsExpanded = false;
-        GradientOptionsCard.IsExpanded = false;
-        GraphEditPanel.IsExpanded = false;
-        ImageEditPanel.IsExpanded = false;
     }
 
     private void RefreshLayerIndexes()
@@ -1393,8 +1505,8 @@ public partial class MainWindow : Window
             SelectedLayerTypeText.Text = GetLanguageText("properties.noLayerSelected", "Bir layer seçin");
             SelectedLayerDetailText.Text = GetLanguageText("properties.noLayerSelectedHint", "Düzenlemek için soldaki listeden bir layer seçin.");
             GeneralPropertiesCard.Visibility = Visibility.Collapsed;
+            DataPropertiesCard.Visibility = Visibility.Collapsed;
             TextAndFormatCard.Visibility = Visibility.Collapsed;
-            TextAndFormatCard.IsExpanded = false;
             LayerOptionsCard.Visibility = Visibility.Collapsed;
             GradientOptionsCard.Visibility = Visibility.Collapsed;
             GraphEditPanel.Visibility = Visibility.Collapsed;
@@ -1421,7 +1533,7 @@ public partial class MainWindow : Window
         YBox.Text = layer.Y;
         SizeBox.Text = layer.Size;
         ColorBox.Text = NormalizeColorText(layer.Color);
-        TextBox.Text = layer.Text;
+        TextBox.Text = NormalizeLConnectText(layer.Text);
         FormatBox.Text = layer.Format;
         BoldCheck.IsChecked = string.Equals(layer.Bold, "True", StringComparison.OrdinalIgnoreCase);
         ItalicCheck.IsChecked = string.Equals(layer.Italic, "True", StringComparison.OrdinalIgnoreCase);
@@ -1544,7 +1656,6 @@ public partial class MainWindow : Window
             (FontCombo.Visibility == Visibility.Visible ||
              ColorPanel.Visibility == Visibility.Visible ||
              textVisibility == Visibility.Visible ||
-             FormatPanel.Visibility == Visibility.Visible ||
              TextGradientColorPanel.Visibility == Visibility.Visible ||
              TextGradientDirectionCombo.Visibility == Visibility.Visible ||
              SensorFontColorsPanel.Visibility == Visibility.Visible)
@@ -1561,6 +1672,7 @@ public partial class MainWindow : Window
             SetComboText(FontCombo, ResolveCanonicalFontName(GetEffectiveLayerFont(layer.SensorFontFamily)));
         }
         SetTextCheck.Visibility = textVisibility;
+        TextBox.Visibility = textVisibility;
         TextEditorGrid.Visibility = textVisibility;
         if (isSensor)
         {
@@ -1573,6 +1685,11 @@ public partial class MainWindow : Window
         }
         DataLabel.Visibility = isDataText || isGraph || isClock ? Visibility.Visible : Visibility.Collapsed;
         DataCombo.Visibility = isDataText || isGraph || isClock ? Visibility.Visible : Visibility.Collapsed;
+        DataPropertiesCard.Visibility =
+            DataCombo.Visibility == Visibility.Visible ||
+            FormatPanel.Visibility == Visibility.Visible
+                ? Visibility.Visible
+                : Visibility.Collapsed;
         AlignmentLabel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
         AlignmentCombo.Visibility = AlignmentLabel.Visibility;
         FontIntervalLabel.Visibility = isText && layer.CanWriteFont("interval") ? Visibility.Visible : Visibility.Collapsed;
@@ -1851,55 +1968,35 @@ public partial class MainWindow : Window
             var deviceModel = target.DeviceModel;
             var templatePath = target.TemplatePath;
             SetApplyProgress(15, GetLanguageText("status.checkingTemplate", "Checking template..."));
-            var lConnectFontChanged = await EnsureLConnectFontsInstalledAsync(Layers);
-            if (await RefreshIfTemplateStructureChangedAsync(deviceModel, templatePath, selectedIndex))
+            if (HasTemplateChangedSinceLastLoad(templatePath) &&
+                await RefreshIfTemplateStructureChangedAsync(deviceModel, templatePath, selectedIndex))
             {
                 SetBusy(false, GetLanguageText("status.templateChangedReloaded", "Template changed; layers reloaded."));
                 return;
             }
 
-            if (PairCheck.IsChecked == true)
-            {
-                var paired = FindPairedLayer(layer);
-                if (paired != null)
-                {
-                    SyncShadowProperties(layer, paired);
-                    MarkLayerDirty(paired);
-                }
-            }
+            var lConnectFontChanged = IsOfflineMode
+                ? false
+                : await EnsureLConnectFontsInstalledAsync(_dirtyLayers.ToList());
+            await ApplyDirtyLayersAsync(
+                deviceModel,
+                templatePath,
+                includePairedLayers: PairCheck.IsChecked == true,
+                progress: value => SetApplyProgress(
+                    25 + 40.0 * value,
+                    GetLanguageText("status.savingLayerChanges", "Saving layer changes...")));
 
-            var dirtyList = _dirtyLayers
-                .OrderBy(item => int.TryParse(item.Index, out var index) ? index : int.MaxValue)
-                .ToList();
-            for (var index = 0; index < dirtyList.Count; index++)
-            {
-                var dirtyLayer = dirtyList[index];
-                await Task.Run(() => _supporter.ApplyLayerAsync(deviceModel, templatePath, dirtyLayer));
-                dirtyLayer.OriginalGraphStyle = dirtyLayer.GraphStyle;
-                dirtyLayer.OriginalDataSource = dirtyLayer.DataSource;
-                SetApplyProgress(
-                    25 + 40.0 * (index + 1) / Math.Max(1, dirtyList.Count),
-                    GetLanguageText("status.savingLayerChanges", "Saving layer changes..."));
-            }
-
-        ClearDirtyLayers();
             _editorUndoArmed = false;
             ClearTextPreviewCaches();
-            DrawPreview();
-            await Dispatcher.InvokeAsync(
-                () => PreviewSurface.UpdateLayout(),
-                System.Windows.Threading.DispatcherPriority.Render);
-            SetApplyProgress(72, GetLanguageText("status.updatingThemePreview", "Updating theme preview..."));
-            await SaveAndApplyThemePreviewAsync(deviceModel, templatePath, _currentTemplateId);
-            SetApplyProgress(88, GetLanguageText("status.sendingToDevice", "Sending changes to device..."));
-            if (!await TriggerLConnectRefreshAsync())
+            SetApplyProgress(88, IsOfflineMode
+                ? GetLanguageText("status.offlineSaved", "Saved to offline copy.")
+                : GetLanguageText("status.layerSaved", "Layer saved."));
+            if (!IsOfflineMode)
             {
-                SetStatus(GetLanguageText(
-                    "status.layerSavedRefreshPending",
-                    "Layer was saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
+                _ = RefreshLConnectAfterSingleApplyAsync();
             }
-            SetApplyProgress(96, GetLanguageText("status.reloadingTemplate", "Reloading template..."));
-            await LoadLayersAsync(true);
+            SetApplyProgress(96, GetLanguageText("status.refreshingEditor", "Refreshing editor..."));
+            LayerGrid.Items.Refresh();
             SelectLayerByIndex(selectedIndex);
             SetBusy(false, GetLanguageText("status.allChangesApplied", "All changes applied to template."));
             if (lConnectFontChanged)
@@ -1922,6 +2019,26 @@ public partial class MainWindow : Window
         finally
         {
             HideApplyProgress();
+        }
+    }
+
+    private async Task RefreshLConnectAfterSingleApplyAsync()
+    {
+        try
+        {
+            if (!await TriggerLConnectRefreshAsync(skipUniversalPreviewUpdate: true, fastApply: true))
+            {
+                SetStatus(GetLanguageText(
+                    "status.layerSavedRefreshPending",
+                    "Layer was saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Background L-Connect refresh after single apply failed.", ex);
+            SetStatus(GetLanguageText(
+                "status.layerSavedRefreshPending",
+                "Layer was saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
         }
     }
 
@@ -2153,7 +2270,7 @@ public partial class MainWindow : Window
             var target = await ResolveTemplateTargetAsync();
             var deviceModel = target.DeviceModel;
             var templatePath = target.TemplatePath;
-            var text = AddTextBox.Text;
+            var text = NormalizeLConnectText(AddTextBox.Text);
             var x = AddXBox.Text;
             var y = AddYBox.Text;
             var size = AddSizeBox.Text;
@@ -2421,10 +2538,11 @@ public partial class MainWindow : Window
                 TryDeleteFile(previewFramePath);
             }
 
-            var accepted = await TriggerLConnectBackgroundChangeAsync(
-                backgroundForLConnect,
-                templateIdBeforeBackgroundChange);
-            if (!accepted)
+            var accepted = IsOfflineMode ||
+                await TriggerLConnectBackgroundChangeAsync(
+                    backgroundForLConnect,
+                    templateIdBeforeBackgroundChange);
+            if (!accepted && !IsOfflineMode)
             {
                 accepted = await TriggerLConnectRefreshAsync();
             }
@@ -2623,60 +2741,43 @@ public partial class MainWindow : Window
             var deviceModel = target.DeviceModel;
             var templatePath = target.TemplatePath;
             SetApplyProgress(15, GetLanguageText("status.checkingTemplate", "Checking template..."));
-                var lConnectFontChanged = await EnsureLConnectFontsInstalledAsync(Layers);
-            if (await RefreshIfTemplateStructureChangedAsync(deviceModel, templatePath, selectedIndex))
+            IEnumerable<LayerRow> fontCheckLayers = _dirtyLayers.Count > 0
+                ? _dirtyLayers.ToList()
+                : selectedLayer is null
+                    ? Array.Empty<LayerRow>()
+                    : new[] { selectedLayer };
+            var lConnectFontChanged = IsOfflineMode
+                ? false
+                : await EnsureLConnectFontsInstalledAsync(fontCheckLayers);
+            if (HasTemplateChangedSinceLastLoad(templatePath) &&
+                await RefreshIfTemplateStructureChangedAsync(deviceModel, templatePath, selectedIndex))
             {
                 SetBusy(false, GetLanguageText("status.templateChangedReloaded", "Template changed; layers reloaded."));
                 return;
             }
 
-            if (_dirtyLayers.Count > 0)
-            {
-                var validIndexes = Layers
-                    .Select(item => item.Index)
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                _dirtyLayers.RemoveWhere(item =>
-                    !Layers.Contains(item) ||
-                    !validIndexes.Contains(item.Index) ||
-                    (int.TryParse(item.Index, out var index) && index >= Layers.Count));
+            await ApplyDirtyLayersAsync(
+                deviceModel,
+                templatePath,
+                includePairedLayers: PairCheck.IsChecked == true,
+                progress: value => SetApplyProgress(
+                    20 + 45.0 * value,
+                    GetLanguageText("status.savingLayerChanges", "Saving layer changes...")));
 
-                var dirtyList = _dirtyLayers.ToList();
-                for (var index = 0; index < dirtyList.Count; index++)
-                {
-                    var layer = dirtyList[index];
-                    await Task.Run(() => _supporter.ApplyLayerAsync(deviceModel, templatePath, layer));
-
-                    if (PairCheck.IsChecked == true)
-                    {
-                        var paired = FindPairedLayer(layer);
-                        if (paired != null)
-                        {
-                            SyncShadowProperties(layer, paired);
-                            await Task.Run(() => _supporter.ApplyLayerAsync(deviceModel, templatePath, paired));
-                        }
-                    }
-                    layer.IsDirty = false;
-                    _dirtyLayers.Remove(layer);
-                    SetApplyProgress(
-                        20 + 45.0 * (index + 1) / Math.Max(1, dirtyList.Count),
-                        GetLanguageText("status.savingLayerChanges", "Saving layer changes..."));
-                }
-            }
-
-            // Update preview inside .template file and locally
-            SetApplyProgress(72, GetLanguageText("status.updatingThemePreview", "Updating theme preview..."));
-            await SaveAndApplyThemePreviewAsync(deviceModel, templatePath, _currentTemplateId);
-
-            SetBusy(true, GetLanguageText("status.sendingApplyAll", "Sending Apply All..."));
-            SetApplyProgress(88, GetLanguageText("status.sendingApplyAll", "Sending Apply All..."));
-            if (!await TriggerLConnectRefreshAsync())
+            SetBusy(true, IsOfflineMode
+                ? GetLanguageText("status.offlineSaved", "Saved to offline copy.")
+                : GetLanguageText("status.sendingApplyAll", "Sending Apply All..."));
+            SetApplyProgress(88, IsOfflineMode
+                ? GetLanguageText("status.offlineSaved", "Saved to offline copy.")
+                : GetLanguageText("status.sendingApplyAll", "Sending Apply All..."));
+            if (!IsOfflineMode && !await TriggerLConnectRefreshAsync(skipUniversalPreviewUpdate: true, fastApply: true))
             {
                 SetStatus(GetLanguageText(
                     "status.applyAllSavedRefreshPending",
                     "Changes were saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
             }
-            SetApplyProgress(96, GetLanguageText("status.reloadingTemplate", "Reloading template..."));
-            await LoadLayersAsync(true);
+            SetApplyProgress(96, GetLanguageText("status.refreshingEditor", "Refreshing editor..."));
+            LayerGrid.Items.Refresh();
             if (!string.IsNullOrWhiteSpace(selectedIndex))
             {
                 SelectLayerByIndex(selectedIndex);
@@ -2731,6 +2832,70 @@ public partial class MainWindow : Window
             MessageBoxImage.Question) == MessageBoxResult.Yes;
     }
 
+    private async Task ApplyDirtyLayersAsync(
+        string deviceModel,
+        string templatePath,
+        bool includePairedLayers = false,
+        Action<double>? progress = null)
+    {
+        if (_dirtyLayers.Count == 0)
+        {
+            progress?.Invoke(1);
+            return;
+        }
+
+        if (LayerGrid.SelectedItem is LayerRow selected && _dirtyLayers.Contains(selected))
+        {
+            UpdateLayerFromInputs(selected);
+        }
+
+        var validIndexes = Layers
+            .Where(item => !item.IsEditorMetadata)
+            .Select(item => item.Index)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        _dirtyLayers.RemoveWhere(item =>
+            !Layers.Contains(item) ||
+            !validIndexes.Contains(item.Index) ||
+            (int.TryParse(item.Index, out var index) && index >= Layers.Count));
+
+        var dirtyList = _dirtyLayers
+            .OrderBy(item => int.TryParse(item.Index, out var index) ? index : int.MaxValue)
+            .ToList();
+        if (dirtyList.Count == 0)
+        {
+            progress?.Invoke(1);
+            return;
+        }
+
+        var layersToApply = new List<LayerRow>(dirtyList);
+        if (includePairedLayers)
+        {
+            foreach (var layer in dirtyList)
+            {
+                var paired = FindPairedLayer(layer);
+                if (paired == null) continue;
+                SyncShadowProperties(layer, paired);
+                if (!layersToApply.Contains(paired))
+                {
+                    layersToApply.Add(paired);
+                }
+            }
+        }
+
+        await _supporter.ApplyLayersAsync(deviceModel, templatePath, layersToApply);
+        _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
+
+        foreach (var layer in layersToApply)
+        {
+            layer.OriginalGraphStyle = layer.GraphStyle;
+            layer.OriginalDataSource = layer.DataSource;
+            layer.IsDirty = false;
+            _dirtyLayers.Remove(layer);
+        }
+
+        progress?.Invoke(1);
+    }
+
     private static string GetLayerSummary(LayerRow layer)
     {
         var summary = !string.IsNullOrWhiteSpace(layer.DataSource)
@@ -2739,6 +2904,27 @@ public partial class MainWindow : Window
                 ? layer.Text
                 : layer.Media;
         return string.IsNullOrWhiteSpace(summary) ? "" : $"- {summary}";
+    }
+
+    private static string NormalizeLConnectText(string value) =>
+        Regex.Replace((value ?? "").Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), @"\s{2,}", " ").Trim();
+
+    private static bool NormalizeLayerTextForDevice(LayerRow layer)
+    {
+        if (!string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrEmpty(layer.Text))
+        {
+            return false;
+        }
+
+        var normalized = NormalizeLConnectText(layer.Text);
+        if (string.Equals(layer.Text, normalized, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        layer.Text = normalized;
+        return true;
     }
 
     private async void RestartButton_Click(object sender, RoutedEventArgs e)
@@ -3095,8 +3281,29 @@ public partial class MainWindow : Window
             return;
         }
 
+        visual.PreviewMouseLeftButtonDown += (_, args) =>
+        {
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
+                Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                TogglePreviewLayerSelection(
+                    layer,
+                    removeWhenSelected: Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+                args.Handled = true;
+            }
+        };
         visual.MouseLeftButtonDown += (_, args) =>
         {
+            if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
+                Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+            {
+                TogglePreviewLayerSelection(
+                    layer,
+                    removeWhenSelected: Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+                args.Handled = true;
+                return;
+            }
+
             StartPreviewDrag(layer, args.GetPosition(PreviewCanvas));
             args.Handled = true;
         };
@@ -4670,6 +4877,15 @@ public partial class MainWindow : Window
         var fontCheck = new CheckBox { Content = GetLanguageText("batch.font", "Font"), Margin = new Thickness(0, 5, 8, 5) };
         var fontItems = FontCombo.Items.OfType<ComboBoxItem>().Select(item => item.Content?.ToString() ?? "").Where(value => !string.IsNullOrWhiteSpace(value)).ToList();
         var fontBox = new ComboBox { IsEditable = true, Text = selected[0].Font, ItemsSource = fontItems, MinWidth = 255 };
+        var sizeCheck = new CheckBox { Content = GetLanguageText("labels.size", "Size"), Margin = new Thickness(0, 5, 8, 5) };
+        var sizeBox = new TextBox { Text = selected[0].Size, MinWidth = 255 };
+        var boldCheck = new CheckBox { Content = GetLanguageText("common.bold", "Bold"), Margin = new Thickness(0, 5, 8, 5) };
+        var boldValue = new CheckBox
+        {
+            Content = GetLanguageText("common.bold", "Bold"),
+            IsChecked = string.Equals(selected[0].Bold, "True", StringComparison.OrdinalIgnoreCase),
+            Margin = new Thickness(0, 5, 8, 5)
+        };
         var offsetCheck = new CheckBox { Content = GetLanguageText("batch.offset", "Position offset"), Margin = new Thickness(0, 5, 8, 5) };
         var offsetPanel = new StackPanel { Orientation = Orientation.Horizontal };
         var xBox = new TextBox { Text = "0", Width = 64, ToolTip = "X" };
@@ -4680,16 +4896,18 @@ public partial class MainWindow : Window
         var grid = new Grid { Margin = new Thickness(18, 12, 18, 18) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        for (var i = 0; i < 6; i++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        for (var i = 0; i < 8; i++) grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         AddBatchRow(grid, 0, colorCheck, colorEditor);
         AddBatchRow(grid, 1, fontCheck, fontBox);
-        AddBatchRow(grid, 2, offsetCheck, offsetPanel);
-        AddBatchRow(grid, 3, new TextBlock { Text = GetLanguageText("batch.visibility", "Visibility"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 5, 8, 5) }, visibility);
-        AddBatchRow(grid, 4, new TextBlock { Text = GetLanguageText("batch.lock", "Lock"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 5, 8, 5) }, locking);
+        AddBatchRow(grid, 2, sizeCheck, sizeBox);
+        AddBatchRow(grid, 3, boldCheck, boldValue);
+        AddBatchRow(grid, 4, offsetCheck, offsetPanel);
+        AddBatchRow(grid, 5, new TextBlock { Text = GetLanguageText("batch.visibility", "Visibility"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 5, 8, 5) }, visibility);
+        AddBatchRow(grid, 6, new TextBlock { Text = GetLanguageText("batch.lock", "Lock"), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 5, 8, 5) }, locking);
         var apply = new Button { Content = GetLanguageText("common.apply", "Apply"), Width = 96, IsDefault = true, Margin = new Thickness(8, 16, 0, 0), Style = (Style)FindResource("BtnPrimary") };
         var cancel = new Button { Content = GetLanguageText("common.cancel", "Cancel"), Width = 90, IsCancel = true, Margin = new Thickness(0, 16, 0, 0), Style = (Style)FindResource("BtnGhost") };
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
-        actions.Children.Add(cancel); actions.Children.Add(apply); Grid.SetRow(actions, 5); Grid.SetColumnSpan(actions, 2); grid.Children.Add(actions);
+        actions.Children.Add(cancel); actions.Children.Add(apply); Grid.SetRow(actions, 7); Grid.SetColumnSpan(actions, 2); grid.Children.Add(actions);
         var dialog = CreateThemedDialog(GetLanguageText("batch.title", "Edit selected layers"), grid, 500);
         colorPick.Click += (_, _) =>
         {
@@ -4700,6 +4918,9 @@ public partial class MainWindow : Window
             colorCheck.IsChecked = true;
         };
         colorBox.TextChanged += (_, _) => ApplyColorFieldPreview(colorField, colorBox, colorBox.Text);
+        sizeBox.TextChanged += (_, _) => sizeCheck.IsChecked = true;
+        boldValue.Checked += (_, _) => boldCheck.IsChecked = true;
+        boldValue.Unchecked += (_, _) => boldCheck.IsChecked = true;
         apply.Click += (_, _) => dialog.DialogResult = true;
         if (dialog.ShowDialog() != true) return;
 
@@ -4710,6 +4931,8 @@ public partial class MainWindow : Window
         {
             if (colorCheck.IsChecked == true && layer.CanWriteFont("color")) layer.Color = NormalizeColorText(colorBox.Text);
             if (fontCheck.IsChecked == true && layer.CanWriteFont("name")) layer.Font = ResolveCanonicalFontName(fontBox.Text);
+            if (sizeCheck.IsChecked == true && layer.CanWriteFont("size")) layer.Size = sizeBox.Text;
+            if (boldCheck.IsChecked == true && layer.CanWriteFont("isBold")) layer.Bold = boldValue.IsChecked == true ? "True" : "False";
             if (offsetCheck.IsChecked == true)
             {
                 layer.X = ((TryParseInt(layer.X, out var x) ? x : 0) + dx).ToString(CultureInfo.InvariantCulture);
@@ -4803,7 +5026,10 @@ public partial class MainWindow : Window
     {
         if (sender is not FrameworkElement { Tag: string mode }) return;
         var selected = GetSelectedLayers(includeLocked: false, includeAnimation: false);
-        var minimum = mode.StartsWith("Distribute", StringComparison.Ordinal) ? 2 : 1;
+        var minimum = mode.StartsWith("Distribute", StringComparison.Ordinal) ||
+                      mode is "MatchX" or "MatchY"
+            ? 2
+            : 1;
         if (selected.Count < minimum)
         {
             SetStatus(FormatLanguageText("status.alignmentSelection", "Select at least {0} unlocked layers.", minimum));
@@ -4811,7 +5037,27 @@ public partial class MainWindow : Window
         }
         PushUndoState(GetLanguageText("history.align", "Align layers"));
         var bounds = selected.ToDictionary(layer => layer, GetLayerSelectionBounds);
-        if (mode == "DistributeX" || mode == "DistributeY")
+        if (mode is "MatchX" or "MatchY")
+        {
+            var reference = LayerGrid.SelectedItem is LayerRow active && selected.Contains(active)
+                ? active
+                : selected[0];
+            var target = GetPreviewDragPosition(reference);
+            foreach (var layer in selected)
+            {
+                if (ReferenceEquals(layer, reference))
+                {
+                    continue;
+                }
+
+                var current = GetPreviewDragPosition(layer);
+                SetPreviewDragPosition(
+                    layer,
+                    (int)Math.Round(mode == "MatchX" ? target.X : current.X),
+                    (int)Math.Round(mode == "MatchY" ? target.Y : current.Y));
+            }
+        }
+        else if (mode == "DistributeX" || mode == "DistributeY")
         {
             var horizontal = mode == "DistributeX";
             var ordered = selected.OrderBy(layer => horizontal ? bounds[layer].Left : bounds[layer].Top).ToList();
@@ -5061,6 +5307,36 @@ public partial class MainWindow : Window
         RequestPreviewDraw();
     }
 
+    private void TogglePreviewLayerSelection(LayerRow layer, bool removeWhenSelected)
+    {
+        if (layer.IsLocked ||
+            string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (LayerGrid.SelectedItems.Contains(layer))
+        {
+            if (removeWhenSelected && LayerGrid.SelectedItems.Count > 1)
+            {
+                LayerGrid.SelectedItems.Remove(layer);
+            }
+            else
+            {
+                LayerGrid.CurrentItem = layer;
+            }
+        }
+        else
+        {
+            LayerGrid.SelectedItems.Add(layer);
+            LayerGrid.CurrentItem = layer;
+        }
+
+        LayerGrid.ScrollIntoView(layer);
+        PopulateEditorFromSelection();
+        RequestPreviewDraw();
+    }
+
     private void PreviewLayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         var selected = GetSelectedLayers();
@@ -5131,7 +5407,7 @@ public partial class MainWindow : Window
 
     private string GetPreviewText(LayerRow layer)
     {
-        var text = layer.Text ?? "";
+        var text = NormalizeLConnectText(layer.Text ?? "");
         var source = layer.DataSource ?? "";
         var isDynamicSource = !string.IsNullOrWhiteSpace(source) &&
                               !source.Equals("StaticText", StringComparison.OrdinalIgnoreCase);
@@ -6746,7 +7022,7 @@ public partial class MainWindow : Window
         var interval = GetTextInterval(layer);
         var gradientColor = NormalizeColorText(layer.FontGradientColor);
         var gradientDirection = int.TryParse(layer.FontGradientDirection, out var parsedDirection) ? parsedDirection : -1;
-        var cacheKey = string.Join("|layer", text, x.ToString(CultureInfo.InvariantCulture), y.ToString(CultureInfo.InvariantCulture),
+        var cacheKey = string.Join("|layer-v9", text, x.ToString(CultureInfo.InvariantCulture), y.ToString(CultureInfo.InvariantCulture),
             size.ToString(CultureInfo.InvariantCulture), fontName, bold, color, gradientColor, gradientDirection,
             alignmentIndex, interval.ToString(CultureInfo.InvariantCulture));
 
@@ -6771,7 +7047,7 @@ public partial class MainWindow : Window
         using var measureFont = CreateGdiFont(fontName, size, bold, 1.0);
         var measured = Math.Abs(interval) > double.Epsilon
             ? MeasureGdiIntervalTextAtScale(measureGraphics, text, measureFont, interval)
-            : measureGraphics.MeasureString(text, measureFont);
+            : MeasureGdiString(measureGraphics, text, measureFont);
         var padding = Math.Max(4, (int)Math.Ceiling(size * 0.25));
         var bitmapWidth = Math.Max(1, (int)Math.Ceiling(measured.Width) + padding * 2);
         var bitmapHeight = Math.Max(1, (int)Math.Ceiling(measured.Height) + padding * 2);
@@ -6795,12 +7071,12 @@ public partial class MainWindow : Window
             using var brush = CreateTextDrawingBrush(
                 color,
                 gradientColor,
-                gradientDirection,
-                new System.Drawing.RectangleF(
-                    padding,
-                    padding,
-                    Math.Max(1f, measured.Width),
-                    Math.Max(1f, measured.Height)));
+                    gradientDirection,
+                    new System.Drawing.RectangleF(
+                        padding,
+                        padding,
+                        Math.Max(1f, measured.Width),
+                        Math.Max(1f, measured.Height)));
             using var format = CreateGdiStringFormat(alignmentIndex);
             if (Math.Abs(interval) > double.Epsilon)
             {
@@ -6809,7 +7085,7 @@ public partial class MainWindow : Window
                     text,
                     font,
                     brush,
-                    localAnchorX,
+                    (float)localAnchorX,
                     padding,
                     interval,
                     alignmentIndex);
@@ -6820,7 +7096,7 @@ public partial class MainWindow : Window
                     text,
                     font,
                     brush,
-                    new System.Drawing.PointF(localAnchorX, padding),
+                    new System.Drawing.PointF((float)localAnchorX, padding),
                     format);
             }
         }
@@ -6838,15 +7114,14 @@ public partial class MainWindow : Window
             return result;
         }
 
-        using var crop = bitmap.Clone(ink, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
-        var source = ToBitmapSource(crop);
-        var templateLeft = x + ink.Left - localAnchorX;
-        var templateTop = y + ink.Top - padding;
+        var source = ToBitmapSource(bitmap);
+        var templateLeft = x - localAnchorX;
+        var templateTop = y - padding;
         var bounds = new Rect(
             templateLeft * _previewScale,
             templateTop * _previewScale,
-            Math.Max(1.0, ink.Width * _previewScale),
-            Math.Max(1.0, ink.Height * _previewScale));
+            Math.Max(1.0, bitmapWidth * _previewScale),
+            Math.Max(1.0, bitmapHeight * _previewScale));
 
         var render = new TextLayerRenderResult(source, bounds);
         if (!_isDraggingPreview && !_isResizingPreview)
@@ -6864,16 +7139,12 @@ public partial class MainWindow : Window
     {
         var width = 0.0f;
         var height = 0.0f;
-        foreach (var character in text)
+        var lineHeight = font.GetHeight(graphics);
+        foreach (var line in SplitGdiTextLines(text))
         {
-            var characterSize = graphics.MeasureString(character.ToString(), font);
-            width += characterSize.Width + (float)interval;
-            height = Math.Max(height, characterSize.Height);
-        }
-
-        if (text.Length > 0)
-        {
-            width -= (float)interval;
+            var lineWidth = MeasureGdiIntervalLineWidth(graphics, line, font, interval);
+            width = Math.Max(width, lineWidth);
+            height += lineHeight;
         }
 
         return new System.Drawing.SizeF(Math.Max(1.0f, width), Math.Max(1.0f, height));
@@ -6955,7 +7226,7 @@ public partial class MainWindow : Window
         using var bitmap = new System.Drawing.Bitmap(1, 1, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
         using var graphics = System.Drawing.Graphics.FromImage(bitmap);
         ConfigureGdiTextGraphics(graphics);
-        return graphics.MeasureString(text, font);
+        return MeasureGdiString(graphics, text, font);
     }
 
     private static System.Drawing.SizeF MeasureGdiTextIntervalContentPixels(string text, string fontName, double templateFontSize, bool bold, double templateInterval)
@@ -6970,7 +7241,7 @@ public partial class MainWindow : Window
         var height = 0.0f;
         foreach (var c in text)
         {
-            var charSize = graphics.MeasureString(c.ToString(), font);
+            var charSize = MeasureGdiString(graphics, c.ToString(), font);
             width += charSize.Width + interval;
             height = Math.Max(height, charSize.Height);
         }
@@ -7066,60 +7337,74 @@ public partial class MainWindow : Window
     {
         var interval = (float)(templateInterval * TextPreviewRenderScale);
         var point = new System.Drawing.PointF(x, y);
-        foreach (var c in text)
+        var lineHeight = font.GetHeight(graphics);
+        foreach (var line in SplitGdiTextLines(text))
         {
-            var glyph = c.ToString();
-            var size = graphics.MeasureString(glyph, font);
-            if (c == '.')
+            point.X = x;
+            foreach (var c in line)
             {
-                point.X -= (float)(size.Width * 0.1);
-            }
+                var glyph = c.ToString();
+                var size = MeasureGdiString(graphics, glyph, font);
+                if (c == '.')
+                {
+                    point.X -= (float)(size.Width * 0.1);
+                }
 
-            graphics.DrawString(glyph, font, brush, point);
-            point.X += size.Width + interval;
+                graphics.DrawString(glyph, font, brush, point);
+                point.X += size.Width + interval;
+            }
+            point.Y += lineHeight;
         }
     }
 
     private static void DrawGdiIntervalTextAtTemplatePoint(System.Drawing.Graphics graphics, string text, System.Drawing.Font font, System.Drawing.Brush brush, float x, float y, double templateInterval, int alignmentIndex)
     {
         var interval = (float)templateInterval;
-        if (alignmentIndex == 1)
-        {
-            var width = 0.0f;
-            foreach (var c in text)
-            {
-                width += graphics.MeasureString(c.ToString(), font).Width + interval;
-            }
-            if (text.Length > 0)
-            {
-                width -= interval;
-            }
-            x -= width / 2.0f;
-        }
-        else if (alignmentIndex == 2)
-        {
-            for (var i = text.Length - 1; i >= 0; i--)
-            {
-                var glyph = text[i].ToString();
-                var size = graphics.MeasureString(glyph, font);
-                graphics.DrawString(glyph, font, brush, new System.Drawing.PointF(x, y));
-                x -= size.Width + interval;
-            }
-            return;
-        }
-
+        var lineHeight = font.GetHeight(graphics);
         var point = new System.Drawing.PointF(x, y);
-        foreach (var c in text)
+        foreach (var line in SplitGdiTextLines(text))
         {
-            var glyph = c.ToString();
-            var size = graphics.MeasureString(glyph, font);
-            if (c == '.')
+            var lineX = alignmentIndex switch
             {
-                point.X -= (float)(size.Width * 0.1);
+                1 => x - MeasureGdiIntervalLineWidth(graphics, line, font, interval) / 2.0f,
+                2 => x - MeasureGdiIntervalLineWidth(graphics, line, font, interval),
+                _ => x
+            };
+            point.X = lineX;
+            foreach (var c in line)
+            {
+                var glyph = c.ToString();
+                var size = MeasureGdiString(graphics, glyph, font);
+                if (c == '.')
+                {
+                    point.X -= (float)(size.Width * 0.1);
+                }
+                graphics.DrawString(glyph, font, brush, point);
+                point.X += size.Width + interval;
             }
-            graphics.DrawString(glyph, font, brush, point);
-            point.X += size.Width + interval;
+            point.Y += lineHeight;
         }
+    }
+
+    private static IEnumerable<string> SplitGdiTextLines(string text) =>
+        (text ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+
+    private static float MeasureGdiIntervalLineWidth(
+        System.Drawing.Graphics graphics,
+        string line,
+        System.Drawing.Font font,
+        double interval)
+    {
+        var width = 0.0f;
+        foreach (var character in line)
+        {
+            width += MeasureGdiString(graphics, character.ToString(), font).Width + (float)interval;
+        }
+        if (line.Length > 0)
+        {
+            width -= (float)interval;
+        }
+        return Math.Max(1.0f, width);
     }
 
     private static void ConfigureGdiTextGraphics(System.Drawing.Graphics graphics)
@@ -7130,12 +7415,27 @@ public partial class MainWindow : Window
         graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Default;
     }
 
+    private static System.Drawing.SizeF MeasureGdiString(
+        System.Drawing.Graphics graphics,
+        string text,
+        System.Drawing.Font font)
+    {
+        using var format = CreateGdiStringFormat(0);
+        return graphics.MeasureString(
+            string.IsNullOrEmpty(text) ? " " : text,
+            font,
+            new System.Drawing.SizeF(100000f, 100000f),
+            format);
+    }
+
     private static System.Drawing.StringFormat CreateGdiStringFormat(int alignmentIndex)
     {
-        return new System.Drawing.StringFormat
-        {
-            Alignment = (System.Drawing.StringAlignment)Math.Clamp(alignmentIndex, 0, 2)
-        };
+        var format = (System.Drawing.StringFormat)System.Drawing.StringFormat.GenericTypographic.Clone();
+        format.Alignment = (System.Drawing.StringAlignment)Math.Clamp(alignmentIndex, 0, 2);
+        format.FormatFlags |= System.Drawing.StringFormatFlags.MeasureTrailingSpaces |
+                              System.Drawing.StringFormatFlags.NoClip;
+        format.Trimming = System.Drawing.StringTrimming.None;
+        return format;
     }
 
     private static System.Drawing.Font CreateGdiFont(string fontName, double templateFontSize, bool bold, double renderScale)
@@ -7525,6 +7825,19 @@ public partial class MainWindow : Window
         _gdiTextLayerCache.Clear();
     }
 
+    private static string SafeFilePart(string value)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var safe = new string((value ?? string.Empty).Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
+        safe = Regex.Replace(safe, @"\s+", "_");
+        if (safe.Length <= 160)
+        {
+            return safe;
+        }
+
+        return safe[..160] + "-" + Math.Abs(safe.GetHashCode()).ToString(CultureInfo.InvariantCulture);
+    }
+
     private static Task<bool> EnsureLConnectFontsInstalledAsync(IEnumerable<LayerRow> layers)
     {
         return Task.Run(() =>
@@ -7534,6 +7847,7 @@ public partial class MainWindow : Window
                          .Where(layer => string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase))
                          .Select(layer => ResolveCanonicalFontName(layer.Font))
                          .Where(name => !string.IsNullOrWhiteSpace(name))
+                         .Where(IsCustomEditorFont)
                          .Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 changed |= EnsureLConnectFontInstalled(fontName);
@@ -7541,6 +7855,12 @@ public partial class MainWindow : Window
 
             return changed;
         });
+    }
+
+    private static bool IsCustomEditorFont(string fontName)
+    {
+        return _customFontFiles.ContainsKey(fontName) ||
+               _customFontFiles.ContainsKey(NormalizeFontLookupKey(fontName));
     }
 
     private static bool EnsureLConnectFontInstalled(string fontName)
@@ -8023,7 +8343,7 @@ public partial class MainWindow : Window
         string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
         string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase);
 
-    private bool CanDirectApplySelectedDevice() => !IsVm92Selected();
+    private bool CanDirectApplySelectedDevice() => IsOfflineMode || !IsVm92Selected();
 
     private void ShowDirectApplyUnsupportedMessage()
     {
@@ -8501,7 +8821,8 @@ public partial class MainWindow : Window
         string deviceModel,
         string templatePath,
         string templateId,
-        IEnumerable<string>? previewAliases = null)
+        IEnumerable<string>? previewAliases = null,
+        bool embedInTemplate = true)
     {
         try
         {
@@ -8531,19 +8852,22 @@ public partial class MainWindow : Window
                 }
             }
 
-            // 2. Save to temp and update inside the .template file using the
-            // supporter, which understands both current and legacy theme types.
-            var tempPath = Path.Combine(Path.GetTempPath(), $"theme_preview_{Guid.NewGuid():N}.png");
-            await File.WriteAllBytesAsync(tempPath, previewBytes);
-            try
+            if (embedInTemplate)
             {
-                await _supporter.UpdateThemePreviewAsync(deviceModel, templatePath, tempPath);
-            }
-            finally
-            {
-                if (File.Exists(tempPath))
+                // Save to temp and update inside the .template file using the
+                // supporter, which understands both current and legacy theme types.
+                var tempPath = Path.Combine(Path.GetTempPath(), $"theme_preview_{Guid.NewGuid():N}.png");
+                await File.WriteAllBytesAsync(tempPath, previewBytes);
+                try
                 {
-                    try { File.Delete(tempPath); } catch { }
+                    await _supporter.UpdateThemePreviewAsync(deviceModel, templatePath, tempPath);
+                }
+                finally
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        try { File.Delete(tempPath); } catch { }
+                    }
                 }
             }
 
@@ -8614,8 +8938,36 @@ public partial class MainWindow : Window
         var backgroundPath = snapshot.BackgroundPath;
         if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
         {
-            manifest.BackgroundFile = $"background/{Path.GetFileName(backgroundPath)}";
-            archive.CreateEntryFromFile(backgroundPath, manifest.BackgroundFile, CompressionLevel.Optimal);
+            var primaryBackgroundPath = backgroundPath;
+            if (IsWideScreenDeviceModel(snapshot.DeviceModel))
+            {
+                var h264Path = ResolveBackgroundVariant(backgroundPath, ".h264");
+                if (!string.IsNullOrWhiteSpace(h264Path) && File.Exists(h264Path))
+                {
+                    primaryBackgroundPath = h264Path;
+                }
+            }
+
+            manifest.BackgroundFile = $"background/{Path.GetFileName(primaryBackgroundPath)}";
+            archive.CreateEntryFromFile(primaryBackgroundPath, manifest.BackgroundFile, CompressionLevel.Optimal);
+
+            var companionExtension = Path.GetExtension(primaryBackgroundPath).Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                ? ".mp4"
+                : Path.GetExtension(primaryBackgroundPath).Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+                    ? ".h264"
+                    : "";
+            if (!string.IsNullOrWhiteSpace(companionExtension))
+            {
+                var companionPath = ResolveBackgroundVariant(primaryBackgroundPath, companionExtension);
+                if (!string.IsNullOrWhiteSpace(companionPath) && File.Exists(companionPath))
+                {
+                    var companionEntryName = $"background/{Path.GetFileName(companionPath)}";
+                    if (!string.Equals(companionEntryName, manifest.BackgroundFile, StringComparison.OrdinalIgnoreCase))
+                    {
+                        archive.CreateEntryFromFile(companionPath, companionEntryName, CompressionLevel.Optimal);
+                    }
+                }
+            }
         }
 
         var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
@@ -8653,10 +9005,42 @@ public partial class MainWindow : Window
             backgroundEntryName = Path.GetFileName(snapshot.BackgroundPath);
         }
 
-        // Add main background to the ZIP flatly.
-        if (addedEntries.Add(backgroundEntryName))
+        AddFlatPackageFile(archive, addedEntries, snapshot.BackgroundPath, backgroundEntryName);
+
+        var backgroundExtension = Path.GetExtension(snapshot.BackgroundPath);
+        var companionExtension = backgroundExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+            ? ".h264"
+            : backgroundExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                ? ".mp4"
+                : "";
+        if (!string.IsNullOrWhiteSpace(companionExtension))
         {
-            archive.CreateEntryFromFile(snapshot.BackgroundPath, backgroundEntryName, CompressionLevel.Optimal);
+            var companionPath = Path.ChangeExtension(snapshot.BackgroundPath, companionExtension);
+            var companionEntryName = Path.ChangeExtension(backgroundEntryName, companionExtension);
+            AddFlatPackageFile(archive, addedEntries, companionPath, companionEntryName);
+        }
+    }
+
+    private static void AddFlatPackageFile(
+        ZipArchive archive,
+        HashSet<string> addedEntries,
+        string sourcePath,
+        string entryName)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+        {
+            return;
+        }
+
+        var safeEntryName = Path.GetFileName(entryName);
+        if (string.IsNullOrWhiteSpace(safeEntryName))
+        {
+            safeEntryName = Path.GetFileName(sourcePath);
+        }
+
+        if (addedEntries.Add(safeEntryName))
+        {
+            archive.CreateEntryFromFile(sourcePath, safeEntryName, CompressionLevel.Optimal);
         }
     }
 
@@ -8861,6 +9245,7 @@ public partial class MainWindow : Window
             File.Delete(destinationTemplate);
         }
         ExtractPackageEntry(templateEntry, destinationTemplate);
+        await _supporter.NormalizeTemplateIdentityAsync(deviceModel, destinationTemplate, importedId);
 
         var importedImages = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var imageEntryName in manifest.ImageFiles.Distinct(StringComparer.OrdinalIgnoreCase))
@@ -8875,13 +9260,15 @@ public partial class MainWindow : Window
         if (importedImages.Count > 0)
         {
             var importedTemplate = await _supporter.LoadTemplatePathAsync(deviceModel, destinationTemplate);
+            var imageLayersToApply = new List<LayerRow>();
             foreach (var layer in importedTemplate.Layers.Where(layer =>
                          string.Equals(layer.Type, "GraphImage", StringComparison.OrdinalIgnoreCase) &&
                          importedImages.ContainsKey(Path.GetFileName(layer.Media))))
             {
                 layer.Media = importedImages[Path.GetFileName(layer.Media)];
-                await _supporter.ApplyLayerAsync(deviceModel, destinationTemplate, layer);
+                imageLayersToApply.Add(layer);
             }
+            await _supporter.ApplyLayersAsync(deviceModel, destinationTemplate, imageLayersToApply);
         }
 
         string backgroundTemp = "";
@@ -8941,7 +9328,7 @@ public partial class MainWindow : Window
                     .Select(name => Path.Combine(imageRoot, name))
                     .Concat(string.IsNullOrWhiteSpace(importedBackgroundPath)
                         ? Array.Empty<string>()
-                        : new[] { importedBackgroundPath })
+                        : GetBackgroundMediaBundleFiles(importedBackgroundPath))
                     .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
@@ -8965,6 +9352,15 @@ public partial class MainWindow : Window
                     if (!string.IsNullOrWhiteSpace(importedLConnectId))
                     {
                         lConnectId = importedLConnectId;
+                        if (!string.IsNullOrWhiteSpace(importedBackgroundPath) && File.Exists(importedBackgroundPath))
+                        {
+                            await CopyTemplateBackgroundAsync(
+                                client,
+                                path,
+                                deviceModel,
+                                importedLConnectId,
+                                importedBackgroundPath);
+                        }
                         foreach (var previousId in previousImportedIds.Where(id =>
                                      !string.Equals(id, importedLConnectId, StringComparison.OrdinalIgnoreCase)))
                         {
@@ -10886,44 +11282,63 @@ public partial class MainWindow : Window
                 deviceModel,
                 exportTemplatePath,
                 $"{exportTemplateId}{GetExportBackgroundExtension(deviceModel)}",
-                GetTemplateCanvasPixels().Width,
-                GetTemplateCanvasPixels().Height);
+                GetTemplateCanvasPixels(deviceModel).Width,
+                GetTemplateCanvasPixels(deviceModel).Height);
         }
 
         return exportTemplatePath;
     }
 
-    private async Task<(string Path, bool IsTemporary)> PrepareExportBackgroundAsync(
+    private async Task<PreparedExportBackground> PrepareExportBackgroundAsync(
         string deviceModel,
         string sourcePath,
         string exportTemplateId)
     {
         if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
         {
-            return (sourcePath, false);
+            return new PreparedExportBackground { Path = sourcePath };
         }
 
         if (IsWideScreenDeviceModel(deviceModel))
         {
-            var h264Path = ResolveBackgroundVariant(sourcePath, ".h264");
-            if (Path.GetExtension(h264Path).Equals(".h264", StringComparison.OrdinalIgnoreCase))
-            {
-                return (h264Path, false);
-            }
+            var safeId = Regex.Replace(exportTemplateId, @"[^A-Za-z0-9_.-]", "_");
+            var outputBase = Path.Combine(Path.GetTempPath(), $"{safeId}-hq-{Guid.NewGuid():N}");
+            var convertedMp4 = await ConvertExportBackgroundAsync(
+                deviceModel,
+                sourcePath,
+                exportTemplateId,
+                ".mp4",
+                outputBase + ".mp4");
+            var convertedH264 = await ConvertExportBackgroundAsync(
+                deviceModel,
+                convertedMp4,
+                exportTemplateId,
+                ".h264",
+                outputBase + ".h264");
 
-            return (await ConvertExportBackgroundAsync(deviceModel, sourcePath, exportTemplateId, ".h264"), true);
+            return new PreparedExportBackground
+            {
+                Path = convertedMp4,
+                TemporaryPaths = new List<string> { convertedMp4, convertedH264 }
+            };
         }
 
         // HydroShift import is picky about the MP4 stream. Normalize even existing
         // MP4 files to the device canvas/profile used by official L-Connect packs.
-        return (await ConvertExportBackgroundAsync(deviceModel, sourcePath, exportTemplateId, ".mp4"), true);
+        var converted = await ConvertExportBackgroundAsync(deviceModel, sourcePath, exportTemplateId, ".mp4");
+        return new PreparedExportBackground
+        {
+            Path = converted,
+            TemporaryPaths = new List<string> { converted }
+        };
     }
 
     private async Task<string> ConvertExportBackgroundAsync(
         string deviceModel,
         string sourcePath,
         string exportTemplateId,
-        string outputExtension)
+        string outputExtension,
+        string? outputPathOverride = null)
     {
         var ffmpegPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
@@ -10939,9 +11354,11 @@ public partial class MainWindow : Window
         }
 
         var safeId = Regex.Replace(exportTemplateId, @"[^A-Za-z0-9_.-]", "_");
-        var outputPath = Path.Combine(
-            Path.GetTempPath(),
-            $"{safeId}-hq-{Guid.NewGuid():N}{outputExtension}");
+        var outputPath = string.IsNullOrWhiteSpace(outputPathOverride)
+            ? Path.Combine(
+                Path.GetTempPath(),
+                $"{safeId}-hq-{Guid.NewGuid():N}{outputExtension}")
+            : outputPathOverride;
         var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
 
         var startInfo = new ProcessStartInfo
@@ -10968,31 +11385,64 @@ public partial class MainWindow : Window
         startInfo.ArgumentList.Add("-an");
         startInfo.ArgumentList.Add("-vf");
         var canvas = GetTemplateCanvasPixels(deviceModel);
-        startInfo.ArgumentList.Add(
-            $"scale={canvas.Width}:{canvas.Height}:force_original_aspect_ratio=increase:flags=lanczos," +
-            $"crop={canvas.Width}:{canvas.Height},setsar=1,fps=24,format=yuv420p");
+        var isWideScreen = IsWideScreenDeviceModel(deviceModel);
+        if (isWideScreen)
+        {
+            var filter = outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                ? "transpose=clock,scale=480:1920,setsar=1,fps=24,format=yuv420p"
+                : "scale=1920:480,setsar=1,fps=24,format=yuv420p";
+            startInfo.ArgumentList.Add(filter);
+        }
+        else
+        {
+            startInfo.ArgumentList.Add(
+                $"scale={canvas.Width}:{canvas.Height}:force_original_aspect_ratio=increase:flags=lanczos," +
+                $"crop={canvas.Width}:{canvas.Height},setsar=1,fps=24,format=yuv420p");
+        }
         startInfo.ArgumentList.Add("-c:v");
         startInfo.ArgumentList.Add("libx264");
-        startInfo.ArgumentList.Add("-preset");
-        startInfo.ArgumentList.Add("slow");
-        startInfo.ArgumentList.Add("-crf");
-        startInfo.ArgumentList.Add("14");
-        startInfo.ArgumentList.Add("-profile:v");
-        startInfo.ArgumentList.Add("main");
-        startInfo.ArgumentList.Add("-level");
-        startInfo.ArgumentList.Add("3.1");
-        startInfo.ArgumentList.Add("-refs");
-        startInfo.ArgumentList.Add("1");
-        startInfo.ArgumentList.Add("-bf");
-        startInfo.ArgumentList.Add("1");
-        startInfo.ArgumentList.Add("-g");
-        startInfo.ArgumentList.Add("24");
-        startInfo.ArgumentList.Add("-keyint_min");
-        startInfo.ArgumentList.Add("24");
-        startInfo.ArgumentList.Add("-sc_threshold");
-        startInfo.ArgumentList.Add("0");
-        startInfo.ArgumentList.Add("-fps_mode");
-        startInfo.ArgumentList.Add("cfr");
+        if (isWideScreen)
+        {
+            startInfo.ArgumentList.Add("-preset");
+            startInfo.ArgumentList.Add("ultrafast");
+            startInfo.ArgumentList.Add("-x264opts");
+            startInfo.ArgumentList.Add("bframes=0");
+            startInfo.ArgumentList.Add("-profile:v");
+            startInfo.ArgumentList.Add("baseline");
+            startInfo.ArgumentList.Add("-level");
+            startInfo.ArgumentList.Add("3.1");
+            startInfo.ArgumentList.Add("-refs");
+            startInfo.ArgumentList.Add("1");
+            startInfo.ArgumentList.Add("-b:v");
+            startInfo.ArgumentList.Add("2400k");
+            startInfo.ArgumentList.Add("-tune");
+            startInfo.ArgumentList.Add("zerolatency");
+            startInfo.ArgumentList.Add("-pix_fmt");
+            startInfo.ArgumentList.Add("yuv420p");
+        }
+        else
+        {
+            startInfo.ArgumentList.Add("-preset");
+            startInfo.ArgumentList.Add("veryfast");
+            startInfo.ArgumentList.Add("-crf");
+            startInfo.ArgumentList.Add("14");
+            startInfo.ArgumentList.Add("-profile:v");
+            startInfo.ArgumentList.Add("main");
+            startInfo.ArgumentList.Add("-level");
+            startInfo.ArgumentList.Add("3.1");
+            startInfo.ArgumentList.Add("-refs");
+            startInfo.ArgumentList.Add("1");
+            startInfo.ArgumentList.Add("-bf");
+            startInfo.ArgumentList.Add("1");
+            startInfo.ArgumentList.Add("-g");
+            startInfo.ArgumentList.Add("24");
+            startInfo.ArgumentList.Add("-keyint_min");
+            startInfo.ArgumentList.Add("24");
+            startInfo.ArgumentList.Add("-sc_threshold");
+            startInfo.ArgumentList.Add("0");
+            startInfo.ArgumentList.Add("-fps_mode");
+            startInfo.ArgumentList.Add("cfr");
+        }
         if (outputExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase))
         {
             startInfo.ArgumentList.Add("-movflags");
@@ -11476,7 +11926,7 @@ public partial class MainWindow : Window
         var text = LoadLanguage(lang);
         _languageText = text;
         ColorPickerDialog.TextProvider = GetLanguageText;
-        Title = GetText(text, "app.title", "Lian Li LCD Template Editor V 1.3 Beta");
+        Title = GetText(text, "app.title", "Lian Li LCD Template Editor V 1.4");
         DeviceLabel.Text = GetText(text, "top.device", "DEVICE");
         TemplateLabel.Text = GetText(text, "top.templateId", "TEMPLATE");
         LanguageLabel.Text = GetText(text, "footer.language", "Language");
@@ -11484,6 +11934,8 @@ public partial class MainWindow : Window
         DarkThemeItem.Content = GetText(text, "footer.dark", "Dark");
         LightThemeItem.Content = GetText(text, "footer.light", "Light");
         UseActiveCheck.Content = GetText(text, "top.useActiveTemplate", "Use active template");
+        OfflineModeCheck.Content = GetText(text, "top.offlineMode", "Offline");
+        OfflineModeCheck.ToolTip = GetText(text, "tooltips.offlineMode", "Work on a local copy without sending changes to L-Connect");
         ActiveThemeButton.Content = GetText(text, "top.activeTheme", "Active Theme");
         LoadButton.Content = GetText(text, "top.load", "Load");
         SaveButton.Content = GetText(text, "top.save", "Save");
@@ -11523,8 +11975,11 @@ public partial class MainWindow : Window
         ShadowAutoAddHint.Text = GetText(text, "add.shadowAutoHint", "Shadow will be added with the layer.");
         GraphSettingsTitle.Text = GetText(text, "sections.graphSettings", "Graph Dimensions & Styling");
         ImageSettingsTitle.Text = GetText(text, "sections.imageSettings", "Image Settings");
-        PositionSizeHeader.Text = GetText(text, "sections.dataPositionSize", "Data, Position & Size");
+        PositionSizeHeader.Text = GetText(text, "labels.positionSize", "Position & Size");
+        DataPropertiesHeader.Text = GetText(text, "labels.data", "Data");
         TextAndFormatHeader.Text = GetText(text, "sections.textAndFormat", "Text and Format");
+        MatchXToolbarText.Text = GetText(text, "align.matchHorizontal", "Horizontal=");
+        MatchYToolbarText.Text = GetText(text, "align.matchVertical", "Vertical=");
         SettingsDevicesTitleText.Text = GetText(text, "settings.myDevices", "My devices");
         SettingsDevicesDescText.Text = GetText(text, "settings.myDevicesDesc", "Only selected devices appear across the editor and gallery.");
         SettingsLanguageThemeTitleText.Text = GetText(text, "settings.languageTheme", "Language & theme");
@@ -11543,6 +11998,7 @@ public partial class MainWindow : Window
         GalleryTab.Header = GetText(text, "tabs.gallery", "Theme Gallery");
         SettingsTab.Header = GetText(text, "tabs.settings", "Settings");
         DiagnosticsTab.Header = GetText(text, "tabs.diagnostics", "Diagnostics");
+        ThanksTab.Header = GetText(text, "tabs.thanks", "Thanks");
         AboutTab.Header = GetText(text, "tabs.about", "About");
         OpenGitHubIssuesButton.Content = GetText(text, "diagnostics.openIssues", "Open GitHub Issues");
         CopyDiagnosticPackageInfoButton.Content = GetText(text, "diagnostics.copyInfo", "Copy Diagnostic Info");
@@ -11682,6 +12138,7 @@ public partial class MainWindow : Window
 
         // Translated main editor window UI controls
         PositionSizeHeader.Text = GetText(text, "labels.positionSize", "POSITION & SIZE");
+        DataPropertiesHeader.Text = GetText(text, "labels.data", "DATA");
         LayerOptionsHeader.Text = GetText(text, "labels.layerOptions", "LAYER OPTIONS");
         FrontAlphaLabel.Content = GetText(text, "labels.frontAlpha", "FRONT ALPHA");
         BackAlphaLabel.Content = GetText(text, "labels.backAlpha", "BACK ALPHA");
@@ -11813,6 +12270,7 @@ public partial class MainWindow : Window
             ["Support"] = ("about.support", "Support"),
             ["Report bugs or suggest the next improvement."] = ("about.supportDesc", "Report bugs or suggest the next improvement."),
             ["Diagnostics"] = ("tabs.diagnostics", "Diagnostics"),
+            ["Thanks"] = ("tabs.thanks", "Thanks"),
             ["Collect version, device and log details for troubleshooting."] = ("about.diagnosticsDesc", "Collect version, device and log details for troubleshooting."),
             ["Unsaved Recovery"] = ("recovery.aboutTitle", "Unsaved Recovery"),
             ["An unsaved edit is available."] = ("recovery.genericAvailable", "An unsaved edit is available."),
@@ -11843,6 +12301,8 @@ public partial class MainWindow : Window
             ["Align top to canvas"] = ("tooltips.alignTop", "Align top to canvas"),
             ["Center vertically on canvas"] = ("tooltips.alignCenterY", "Center vertically on canvas"),
             ["Align bottom to canvas"] = ("tooltips.alignBottom", "Align bottom to canvas"),
+            ["Match selected layers X"] = ("tooltips.matchX", "Match selected layers X"),
+            ["Match selected layers Y"] = ("tooltips.matchY", "Match selected layers Y"),
             ["Distribute horizontally across canvas"] = ("tooltips.distributeX", "Distribute horizontally across canvas"),
             ["Distribute vertically across canvas"] = ("tooltips.distributeY", "Distribute vertically across canvas"),
             ["Solo"] = ("preview.solo", "Solo"),
@@ -12826,7 +13286,7 @@ public partial class MainWindow : Window
             if (!string.Equals(layer.DataSource, "StaticText", StringComparison.OrdinalIgnoreCase))
             {
                 layer.Text = SampleValueFor(layer.DataSource, format);
-                TextBox.Text = layer.Text;
+                TextBox.Text = NormalizeLConnectText(layer.Text);
             }
         }
     }
@@ -13759,7 +14219,8 @@ public partial class MainWindow : Window
     private async Task<bool> ActivateUniversal88ThemeAsync(
         string templateId,
         string templatePath,
-        string backgroundPath)
+        string backgroundPath,
+        bool updatePreview = true)
     {
         var previousTraceId = _universal88ApplyTraceId;
         _universal88ApplyTraceId = Guid.NewGuid().ToString("N")[..8];
@@ -13786,19 +14247,26 @@ public partial class MainWindow : Window
 
         try
         {
-            try
+            if (updatePreview)
             {
-                TraceUniversal88Apply("Preview update started.");
-                await SaveAndApplyThemePreviewAsync(
-                    UniversalScreenDeviceModel,
-                    templatePath,
-                    templateId,
-                    candidates.Concat(GetTemplatePreviewAliases(templateId)));
-                TraceUniversal88Apply("Preview update completed.");
+                try
+                {
+                    TraceUniversal88Apply("Preview update started.");
+                    await SaveAndApplyThemePreviewAsync(
+                        UniversalScreenDeviceModel,
+                        templatePath,
+                        templateId,
+                        candidates.Concat(GetTemplatePreviewAliases(templateId)));
+                    TraceUniversal88Apply("Preview update completed.");
+                }
+                catch (Exception ex)
+                {
+                    TraceUniversal88Apply($"Preview update failed: {ex.GetType().Name}: {ex.Message}", warning: true);
+                }
             }
-            catch (Exception ex)
+            else
             {
-                TraceUniversal88Apply($"Preview update failed: {ex.GetType().Name}: {ex.Message}", warning: true);
+                TraceUniversal88Apply("Preview update skipped by caller.");
             }
 
             try
@@ -14304,7 +14772,10 @@ public partial class MainWindow : Window
         if (accepted)
         {
             var profilePatched = await Task.Run(() =>
-                TrySetTemplateBackgroundProfile(targetTemplateId, backgroundPath, deviceModel));
+                string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
+                    ? TrySetUniversal88TemplateBackgroundProfile(targetTemplateId, backgroundPath) ||
+                      TrySetTemplateBackgroundProfile(targetTemplateId, backgroundPath, deviceModel)
+                    : TrySetTemplateBackgroundProfile(targetTemplateId, backgroundPath, deviceModel));
             TraceUniversal88Apply($"Background local profile patch={profilePatched}");
         }
     }
@@ -14444,6 +14915,30 @@ public partial class MainWindow : Window
         }
 
         return zipPath;
+    }
+
+    private static IEnumerable<string> GetBackgroundMediaBundleFiles(string backgroundPath)
+    {
+        if (string.IsNullOrWhiteSpace(backgroundPath))
+        {
+            yield break;
+        }
+
+        var directory = Path.GetDirectoryName(backgroundPath);
+        var baseName = Path.Combine(directory ?? "", Path.GetFileNameWithoutExtension(backgroundPath));
+        foreach (var path in new[]
+                 {
+                     backgroundPath,
+                     baseName + ".h264",
+                     baseName + ".mp4",
+                     baseName + ".png"
+                 })
+        {
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                yield return path;
+            }
+        }
     }
 
     private IEnumerable<string> GetTemplateMediaFilesForImport(string deviceModel, string templateId)
@@ -14697,7 +15192,10 @@ public partial class MainWindow : Window
                 if (json is not JsonObject root ||
                     (!root.ContainsKey("TemplateCustomBackgrounds") &&
                      !root.ContainsKey("AllTemplateAssignedCategories") &&
-                     !root.ContainsKey("TemplateCategories")))
+                     !root.ContainsKey("TemplateCategories") &&
+                     !root.ContainsKey("LandscapeTemplateConfig") &&
+                     !root.ContainsKey("PortraitTemplateConfig") &&
+                     !root.ContainsKey("IsLandscape")))
                 {
                     continue;
                 }
@@ -14793,7 +15291,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async Task<bool> TriggerLConnectRefreshAsync()
+    private async Task<bool> TriggerLConnectRefreshAsync(bool skipUniversalPreviewUpdate = false, bool fastApply = false)
     {
         var accepted = false;
         var selectedDeviceModel = GetSelectedDeviceModel();
@@ -14815,12 +15313,21 @@ public partial class MainWindow : Window
             if (accepted) _backgroundDirty = false;
         }
 
+        if (fastApply)
+        {
+            return await TriggerFastLConnectRefreshAsync(
+                selectedDeviceModel,
+                selectedTemplateId,
+                _currentBackgroundPath);
+        }
+
         if (IsUniversalScreenSelected() && !string.IsNullOrWhiteSpace(_currentTemplateId))
         {
             accepted |= await ActivateUniversal88ThemeAsync(
                 _currentTemplateId,
                 _currentTemplatePath,
-                _currentBackgroundPath);
+                _currentBackgroundPath,
+                updatePreview: !skipUniversalPreviewUpdate);
         }
 
         var devicePaths = GetLConnectDevicePaths();
@@ -14892,6 +15399,45 @@ public partial class MainWindow : Window
             accepted |= await Task.Run(() => TrySetActiveTemplateProfile(
                 selectedTemplateId,
                 selectedDeviceModel));
+        }
+
+        return accepted;
+    }
+
+    private async Task<bool> TriggerFastLConnectRefreshAsync(
+        string deviceModel,
+        string templateId,
+        string backgroundPath)
+    {
+        if (string.IsNullOrWhiteSpace(templateId))
+        {
+            return false;
+        }
+
+        var isUniversalScreen = IsUniversalScreenSelected();
+        var preferLandscape = isUniversalScreen && IsUniversalLandscape();
+        var profilePatched = isUniversalScreen
+            ? await Task.Run(() =>
+                TrySetUniversal88ActiveTemplateProfile(templateId, preferLandscape) &&
+                (string.IsNullOrWhiteSpace(backgroundPath) ||
+                 !File.Exists(backgroundPath) ||
+                 TrySetUniversal88TemplateBackgroundProfile(templateId, backgroundPath)))
+            : await Task.Run(() => TrySetActiveTemplateProfile(templateId, deviceModel));
+
+        var accepted = profilePatched;
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+        var candidateJson = JsonSerializer.Serialize(templateId);
+        foreach (var path in GetLConnectDevicePaths())
+        {
+            try
+            {
+                accepted |= await SendLConnectDeviceRequestAsync(client, path, "ApplyTemplate", candidateJson);
+                accepted |= await SendLConnectDeviceRequestAsync(client, path, "Apply2DTemplate", candidateJson);
+                accepted |= await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+            }
+            catch
+            {
+            }
         }
 
         return accepted;
@@ -14986,7 +15532,7 @@ public partial class MainWindow : Window
             layer.ForceText = SetTextCheck.IsChecked == true;
             if (layer.DataSource == "StaticText" || SetTextCheck.IsChecked == true)
             {
-                layer.Text = TextBox.Text;
+                layer.Text = NormalizeLConnectText(TextBox.Text);
             }
         }
 
@@ -15012,7 +15558,7 @@ public partial class MainWindow : Window
                 layer.SensorZoomRate = layer.ZoomRate;
                 layer.Text = string.IsNullOrWhiteSpace(TextBox.Text)
                     ? SampleValueFor(layer.DataSource)
-                    : TextBox.Text;
+                    : NormalizeLConnectText(TextBox.Text);
                 return;
             }
 
@@ -15109,6 +15655,7 @@ public partial class MainWindow : Window
         var directApplySupported = CanDirectApplySelectedDevice();
         ActiveThemeButton.IsEnabled = !isBusy;
         LoadButton.IsEnabled = !isBusy;
+        OfflineModeCheck.IsEnabled = !isBusy;
         SaveButton.IsEnabled = !isBusy && directApplySupported;
         BackupButton.IsEnabled = !isBusy;
         RestoreBackupButton.IsEnabled = !isBusy;
@@ -15642,6 +16189,14 @@ public partial class MainWindow : Window
     private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (_isLoading || _updatingTextOverride) return;
+        var normalizedText = NormalizeLConnectText(TextBox.Text);
+        if (!string.Equals(TextBox.Text, normalizedText, StringComparison.Ordinal))
+        {
+            var caret = Math.Min(TextBox.CaretIndex, normalizedText.Length);
+            TextBox.Text = normalizedText;
+            TextBox.CaretIndex = caret;
+            return;
+        }
         if (LayerGrid.SelectedItem is LayerRow layer &&
             string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase))
         {
@@ -15651,8 +16206,8 @@ public partial class MainWindow : Window
                 !source.Equals("StaticText", StringComparison.OrdinalIgnoreCase))
             {
                 layer.PreviewValueEdited = true;
-                layer.Text = TextBox.Text;
-                _previewSampleOverrides[source] = TextBox.Text;
+                layer.Text = normalizedText;
+                _previewSampleOverrides[source] = normalizedText;
             }
         }
         OnInputChanged();
