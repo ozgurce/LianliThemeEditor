@@ -7,9 +7,9 @@ It does not restart L-Connect, does not edit profiles, and does not apply a them
 How to use
 1. Open L-Connect and keep it running.
 2. Run LConnectHttpImportTracer.exe.
-3. Press ENTER in the tracer window to start tracing.
+3. Tracing starts immediately.
 4. In L-Connect, import/download/apply the theme exactly as usual.
-5. Return to the tracer window and press ENTER again.
+5. Return to the tracer window and press ENTER when finished.
 6. Send the generated LConnectHttpImportTrace-*.zip file from the Desktop.
 
 What it collects

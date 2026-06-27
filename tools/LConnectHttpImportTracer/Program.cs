@@ -24,13 +24,11 @@ internal static class Program
         Console.WriteLine();
         Console.WriteLine("Steps:");
         Console.WriteLine("1. Keep L-Connect open.");
-        Console.WriteLine("2. Press ENTER here to start tracing.");
+        Console.WriteLine("2. Tracing starts immediately when this window opens.");
         Console.WriteLine("3. In L-Connect, import/download/apply the theme exactly as you normally do.");
-        Console.WriteLine("4. Return here and press ENTER again.");
+        Console.WriteLine("4. Return here and press ENTER when finished.");
         Console.WriteLine("5. Send the ZIP created on the Desktop.");
         Console.WriteLine();
-        Console.WriteLine("Press ENTER to start.");
-        Console.ReadLine();
 
         var runId = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         var workDir = Path.Combine(Path.GetTempPath(), "LConnectHttpImportTrace-" + runId);
@@ -47,8 +45,8 @@ internal static class Program
             var pollTask = Task.Run(() => PollLConnectAsync(httpLogPath, cts.Token));
 
             Console.WriteLine();
-            Console.WriteLine("Tracing. Import/apply the theme in L-Connect now.");
-            Console.WriteLine("Press ENTER here when finished.");
+            Console.WriteLine("Tracing started. Import/apply the theme in L-Connect now.");
+            Console.WriteLine("Press ENTER when finished.");
             Console.ReadLine();
 
             cts.Cancel();
