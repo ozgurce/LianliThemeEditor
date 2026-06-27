@@ -2668,39 +2668,6 @@ internal static class Program
         {
             yield return Path.Combine(DefaultProgramData, deviceModel, "template");
             yield return Path.Combine(lConnectDir, "Assets", deviceModel, "template");
-
-            foreach (var root in SiblingTemplateRoots(DefaultProgramData))
-            {
-                yield return root;
-            }
-
-            foreach (var root in SiblingTemplateRoots(Path.Combine(lConnectDir, "Assets")))
-            {
-                yield return root;
-            }
-        }
-
-        private static IEnumerable<string> SiblingTemplateRoots(string baseDir)
-        {
-            if (!Directory.Exists(baseDir)) yield break;
-            IEnumerable<string> directories;
-            try
-            {
-                directories = Directory.EnumerateDirectories(baseDir).ToList();
-            }
-            catch
-            {
-                yield break;
-            }
-
-            foreach (var dir in directories)
-            {
-                var templateRoot = Path.Combine(dir, "template");
-                if (Directory.Exists(templateRoot))
-                {
-                    yield return templateRoot;
-                }
-            }
         }
 
         public static void SetTemplateBackground(string profileDir, string templateId, string path)

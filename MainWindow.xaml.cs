@@ -14683,7 +14683,7 @@ public partial class MainWindow : Window
             foreach (var path in GetLConnectDevicePaths())
             {
                 var templateId = await GetLConnectSelectedTemplateIdAsync(client, path);
-                if (!string.IsNullOrWhiteSpace(ResolveTemplatePathByIdOrAlias(deviceModel, templateId)))
+                if (TemplateExistsForDevice(deviceModel, templateId))
                 {
                     candidates.Add(templateId);
                 }
@@ -14704,7 +14704,7 @@ public partial class MainWindow : Window
             .Select(id => new
             {
                 Id = id,
-                Path = ResolveTemplatePathByIdOrAlias(deviceModel, id)
+                Path = ResolveTemplatePathStrict(deviceModel, id)
             })
             .Where(item => !string.IsNullOrWhiteSpace(item.Path) && File.Exists(item.Path))
             .OrderBy(item => IsProgramDataTemplatePath(item.Path) ? 0 : 1)
@@ -15200,6 +15200,33 @@ public partial class MainWindow : Window
                    deviceModel,
                    "template",
                    templateId + ".template"));
+    }
+
+    private static string ResolveTemplatePathStrict(string deviceModel, string? templateId)
+    {
+        if (string.IsNullOrWhiteSpace(deviceModel) || string.IsNullOrWhiteSpace(templateId))
+        {
+            return "";
+        }
+
+        foreach (var root in new[]
+                 {
+                     GetTemplateRoot(deviceModel),
+                     Path.Combine(
+                         @"C:\Program Files\Lian-Li\L-Connect 3",
+                         "Assets",
+                         deviceModel,
+                         "template")
+                 })
+        {
+            var candidate = Path.Combine(root, templateId + ".template");
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return "";
     }
 
     private static string ResolveTemplatePathByIdOrAlias(string deviceModel, string? templateId)
