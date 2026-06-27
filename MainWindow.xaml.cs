@@ -14520,18 +14520,34 @@ public partial class MainWindow : Window
 
         if (IsWideScreenDeviceSelected())
         {
+            if (IsUniversal88TemplateControllerPath(path))
+            {
+                return true;
+            }
+
+            if (IsWirelessTransmitterControllerPath(path))
+            {
+                return false;
+            }
+
             return path.Contains("universal", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("vm", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("9.2", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("us88", StringComparison.OrdinalIgnoreCase) ||
-                   path.Contains("8.8", StringComparison.OrdinalIgnoreCase) ||
-                   (path.Contains("vid_0416", StringComparison.OrdinalIgnoreCase) &&
-                    path.Contains("pid_8040", StringComparison.OrdinalIgnoreCase));
+                   path.Contains("8.8", StringComparison.OrdinalIgnoreCase);
         }
 
         return path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
                path.Contains("pid_a034", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool IsUniversal88TemplateControllerPath(string path) =>
+        path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
+        path.Contains("pid_a088", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsWirelessTransmitterControllerPath(string path) =>
+        path.Contains("vid_0416", StringComparison.OrdinalIgnoreCase) &&
+        path.Contains("pid_8040", StringComparison.OrdinalIgnoreCase);
 
     private async Task<bool> ActivateInstalledThemeAsync(
         string templateId,
