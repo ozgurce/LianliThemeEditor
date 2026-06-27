@@ -9491,6 +9491,22 @@ public partial class MainWindow : Window
                ?? throw new InvalidDataException($"Package file is missing: {entryName}");
     }
 
+    private static ZipArchiveEntry? TryGetPackageEntry(ZipArchive archive, string? entryName)
+    {
+        if (string.IsNullOrWhiteSpace(entryName) ||
+            Path.IsPathRooted(entryName) ||
+            entryName.Split('/', '\\').Any(part => part == ".."))
+        {
+            return null;
+        }
+
+        var normalizedEntryName = entryName.Replace('\\', '/');
+        return archive.GetEntry(entryName)
+               ?? archive.GetEntry(normalizedEntryName)
+               ?? archive.Entries.FirstOrDefault(entry =>
+                   string.Equals(entry.FullName.Replace('\\', '/'), normalizedEntryName, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static void ExtractPackageEntry(ZipArchiveEntry entry, string destinationPath)
     {
         var fullDestination = Path.GetFullPath(destinationPath);
@@ -10959,13 +10975,13 @@ public partial class MainWindow : Window
                     throw new InvalidDataException("The gallery package manifest is invalid.");
                 }
 
-                var declaredBackground = (existingManifest.BackgroundFile ?? "").Replace('\\', '/');
-                if (!string.IsNullOrWhiteSpace(declaredBackground) && archive.GetEntry(declaredBackground) != null)
+                if (!string.IsNullOrWhiteSpace(existingManifest.BackgroundFile) &&
+                    TryGetPackageEntry(archive, existingManifest.BackgroundFile) != null)
                 {
                     return packagePath;
                 }
 
-                var templateEntry = archive.GetEntry((existingManifest.TemplateFile ?? "").Replace('\\', '/'))
+                var templateEntry = TryGetPackageEntry(archive, existingManifest.TemplateFile)
                                     ?? archive.Entries.FirstOrDefault(entry => entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase));
                 existingTemplateRequiresBackground = TemplateRequiresExternalBackground(templateEntry);
                 repairedBackgroundEntryName = SelectGalleryBackgroundEntry(archive.Entries, templateEntry)?.FullName ?? "";
@@ -12828,7 +12844,7 @@ public partial class MainWindow : Window
             "DATE" => "Date",
             "DAY" => "Day",
             "DOWNDSPEED" => "Download Speed",
-            "DRVLOAD" => "Drive Activity",
+            "DRVLOAD" => "Drive Load",
             "FPS_AVG" => "Average FPS",
             "GPUCLOCK" => "GPU Clock MHz",
             "GPUCLOCK_G" => "GPU Clock GHz",
@@ -12844,7 +12860,7 @@ public partial class MainWindow : Window
             "GPUVOLTAGE" => "GPU Voltage",
             "HDDTEMP" => "Drive Temperature",
             "HDDTEMP_F" => "Drive Temperature °F",
-            "HDDUSED" => "Drive Used",
+            "HDDUSED" => "Drive Usage",
             "PUMP" => "Pump",
             "RAM" => "RAM Used",
             "RAM_GB" => "RAM Used GB",

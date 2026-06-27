@@ -59,7 +59,8 @@ public sealed class ThemePackageValidationService
             if (version != 1) result.Issues.Add(Error($"Unsupported package version: {version}."));
             if (!SupportedDevices.Contains(device)) result.Issues.Add(Error("The target device is not supported."));
             if (string.IsNullOrWhiteSpace(id)) result.Issues.Add(Error("Template ID is empty."));
-            if (IsUnsafePath(templateFile) || archive.GetEntry(Normalize(templateFile)) == null)
+            var templateEntry = GetPackageEntry(archive, templateFile);
+            if (IsUnsafePath(templateFile) || templateEntry == null)
             {
                 result.Issues.Add(Error("The template file is missing or unsafe."));
             }
@@ -73,13 +74,12 @@ public sealed class ThemePackageValidationService
             var background = GetString(root, "BackgroundFile");
             if (string.IsNullOrWhiteSpace(background))
             {
-                var templateEntry = archive.GetEntry(Normalize(templateFile));
                 if (TemplateRequiresExternalBackground(templateEntry))
                 {
                     result.Issues.Add(Warning("Background media is missing."));
                 }
             }
-            else if (archive.GetEntry(Normalize(background)) == null)
+            else if (GetPackageEntry(archive, background) == null)
             {
                 result.Issues.Add(Warning("Background media is missing."));
             }
@@ -92,7 +92,7 @@ public sealed class ThemePackageValidationService
             {
                 foreach (var image in images.EnumerateArray().Select(item => item.GetString() ?? ""))
                 {
-                    if (IsUnsafePath(image) || archive.GetEntry(Normalize(image)) == null)
+                    if (IsUnsafePath(image) || GetPackageEntry(archive, image) == null)
                     {
                         result.Issues.Add(Error($"Referenced image is missing: {image}"));
                     }
@@ -123,6 +123,17 @@ public sealed class ThemePackageValidationService
     private static string GetString(JsonElement root, string name) =>
         root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
     private static string Normalize(string path) => (path ?? "").Replace('\\', '/');
+    private static ZipArchiveEntry? GetPackageEntry(ZipArchive archive, string entryName)
+    {
+        if (string.IsNullOrWhiteSpace(entryName) || IsUnsafePath(entryName)) return null;
+
+        var normalized = Normalize(entryName);
+        return archive.GetEntry(entryName)
+               ?? archive.GetEntry(normalized)
+               ?? archive.Entries.FirstOrDefault(entry =>
+                   string.Equals(Normalize(entry.FullName), normalized, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static bool TemplateRequiresExternalBackground(ZipArchiveEntry? templateEntry)
     {
         if (templateEntry == null) return false;
