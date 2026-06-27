@@ -395,6 +395,15 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/omega-vault-c6b12005.png",
       "packageUrl": "packages/omega-vault-c6b12005.zip"
+    },
+    {
+      "id": "omega-vault-noshadowstaticbg-e5a000b5",
+      "name": "Omega_Vault_noshadowStaticBg",
+      "author": "\u00D6zg\u00FCr",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/omega-vault-noshadowstaticbg-e5a000b5.png",
+      "packageUrl": "packages/omega-vault-noshadowstaticbg-e5a000b5.zip"
     }
   ]
 }
