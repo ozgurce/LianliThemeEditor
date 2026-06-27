@@ -211,6 +211,8 @@ public partial class MainWindow : Window
     private readonly DiagnosticService _diagnosticService = new();
     private readonly LConnectClientService _lConnectClient = new();
     private string _universal88ApplyTraceId = "";
+    private readonly object _lConnectRequestTraceLock = new();
+    private readonly Queue<string> _lConnectRequestTrace = new();
     private readonly GallerySubmissionService _gallerySubmissionService = new();
     private readonly ThemeInstallationService _themeInstallationService = new();
     private readonly LayerGroupService _layerGroupService = new();
@@ -10939,7 +10941,17 @@ public partial class MainWindow : Window
             item.IsInstalled = true;
             await NotifyGalleryDownloadAsync(item);
             SetBusy(false, $"Theme installed: {item.Name}");
-            ShowGalleryInstallResult(item, imported, lConnectTemplateId, applyRequested, applyAccepted);
+            var diagnosticPath = "";
+            if (!imported.LConnectVisible || (applyRequested && !applyAccepted))
+            {
+                diagnosticPath = CreateGalleryInstallDiagnosticPackage(
+                    item,
+                    imported,
+                    lConnectTemplateId,
+                    applyRequested,
+                    applyAccepted);
+            }
+            ShowGalleryInstallResult(item, imported, lConnectTemplateId, applyRequested, applyAccepted, diagnosticPath);
             return true;
         }
         catch (Exception ex)
@@ -10966,7 +10978,8 @@ public partial class MainWindow : Window
         TemplateOption imported,
         string lConnectTemplateId,
         bool applyRequested,
-        bool applyAccepted)
+        bool applyAccepted,
+        string diagnosticPath)
     {
         var applyStatus = !applyRequested
             ? GetLanguageText("gallery.resultApplyNotRequested", "Not requested")
@@ -10982,7 +10995,7 @@ public partial class MainWindow : Window
             ? GetLanguageText("gallery.resultBackgroundAvailable", "Background file installed")
             : GetLanguageText("gallery.resultBackgroundMissing", "No installed background file was detected");
 
-        var message = string.Join(Environment.NewLine, new[]
+        var lines = new List<string>
         {
             FormatLanguageText("gallery.resultTheme", "Theme: {0}", item.Name),
             FormatLanguageText("gallery.resultDevice", "Device: {0}", item.DeviceName),
@@ -10993,7 +11006,12 @@ public partial class MainWindow : Window
             FormatLanguageText("gallery.resultLConnectId", "L-Connect template ID: {0}", string.IsNullOrWhiteSpace(lConnectTemplateId) ? "-" : lConnectTemplateId),
             FormatLanguageText("gallery.resultBackground", "Background: {0}", backgroundStatus),
             FormatLanguageText("gallery.resultTemplatePath", "Template path: {0}", imported.Path)
-        });
+        };
+        if (!string.IsNullOrWhiteSpace(diagnosticPath))
+        {
+            lines.Add(FormatLanguageText("gallery.resultDiagnostic", "Diagnostic package: {0}", diagnosticPath));
+        }
+        var message = string.Join(Environment.NewLine, lines);
 
         MessageBox.Show(
             this,
@@ -11001,6 +11019,172 @@ public partial class MainWindow : Window
             GetLanguageText("gallery.resultTitle", "Gallery install result"),
             MessageBoxButton.OK,
             applyRequested && (!applyAccepted || !imported.LConnectVisible) ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    }
+
+    private string CreateGalleryInstallDiagnosticPackage(
+        GalleryThemeItem item,
+        TemplateOption imported,
+        string lConnectTemplateId,
+        bool applyRequested,
+        bool applyAccepted)
+    {
+        try
+        {
+            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+            var safeId = SanitizeFileName(string.IsNullOrWhiteSpace(item.Id) ? imported.Id : item.Id);
+            var outputPath = Path.Combine(desktop, $"LianLiThemeEditor-GalleryDiagnostic-{safeId}-{DateTime.Now:yyyyMMdd-HHmmss}.zip");
+            var summary = BuildGalleryInstallDiagnosticSummary(item, imported, lConnectTemplateId, applyRequested, applyAccepted);
+            var files = GetGalleryInstallDiagnosticFiles(imported);
+            var textEntries = new List<(string Name, string Content)>
+            {
+                ("lconnect/request-trace.txt", GetLConnectRequestTraceText()),
+                ("lconnect/profile-summary.txt", BuildLConnectProfileSummary()),
+                ("lconnect/template-files.txt", BuildTemplateFileListing(imported))
+            };
+
+            _diagnosticService.CreatePackage(outputPath, summary, files, textEntries);
+            return outputPath;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Gallery install diagnostic package creation failed.", ex);
+            return "";
+        }
+    }
+
+    private string BuildGalleryInstallDiagnosticSummary(
+        GalleryThemeItem item,
+        TemplateOption imported,
+        string lConnectTemplateId,
+        bool applyRequested,
+        bool applyAccepted)
+    {
+        return string.Join(Environment.NewLine, new[]
+        {
+            "Lian Li LCD Theme Editor gallery install diagnostic",
+            $"CreatedUtc: {DateTime.UtcNow:O}",
+            $"Version: {GetAppDisplayVersion()}",
+            $"Built: {BuildInfo.BuiltAt}",
+            $"Theme: {item.Name}",
+            $"GalleryId: {item.Id}",
+            $"PackageUrl: {item.PackageUrl}",
+            $"Device: {item.DeviceName} ({item.DeviceModel})",
+            $"EditorTemplateId: {imported.Id}",
+            $"LConnectTemplateId: {lConnectTemplateId}",
+            $"LConnectVisible: {imported.LConnectVisible}",
+            $"ApplyRequested: {applyRequested}",
+            $"ApplyAccepted: {applyAccepted}",
+            $"TemplatePath: {imported.Path}",
+            $"TemplateExists: {File.Exists(imported.Path)}",
+            $"BackgroundPath: {imported.BackgroundPath}",
+            $"BackgroundExists: {File.Exists(imported.BackgroundPath)}",
+            $"SelectedDevice: {GetSelectedDeviceDisplayName()} ({GetSelectedDeviceModel()})",
+            $"CurrentTemplate: {_currentTemplateId}",
+            $"CurrentTemplatePath: {_currentTemplatePath}",
+            $"OS: {Environment.OSVersion}",
+            $".NET: {Environment.Version}"
+        });
+    }
+
+    private static IEnumerable<string> GetGalleryInstallDiagnosticFiles(TemplateOption imported)
+    {
+        var files = new List<string>();
+        void AddFile(string path)
+        {
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                files.Add(path);
+            }
+        }
+
+        AddFile(imported.Path);
+        AddFile(imported.BackgroundPath);
+
+        var root = @"C:\ProgramData\Lian-Li\L-Connect 3";
+        var logDir = Path.Combine(root, "logs");
+        if (Directory.Exists(logDir))
+        {
+            files.AddRange(Directory.EnumerateFiles(logDir, "L-Connect*.log")
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .Take(8));
+        }
+
+        var profileDir = Path.Combine(root, "profile");
+        if (Directory.Exists(profileDir))
+        {
+            files.AddRange(Directory.EnumerateFiles(profileDir)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .Take(8));
+        }
+
+        return files.Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string BuildTemplateFileListing(TemplateOption imported)
+    {
+        var root = !string.IsNullOrWhiteSpace(imported.Path)
+            ? Path.GetDirectoryName(imported.Path) ?? ""
+            : "";
+        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+        {
+            return "Template directory was not found.";
+        }
+
+        var lines = Directory.EnumerateFiles(root, "*.template")
+            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .Take(80)
+            .Select(path =>
+            {
+                var file = new FileInfo(path);
+                return $"{file.LastWriteTimeUtc:O} | {file.Length} | {file.Name}";
+            });
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string BuildLConnectProfileSummary()
+    {
+        var profileDir = Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", "profile");
+        if (!Directory.Exists(profileDir))
+        {
+            return "Profile directory was not found.";
+        }
+
+        var lines = new List<string>();
+        foreach (var file in Directory.EnumerateFiles(profileDir)
+                     .OrderByDescending(File.GetLastWriteTimeUtc)
+                     .Take(12))
+        {
+            try
+            {
+                var (json, _) = ReadLConnectProfileJson(file);
+                if (json is JsonObject root)
+                {
+                    lines.Add($"{Path.GetFileName(file)} | utc={File.GetLastWriteTimeUtc(file):O} | keys={string.Join(",", root.Select(kvp => kvp.Key))}");
+                    if (root["IsLandscape"] is JsonNode isLandscape)
+                    {
+                        lines.Add($"  IsLandscape={isLandscape}");
+                    }
+                    if (root["SelectedTemplateId"] is JsonNode selected)
+                    {
+                        lines.Add($"  SelectedTemplateId={selected}");
+                    }
+                    if (root["LandscapeTemplateConfig"] is JsonObject landscape)
+                    {
+                        lines.Add($"  Landscape.SelectedTemplateId={landscape["SelectedTemplateId"]}");
+                    }
+                    if (root["PortraitTemplateConfig"] is JsonObject portrait)
+                    {
+                        lines.Add($"  Portrait.SelectedTemplateId={portrait["SelectedTemplateId"]}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                lines.Add($"{Path.GetFileName(file)} | read failed: {ex.Message}");
+            }
+        }
+
+        return string.Join(Environment.NewLine, lines);
     }
 
     private async Task DownloadGalleryPackageForInstallAsync(
@@ -15254,6 +15438,16 @@ public partial class MainWindow : Window
         string body)
     {
         var result = await _lConnectClient.SendDeviceRequestForJsonAsync(client, devicePath, type, body);
+        RecordLConnectRequestTrace(
+            type,
+            devicePath,
+            body,
+            result.Port,
+            result.RequestMode,
+            result.StatusCode,
+            result.ReasonPhrase,
+            result.Body,
+            result.Error);
         TraceUniversal88Apply(
             $"L-Connect HTTP action={type}; controller={DescribeControllerForTrace(devicePath)}; " +
             $"port={(result.Port?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}; mode={result.RequestMode}; " +
@@ -15262,6 +15456,49 @@ public partial class MainWindow : Window
             $"body={DescribeLConnectResponseForTrace(result.Body, type)}; " +
             $"error={(string.IsNullOrWhiteSpace(result.Error) ? "<none>" : result.Error)}");
         return result.IsHttpSuccess ? result.Body : "";
+    }
+
+    private void RecordLConnectRequestTrace(
+        string action,
+        string devicePath,
+        string requestBody,
+        int? port,
+        string requestMode,
+        int? statusCode,
+        string reasonPhrase,
+        string responseBody,
+        string error)
+    {
+        var line = string.Join(" | ", new[]
+        {
+            DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+            $"action={action}",
+            $"controller={DescribeControllerForTrace(devicePath)}",
+            $"port={(port?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}",
+            $"mode={requestMode}",
+            $"status={(statusCode?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}",
+            $"reason={(string.IsNullOrWhiteSpace(reasonPhrase) ? "<none>" : reasonPhrase)}",
+            $"request={DescribeLConnectResponseForTrace(requestBody, action)}",
+            $"response={DescribeLConnectResponseForTrace(responseBody, action)}",
+            $"error={(string.IsNullOrWhiteSpace(error) ? "<none>" : error)}"
+        });
+
+        lock (_lConnectRequestTraceLock)
+        {
+            _lConnectRequestTrace.Enqueue(line);
+            while (_lConnectRequestTrace.Count > 240)
+            {
+                _lConnectRequestTrace.Dequeue();
+            }
+        }
+    }
+
+    private string GetLConnectRequestTraceText()
+    {
+        lock (_lConnectRequestTraceLock)
+        {
+            return string.Join(Environment.NewLine, _lConnectRequestTrace);
+        }
     }
 
     private static string DescribeLConnectResponseForTrace(string json, string action)

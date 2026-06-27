@@ -267,6 +267,7 @@
     "resultBackgroundAvailable": "Фоновый файл установлен",
     "resultBackgroundMissing": "Установленный фоновый файл не обнаружен",
     "resultTemplatePath": "Путь темы: {0}",
+    "resultDiagnostic": "Пакет диагностики: {0}",
     "votingNotConfigured": "URL статистики Cloudflare еще не настроен. Добавьте Worker URL в templates/gallery-stats-url.txt."
   },
   "about": {

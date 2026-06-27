@@ -267,6 +267,7 @@
     "resultBackgroundAvailable": "背景文件已安装",
     "resultBackgroundMissing": "未检测到已安装的背景文件",
     "resultTemplatePath": "主题路径：{0}",
+    "resultDiagnostic": "诊断包：{0}",
     "votingNotConfigured": "尚未配置 Cloudflare 统计 URL。请将 Worker URL 添加到 templates/gallery-stats-url.txt。"
   },
   "about": {

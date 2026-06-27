@@ -267,6 +267,7 @@
     "resultBackgroundAvailable": "Background file installed",
     "resultBackgroundMissing": "No installed background file was detected",
     "resultTemplatePath": "Template path: {0}",
+    "resultDiagnostic": "Diagnostic package: {0}",
     "votingNotConfigured": "Cloudflare stats URL is not configured yet. Add the Worker URL to templates/gallery-stats-url.txt."
   },
   "about": {

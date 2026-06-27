@@ -267,6 +267,7 @@
     "resultBackgroundAvailable": "Arka plan dosyası kuruldu",
     "resultBackgroundMissing": "Kurulu arka plan dosyası algılanmadı",
     "resultTemplatePath": "Tema yolu: {0}",
+    "resultDiagnostic": "Tanı paketi: {0}",
     "votingNotConfigured": "Cloudflare istatistik adresi henüz ayarlanmamış. Worker URL adresini templates/gallery-stats-url.txt dosyasına ekleyin."
   },
   "about": {
