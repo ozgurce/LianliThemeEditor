@@ -386,15 +386,6 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/neon-board-76f041e6.png",
       "packageUrl": "packages/neon-board-76f041e6.lltheme"
-    },
-    {
-      "id": "test-e319385e",
-      "name": "test",
-      "author": "dido",
-      "deviceModel": "hydroshift-ii-lcd-s",
-      "deviceName": "Hydroshift II LCD-S",
-      "previewUrl": "previews/test-e319385e.png",
-      "packageUrl": "packages/test-e319385e.lltheme"
     }
   ]
 }
