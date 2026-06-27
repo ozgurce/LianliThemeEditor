@@ -136,6 +136,60 @@
       "packageUrl": "packages/gaming-rig-v2.lltheme"
     },
     {
+      "id": "clockv1-hydroshift-c",
+      "name": "ClockV1 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-clockv1.png",
+      "packageUrl": "packages/hydroshift-clockv1.zip"
+    },
+    {
+      "id": "clockv1-hydroshift-s",
+      "name": "ClockV1 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-clockv1.png",
+      "packageUrl": "packages/hydroshift-clockv1.zip"
+    },
+    {
+      "id": "clockv2-hydroshift-c",
+      "name": "ClockV2 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-clockv2.png",
+      "packageUrl": "packages/hydroshift-clockv2.zip"
+    },
+    {
+      "id": "clockv2-hydroshift-s",
+      "name": "ClockV2 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-clockv2.png",
+      "packageUrl": "packages/hydroshift-clockv2.zip"
+    },
+    {
+      "id": "clockv3-hydroshift-c",
+      "name": "ClockV3 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-clockv3.png",
+      "packageUrl": "packages/hydroshift-clockv3.zip"
+    },
+    {
+      "id": "clockv3-hydroshift-s",
+      "name": "ClockV3 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-clockv3.png",
+      "packageUrl": "packages/hydroshift-clockv3.zip"
+    },
+    {
       "id": "m1-hydroshift-c",
       "name": "m1 (LCD-C)",
       "author": "Lian Li",
