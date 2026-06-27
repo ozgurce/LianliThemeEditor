@@ -386,6 +386,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/neon-board-76f041e6.png",
       "packageUrl": "packages/neon-board-76f041e6.lltheme"
+    },
+    {
+      "id": "omega-vault-c6fd009a",
+      "name": "Omega_Vault",
+      "author": "\u00D6zg\u00FCr",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/omega-vault-c6fd009a.png",
+      "packageUrl": "packages/omega-vault-c6fd009a.zip"
     }
   ]
 }
