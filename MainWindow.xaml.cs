@@ -9389,6 +9389,14 @@ public partial class MainWindow : Window
                         if (!string.IsNullOrWhiteSpace(resolved) && File.Exists(resolved))
                         {
                             installedTemplatePath = resolved;
+                            if (preservedTemplateBytes.Length > 0 &&
+                                !await CanLoadTemplatePathAsync(deviceModel, installedTemplatePath))
+                            {
+                                await File.WriteAllBytesAsync(destinationTemplate, preservedTemplateBytes);
+                                installedTemplatePath = destinationTemplate;
+                                lConnectId = importedId;
+                                AppLogger.Info($"L-Connect imported an unreadable template; restored editor template: {destinationTemplate}");
+                            }
                         }
                         break;
                     }
@@ -9426,6 +9434,14 @@ public partial class MainWindow : Window
                 await File.WriteAllBytesAsync(destinationTemplate, preservedTemplateBytes);
                 installedTemplatePath = destinationTemplate;
                 AppLogger.Info($"L-Connect import was not visible yet; restored editor template: {destinationTemplate}");
+            }
+            else if (preservedTemplateBytes.Length > 0 &&
+                     !await CanLoadTemplatePathAsync(deviceModel, installedTemplatePath))
+            {
+                await File.WriteAllBytesAsync(destinationTemplate, preservedTemplateBytes);
+                installedTemplatePath = destinationTemplate;
+                lConnectId = importedId;
+                AppLogger.Info($"L-Connect import produced an unreadable template; restored editor template: {destinationTemplate}");
             }
         }
 
@@ -9469,6 +9485,25 @@ public partial class MainWindow : Window
         var fullDestination = Path.GetFullPath(destinationPath);
         Directory.CreateDirectory(Path.GetDirectoryName(fullDestination)!);
         entry.ExtractToFile(fullDestination, true);
+    }
+
+    private async Task<bool> CanLoadTemplatePathAsync(string deviceModel, string templatePath)
+    {
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            await _supporter.LoadTemplatePathAsync(deviceModel, templatePath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Template readability check failed: {templatePath}", ex);
+            return false;
+        }
     }
 
     private async void RefreshGalleryButton_Click(object sender, RoutedEventArgs e)
