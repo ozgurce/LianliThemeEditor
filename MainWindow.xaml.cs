@@ -481,13 +481,9 @@ public partial class MainWindow : Window
 
     private async void ActiveThemeButton_Click(object sender, RoutedEventArgs e)
     {
-        // A template picked from the list is an explicit edit target. Do not switch
-        // back to "Use active theme" here: L-Connect can briefly keep reporting the
-        // previously active ID while ReloadAssets is in flight, causing Apply All to
-        // redirect the write and activation to the wrong template.
         var wasLoading = _isLoading;
         _isLoading = true;
-        UseActiveCheck.IsChecked = false;
+        UseActiveCheck.IsChecked = true;
         _isLoading = wasLoading;
         await LoadLayersAsync(false);
     }
@@ -1209,13 +1205,6 @@ public partial class MainWindow : Window
                 TemplatePathText.Text = activeTemplatePath;
                 TemplateTitleText.Text = $"Template ID: {_currentTemplateId}";
                 return (deviceModel, activeTemplatePath);
-            }
-
-            // Keep the last verified path as a fallback when L-Connect's local API is
-            // temporarily unavailable.
-            if (!string.IsNullOrWhiteSpace(_currentTemplatePath) && File.Exists(_currentTemplatePath))
-            {
-                return (deviceModel, _currentTemplatePath);
             }
 
             throw new InvalidOperationException("L-Connect active template could not be resolved.");
@@ -14688,6 +14677,12 @@ public partial class MainWindow : Window
 
     private async Task<string> TryGetActiveTemplateIdFromLConnectAsync(string deviceModel)
     {
+        var logCandidate = TryGetLatestAppliedTemplateIdFromLConnectLogs(deviceModel);
+        if (TemplateExistsForDevice(deviceModel, logCandidate))
+        {
+            return logCandidate;
+        }
+
         var candidates = new List<string>();
         try
         {
@@ -14706,6 +14701,86 @@ public partial class MainWindow : Window
         }
 
         return ChooseBestActiveTemplateIdCandidate(deviceModel, candidates);
+    }
+
+    private static string TryGetLatestAppliedTemplateIdFromLConnectLogs(string deviceModel)
+    {
+        var tag = GetLConnectLogDeviceTag(deviceModel);
+        if (string.IsNullOrWhiteSpace(tag))
+        {
+            return "";
+        }
+
+        var logDir = Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", "logs");
+        if (!Directory.Exists(logDir))
+        {
+            return "";
+        }
+
+        var pattern = new Regex(@"\[" + Regex.Escape(tag) + @"\]\s+Template\s+'(?<id>[^']+)'\s+applied", RegexOptions.IgnoreCase);
+        foreach (var file in Directory.GetFiles(logDir, "L-Connect-Service-*.log")
+                     .OrderByDescending(File.GetLastWriteTimeUtc)
+                     .Take(5))
+        {
+            string[] lines;
+            try
+            {
+                lines = ReadSharedLogLines(file);
+            }
+            catch
+            {
+                continue;
+            }
+
+            for (var i = lines.Length - 1; i >= 0; i--)
+            {
+                var match = pattern.Match(lines[i]);
+                if (match.Success)
+                {
+                    return match.Groups["id"].Value.Trim();
+                }
+            }
+        }
+
+        return "";
+    }
+
+    private static string[] ReadSharedLogLines(string path)
+    {
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        var lines = new List<string>();
+        while (reader.ReadLine() is { } line)
+        {
+            lines.Add(line);
+        }
+
+        return lines.ToArray();
+    }
+
+    private static string GetLConnectLogDeviceTag(string deviceModel)
+    {
+        if (deviceModel.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase))
+        {
+            return "HydroShift II LCD-S";
+        }
+
+        if (deviceModel.Equals("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase))
+        {
+            return "HydroShift II LCD-C";
+        }
+
+        if (deviceModel.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Universal Screen";
+        }
+
+        if (deviceModel.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return "8.8 inch";
+        }
+
+        return "";
     }
 
     private static string ChooseBestActiveTemplateIdCandidate(string deviceModel, IEnumerable<string> candidates)

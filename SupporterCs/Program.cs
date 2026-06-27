@@ -2624,6 +2624,12 @@ internal static class Program
 
         public static string GetActiveTemplateId(string profileDir, string deviceModel, string lConnectDir)
         {
+            var logTemplateId = GetLatestAppliedTemplateIdFromLogs(deviceModel);
+            if (TemplateExistsForActiveId(deviceModel, lConnectDir, logTemplateId))
+            {
+                return logTemplateId;
+            }
+
             foreach (var file in ProfileFiles(profileDir))
             {
                 try
@@ -2643,6 +2649,86 @@ internal static class Program
 
             throw new InvalidOperationException(
                 $"No active template was found for {deviceModel}.");
+        }
+
+        private static string GetLatestAppliedTemplateIdFromLogs(string deviceModel)
+        {
+            var tag = GetLogDeviceTag(deviceModel);
+            if (string.IsNullOrWhiteSpace(tag))
+            {
+                return "";
+            }
+
+            var logDir = Path.Combine(DefaultProgramData, "logs");
+            if (!Directory.Exists(logDir))
+            {
+                return "";
+            }
+
+            var pattern = new Regex(@"\[" + Regex.Escape(tag) + @"\]\s+Template\s+'(?<id>[^']+)'\s+applied", RegexOptions.IgnoreCase);
+            foreach (var file in Directory.GetFiles(logDir, "L-Connect-Service-*.log")
+                         .OrderByDescending(File.GetLastWriteTimeUtc)
+                         .Take(5))
+            {
+                string[] lines;
+                try
+                {
+                    lines = ReadSharedLogLines(file);
+                }
+                catch
+                {
+                    continue;
+                }
+
+                for (var i = lines.Length - 1; i >= 0; i--)
+                {
+                    var match = pattern.Match(lines[i]);
+                    if (match.Success)
+                    {
+                        return match.Groups["id"].Value.Trim();
+                    }
+                }
+            }
+
+            return "";
+        }
+
+        private static string[] ReadSharedLogLines(string path)
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            var lines = new List<string>();
+            while (reader.ReadLine() is { } line)
+            {
+                lines.Add(line);
+            }
+
+            return lines.ToArray();
+        }
+
+        private static string GetLogDeviceTag(string deviceModel)
+        {
+            if (deviceModel.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase))
+            {
+                return "HydroShift II LCD-S";
+            }
+
+            if (deviceModel.Equals("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase))
+            {
+                return "HydroShift II LCD-C";
+            }
+
+            if (deviceModel.Equals("universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Universal Screen";
+            }
+
+            if (deviceModel.Equals("vm-9.2-inch", StringComparison.OrdinalIgnoreCase))
+            {
+                return "8.8 inch";
+            }
+
+            return "";
         }
 
         private static bool TemplateExistsForActiveId(string deviceModel, string lConnectDir, string templateId)
