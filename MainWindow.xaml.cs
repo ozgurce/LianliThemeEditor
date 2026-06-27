@@ -9363,15 +9363,6 @@ public partial class MainWindow : Window
                     if (!string.IsNullOrWhiteSpace(importedLConnectId))
                     {
                         lConnectId = importedLConnectId;
-                        if (!string.IsNullOrWhiteSpace(importedBackgroundPath) && File.Exists(importedBackgroundPath))
-                        {
-                            await CopyTemplateBackgroundAsync(
-                                client,
-                                path,
-                                deviceModel,
-                                importedLConnectId,
-                                importedBackgroundPath);
-                        }
                         foreach (var previousId in previousImportedIds.Where(id =>
                                      !string.Equals(id, importedLConnectId, StringComparison.OrdinalIgnoreCase)))
                         {
@@ -14326,8 +14317,11 @@ public partial class MainWindow : Window
         // Read WPF state once on the UI thread. The profile work below runs on a
         // worker thread and must not touch UniversalOrientationCombo directly.
         var preferLandscape = IsUniversalLandscape();
+        var applyBackgroundPath = TemplateHasEmbeddedBackgroundReference(templatePath)
+            ? ""
+            : backgroundPath;
         var candidates = ThemeInstallationService
-            .BuildActivationCandidates(templateId, templatePath, backgroundPath)
+            .BuildActivationCandidates(templateId, templatePath, applyBackgroundPath)
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -14340,7 +14334,9 @@ public partial class MainWindow : Window
             $"BEGIN version={GetAppDisplayVersion()} built={BuildInfo.BuiltAt}; " +
             $"orientation={(preferLandscape ? "landscape" : "portrait")}; " +
             $"templateId={templateId}; templateFile={DescribeFileForTrace(templatePath)}; " +
-            $"backgroundFile={DescribeFileForTrace(backgroundPath)}; candidates=[{string.Join(", ", candidates)}]");
+            $"backgroundFile={DescribeFileForTrace(backgroundPath)}; " +
+            $"applyBackgroundFile={DescribeFileForTrace(applyBackgroundPath)}; " +
+            $"candidates=[{string.Join(", ", candidates)}]");
 
         try
         {
@@ -14394,10 +14390,10 @@ public partial class MainWindow : Window
                         var prePatchProfile = await Task.Run(() =>
                             TrySetUniversal88ActiveTemplateProfile(candidateId, preferLandscape));
                         var prePatchBackground = false;
-                        if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+                        if (!string.IsNullOrWhiteSpace(applyBackgroundPath) && File.Exists(applyBackgroundPath))
                         {
                             prePatchBackground = await Task.Run(() =>
-                                TrySetUniversal88TemplateBackgroundProfile(candidateId, backgroundPath));
+                                TrySetUniversal88TemplateBackgroundProfile(candidateId, applyBackgroundPath));
                         }
 
                         if (prePatchProfile || prePatchBackground)
@@ -14417,15 +14413,15 @@ public partial class MainWindow : Window
                         TraceUniversal88Apply($"Candidate result id={candidateId}; accepted={accepted}; selectedConfirmed={selected}");
                         if (selected)
                         {
-                            await CopyTemplateBackgroundAsync(client, path, UniversalScreenDeviceModel, candidateId, backgroundPath);
+                            await CopyTemplateBackgroundAsync(client, path, UniversalScreenDeviceModel, candidateId, applyBackgroundPath);
                             var profileSaved = await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
                             var localProfilePatched = await Task.Run(() =>
                                 TrySetUniversal88ActiveTemplateProfile(candidateId, preferLandscape));
                             var backgroundProfilePatched = false;
-                            if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+                            if (!string.IsNullOrWhiteSpace(applyBackgroundPath) && File.Exists(applyBackgroundPath))
                             {
                                 backgroundProfilePatched = await Task.Run(() =>
-                                    TrySetUniversal88TemplateBackgroundProfile(candidateId, backgroundPath));
+                                    TrySetUniversal88TemplateBackgroundProfile(candidateId, applyBackgroundPath));
                             }
 
                             var forceApplied = await ForceApplyTemplateRefreshAsync(
@@ -14433,7 +14429,7 @@ public partial class MainWindow : Window
                                 path,
                                 UniversalScreenDeviceModel,
                                 candidateId,
-                                backgroundPath);
+                                applyBackgroundPath);
                             TraceUniversal88Apply(
                                 $"SUCCESS via L-Connect candidate={candidateId}; SaveProfile={profileSaved}; " +
                                 $"localProfilePatched={localProfilePatched}; " +
@@ -14466,10 +14462,10 @@ public partial class MainWindow : Window
                 if (patched)
                 {
                     var backgroundPatched = false;
-                    if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+                    if (!string.IsNullOrWhiteSpace(applyBackgroundPath) && File.Exists(applyBackgroundPath))
                     {
                         backgroundPatched = await Task.Run(() =>
-                            TrySetUniversal88TemplateBackgroundProfile(candidateId, backgroundPath));
+                            TrySetUniversal88TemplateBackgroundProfile(candidateId, applyBackgroundPath));
                     }
 
                     await ReloadInstalledTemplatesInLConnectAsync();
@@ -14517,6 +14513,27 @@ public partial class MainWindow : Window
         catch
         {
             return $"{Path.GetFileName(path)} (exists)";
+        }
+    }
+
+    private static bool TemplateHasEmbeddedBackgroundReference(string templatePath)
+    {
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            var text = System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(templatePath));
+            return text.Contains("videoPath", StringComparison.OrdinalIgnoreCase) ||
+                   text.Contains(@"universal-screen-8.8-inch\video", StringComparison.OrdinalIgnoreCase) ||
+                   text.Contains("universal-screen-8.8-inch/video", StringComparison.OrdinalIgnoreCase) ||
+                   Regex.IsMatch(text, @"\.(h264|mp4|gif|png|jpe?g|webp)", RegexOptions.IgnoreCase);
+        }
+        catch
+        {
+            return false;
         }
     }
 
