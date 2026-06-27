@@ -6556,8 +6556,8 @@ public partial class MainWindow : Window
             case "GPUFAN": return "1400";
             case "HDDTEMP": return "38";
             case "HDDTEMP_F": return "100";
-            case "HDDUSED": return "64";
-            case "DRVLOAD": return "2";
+            case "HDDUSED": return "2";
+            case "DRVLOAD": return "64";
             case "PUMP": return "2600";
             case "WATERPUMP": return "2600";
             case "WATERTEMPC": return "31";
@@ -6760,8 +6760,8 @@ public partial class MainWindow : Window
                     .DefaultIfEmpty(0)
                     .Max();
                 var activityText = Math.Round(Math.Clamp(activity, 0, 100)).ToString("0", CultureInfo.InvariantCulture);
-                fresh[$"DRVLOAD:{drive}"] = activityText;
-                fresh.TryAdd("DRVLOAD", activityText);
+                fresh[$"HDDUSED:{drive}"] = activityText;
+                fresh.TryAdd("HDDUSED", activityText);
             }
 
             foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed))
@@ -6771,8 +6771,8 @@ public partial class MainWindow : Window
                     ? 0
                     : (drive.TotalSize - drive.AvailableFreeSpace) * 100.0 / drive.TotalSize;
                 var usedText = Math.Round(usedPercent).ToString("0", CultureInfo.InvariantCulture);
-                fresh[$"HDDUSED:{letter}"] = usedText;
-                fresh.TryAdd("HDDUSED", usedText);
+                fresh[$"DRVLOAD:{letter}"] = usedText;
+                fresh.TryAdd("DRVLOAD", usedText);
             }
 
             PutMemoryValues(fresh, readings);
@@ -12844,7 +12844,7 @@ public partial class MainWindow : Window
             "DATE" => "Date",
             "DAY" => "Day",
             "DOWNDSPEED" => "Download Speed",
-            "DRVLOAD" => "Drive Load",
+            "DRVLOAD" => "Drive Usage",
             "FPS_AVG" => "Average FPS",
             "GPUCLOCK" => "GPU Clock MHz",
             "GPUCLOCK_G" => "GPU Clock GHz",
@@ -12860,7 +12860,7 @@ public partial class MainWindow : Window
             "GPUVOLTAGE" => "GPU Voltage",
             "HDDTEMP" => "Drive Temperature",
             "HDDTEMP_F" => "Drive Temperature °F",
-            "HDDUSED" => "Drive Usage",
+            "HDDUSED" => "Drive Load",
             "PUMP" => "Pump",
             "RAM" => "RAM Used",
             "RAM_GB" => "RAM Used GB",
