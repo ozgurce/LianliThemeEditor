@@ -976,20 +976,8 @@ public partial class MainWindow : Window
             }
             else if (UseActiveCheck.IsChecked == true)
             {
-                var activeTemplateId = await TryGetActiveTemplateIdFromLConnectAsync(deviceModel);
-                var activeTemplatePath = ResolveTemplatePathByIdOrAlias(deviceModel, activeTemplateId);
-                if (!string.IsNullOrWhiteSpace(activeTemplatePath) && File.Exists(activeTemplatePath))
-                {
-                    result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath));
-                }
-                else if (!string.IsNullOrWhiteSpace(_currentTemplatePath) && File.Exists(_currentTemplatePath))
-                {
-                    result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, _currentTemplatePath));
-                }
-                else
-                {
-                    throw new InvalidOperationException("L-Connect active template could not be resolved.");
-                }
+                result = await TryLoadActiveTemplateAsync(deviceModel) ??
+                         throw new InvalidOperationException("L-Connect active template could not be resolved.");
             }
             else
             {
@@ -1034,17 +1022,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var activeTemplateId = await TryGetActiveTemplateIdFromLConnectAsync(deviceModel);
-            var activeTemplatePath = ResolveTemplatePathByIdOrAlias(deviceModel, activeTemplateId);
-            result = !string.IsNullOrWhiteSpace(activeTemplatePath) && File.Exists(activeTemplatePath)
-                ? await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath))
-                : null;
-            if (result == null ||
-                string.IsNullOrWhiteSpace(result.TemplatePath) ||
-                !File.Exists(result.TemplatePath))
-            {
-                result = null;
-            }
+            result = await TryLoadActiveTemplateAsync(deviceModel);
         }
         catch (Exception ex)
         {
@@ -1083,6 +1061,40 @@ public partial class MainWindow : Window
 
         ApplyTemplateResult(result);
         SetBusy(false, FormatLanguageText("status.layersLoaded", "Loaded {0} layer(s).", Layers.Count(layer => !layer.IsEditorMetadata)));
+    }
+
+    private async Task<TemplateLoadResult?> TryLoadActiveTemplateAsync(string deviceModel)
+    {
+        try
+        {
+            var activeTemplateId = await TryGetActiveTemplateIdFromLConnectAsync(deviceModel);
+            var activeTemplatePath = ResolveTemplatePathStrict(deviceModel, activeTemplateId);
+            if (!string.IsNullOrWhiteSpace(activeTemplatePath) && File.Exists(activeTemplatePath))
+            {
+                var result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath));
+                if (!string.IsNullOrWhiteSpace(result.TemplatePath) && File.Exists(result.TemplatePath))
+                {
+                    return result;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Active template HTTP lookup failed: {ex.Message}");
+        }
+
+        try
+        {
+            var result = await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, true, ""));
+            return !string.IsNullOrWhiteSpace(result.TemplatePath) && File.Exists(result.TemplatePath)
+                ? result
+                : null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Active template profile lookup failed: {ex.Message}");
+            return null;
+        }
     }
 
     private void ApplyTemplateResult(TemplateLoadResult result)
