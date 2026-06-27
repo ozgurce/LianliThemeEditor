@@ -38,7 +38,8 @@ public sealed class LConnectClientService
                 type,
                 body,
                 cachedRequestMode.Value).ConfigureAwait(false);
-            if (IsServiceEndpointResponse(cachedResult))
+            if (IsMeaningfulServiceResponse(cachedResult) ||
+                (AcceptsEmptyResponse(type) && IsServiceEndpointResponse(cachedResult)))
             {
                 return cachedResult;
             }
@@ -58,7 +59,9 @@ public sealed class LConnectClientService
             }
         }
 
-        if (lastResult != null && IsServiceEndpointResponse(lastResult))
+        if (lastResult != null &&
+            (IsMeaningfulServiceResponse(lastResult) ||
+             (AcceptsEmptyResponse(type) && IsServiceEndpointResponse(lastResult))))
         {
             CacheEndpoint(DefaultServicePort, LConnectRequestMode.OfficialCompatible);
             return lastResult;
@@ -71,7 +74,8 @@ public sealed class LConnectClientService
             {
                 var result = await SendDeviceRequestForJsonAsync(client, port, devicePath, type, body, mode).ConfigureAwait(false);
                 lastResult = result;
-                if (IsMeaningfulServiceResponse(result) || IsServiceEndpointResponse(result))
+                if (IsMeaningfulServiceResponse(result) ||
+                    (AcceptsEmptyResponse(type) && IsServiceEndpointResponse(result)))
                 {
                     CacheEndpoint(port, mode);
                     return result;
@@ -95,7 +99,8 @@ public sealed class LConnectClientService
                 action,
                 body,
                 cachedRequestMode.Value).ConfigureAwait(false);
-            if (IsServiceEndpointResponse(cachedResult))
+            if (IsMeaningfulServiceResponse(cachedResult) ||
+                (AcceptsEmptyResponse(action) && IsServiceEndpointResponse(cachedResult)))
             {
                 return cachedResult;
             }
@@ -120,7 +125,9 @@ public sealed class LConnectClientService
             }
         }
 
-        if (lastResult != null && IsServiceEndpointResponse(lastResult))
+        if (lastResult != null &&
+            (IsMeaningfulServiceResponse(lastResult) ||
+             (AcceptsEmptyResponse(action) && IsServiceEndpointResponse(lastResult))))
         {
             CacheEndpoint(DefaultServicePort, LConnectRequestMode.OfficialCompatible);
             return lastResult;
@@ -133,7 +140,8 @@ public sealed class LConnectClientService
             {
                 var result = await SendServiceRequestForJsonAsync(client, port, action, body, mode).ConfigureAwait(false);
                 lastResult = result;
-                if (IsMeaningfulServiceResponse(result) || IsServiceEndpointResponse(result))
+                if (IsMeaningfulServiceResponse(result) ||
+                    (AcceptsEmptyResponse(action) && IsServiceEndpointResponse(result)))
                 {
                     CacheEndpoint(port, mode);
                     return result;
@@ -243,6 +251,13 @@ public sealed class LConnectClientService
 
     private static bool IsServiceEndpointResponse(LConnectHttpResult result) =>
         result.StatusCode.HasValue && result.StatusCode is not 404 and not 405;
+
+    private static bool AcceptsEmptyResponse(string action) =>
+        action.Equals("ReloadAssets", StringComparison.OrdinalIgnoreCase) ||
+        action.Equals("SaveProfile", StringComparison.OrdinalIgnoreCase) ||
+        action.Equals("StopVideo", StringComparison.OrdinalIgnoreCase) ||
+        action.Equals("ApplyScreenContent", StringComparison.OrdinalIgnoreCase) ||
+        action.Equals("SyncControllerList", StringComparison.OrdinalIgnoreCase);
 
     private void CacheEndpoint(int port, LConnectRequestMode mode)
     {
