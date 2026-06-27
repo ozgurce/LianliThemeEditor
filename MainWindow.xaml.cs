@@ -14391,6 +14391,23 @@ public partial class MainWindow : Window
                     foreach (var candidateId in liveCandidates)
                     {
                         TraceUniversal88Apply($"Trying ApplyTemplate candidate={candidateId}");
+                        var prePatchProfile = await Task.Run(() =>
+                            TrySetUniversal88ActiveTemplateProfile(candidateId, preferLandscape));
+                        var prePatchBackground = false;
+                        if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+                        {
+                            prePatchBackground = await Task.Run(() =>
+                                TrySetUniversal88TemplateBackgroundProfile(candidateId, backgroundPath));
+                        }
+
+                        if (prePatchProfile || prePatchBackground)
+                        {
+                            await SendLConnectDeviceRequestAsync(client, path, "ReloadAssets", "{}");
+                            TraceUniversal88Apply(
+                                $"Pre-apply profile patch candidate={candidateId}; " +
+                                $"profile={prePatchProfile}; background={prePatchBackground}");
+                        }
+
                         var accepted = await SendLConnectDeviceRequestAsync(
                             client,
                             path,
@@ -14404,9 +14421,23 @@ public partial class MainWindow : Window
                             var profileSaved = await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
                             var localProfilePatched = await Task.Run(() =>
                                 TrySetUniversal88ActiveTemplateProfile(candidateId, preferLandscape));
+                            var backgroundProfilePatched = false;
+                            if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+                            {
+                                backgroundProfilePatched = await Task.Run(() =>
+                                    TrySetUniversal88TemplateBackgroundProfile(candidateId, backgroundPath));
+                            }
+
+                            var forceApplied = await ForceApplyTemplateRefreshAsync(
+                                client,
+                                path,
+                                UniversalScreenDeviceModel,
+                                candidateId,
+                                backgroundPath);
                             TraceUniversal88Apply(
                                 $"SUCCESS via L-Connect candidate={candidateId}; SaveProfile={profileSaved}; " +
-                                $"localProfilePatched={localProfilePatched}");
+                                $"localProfilePatched={localProfilePatched}; " +
+                                $"backgroundProfilePatched={backgroundProfilePatched}; forceApplied={forceApplied}");
                             return true;
                         }
                     }
@@ -14599,6 +14630,7 @@ public partial class MainWindow : Window
                     {
                         await CopyTemplateBackgroundAsync(client, path, deviceModel, templateId, backgroundPath);
                         await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+                        await ForceApplyTemplateRefreshAsync(client, path, deviceModel, templateId, backgroundPath);
                         return true;
                     }
                 }
@@ -14609,6 +14641,7 @@ public partial class MainWindow : Window
                     {
                         await CopyTemplateBackgroundAsync(client, path, deviceModel, templateId, backgroundPath);
                         await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+                        await ForceApplyTemplateRefreshAsync(client, path, deviceModel, templateId, backgroundPath);
                         return true;
                     }
                 }
@@ -14874,6 +14907,7 @@ public partial class MainWindow : Window
                         {
                             await CopyTemplateBackgroundAsync(client, path, deviceModel, candidateId, backgroundPath);
                             await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+                            await ForceApplyTemplateRefreshAsync(client, path, deviceModel, candidateId, backgroundPath);
                             return candidateId;
                         }
                     }
@@ -14889,6 +14923,44 @@ public partial class MainWindow : Window
         }
 
         return "";
+    }
+
+    private async Task<bool> ForceApplyTemplateRefreshAsync(
+        HttpClient client,
+        string devicePath,
+        string deviceModel,
+        string templateId,
+        string backgroundPath)
+    {
+        if (string.IsNullOrWhiteSpace(templateId))
+        {
+            return false;
+        }
+
+        var accepted = false;
+        try
+        {
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ReloadAssets", "{}");
+            await Task.Delay(180);
+            if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+            {
+                await CopyTemplateBackgroundAsync(client, devicePath, deviceModel, templateId, backgroundPath);
+            }
+
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyTemplate", JsonSerializer.Serialize(templateId));
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
+            await Task.Delay(260);
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ReloadAssets", "{}");
+            await Task.Delay(180);
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyTemplate", JsonSerializer.Serialize(templateId));
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"Force apply refresh failed for {templateId}: {ex.Message}");
+        }
+
+        return accepted;
     }
 
     private async Task<string> ImportTemplateIntoLConnectAsync(HttpClient client, string devicePath, string importZip)
