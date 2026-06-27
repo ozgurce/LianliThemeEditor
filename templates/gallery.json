@@ -388,15 +388,6 @@
       "packageUrl": "packages/neon-board-76f041e6.lltheme"
     },
     {
-      "id": "omega-vault-beacafee",
-      "name": "Omega_Vault",
-      "author": "\u00D6zg\u00FCr",
-      "deviceModel": "universal-screen-8.8-inch",
-      "deviceName": "8.8\u0022 Universal Screen",
-      "previewUrl": "previews/omega-vault-beacafee.png",
-      "packageUrl": "packages/omega-vault-beacafee.zip"
-    },
-    {
       "id": "test-e319385e",
       "name": "test",
       "author": "dido",
@@ -404,6 +395,15 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/test-e319385e.png",
       "packageUrl": "packages/test-e319385e.lltheme"
+    },
+    {
+      "id": "omega-vault-beacafee",
+      "name": "Omega_Vault",
+      "author": "\u00D6zg\u00FCr",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/omega-vault-beacafee.png",
+      "packageUrl": "packages/omega-vault-beacafee.zip"
     }
   ]
 }
