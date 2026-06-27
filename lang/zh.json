@@ -561,7 +561,7 @@
     "DATE": "日期",
     "DAY": "星期",
     "DOWNDSPEED": "下载速度",
-    "DRVLOAD": "磁盘负载",
+    "DRVLOAD": "磁盘活动",
     "FPS_AVG": "平均 FPS",
     "GPUCLOCK": "GPU 频率 (MHz)",
     "GPUCLOCK_G": "GPU 频率 (GHz)",

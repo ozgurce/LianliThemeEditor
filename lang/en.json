@@ -561,7 +561,7 @@
     "DATE": "Date",
     "DAY": "Day",
     "DOWNDSPEED": "Download Speed",
-    "DRVLOAD": "Drive Load",
+    "DRVLOAD": "Drive Activity",
     "FPS_AVG": "Average FPS",
     "GPUCLOCK": "GPU Clock (MHz)",
     "GPUCLOCK_G": "GPU Clock (GHz)",

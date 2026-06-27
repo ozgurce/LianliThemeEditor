@@ -53,7 +53,7 @@ internal static class Program
 
     private sealed class SupporterApplication
     {
-        private readonly Arguments _args;
+        private Arguments _args;
         private readonly string _deviceModel;
         private readonly string _lConnectDir;
         private readonly string _profileDir;
@@ -142,10 +142,18 @@ internal static class Program
 
             if (_args.HasValue("SetBackgroundMedia")) SetBackground(theme, _args.Get("SetBackgroundMedia"));
             if (_args.HasValue("NormalizeTemplateId")) NormalizeTemplateIdentity(theme, _args.Get("NormalizeTemplateId"));
+            if (_args.Has("FastLayerBatch") && _args.HasValue("ApplyLayerBatchJson"))
+            {
+                ApplyLayerBatch(theme);
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
+                return;
+            }
             ApplyLegacyPrimaryFields(theme);
             ApplyAddOperation(theme);
             ApplyGroupingMetadata(theme);
             ApplyRemoveDuplicateMove(theme);
+            ApplyLayerBatch(theme);
             ApplyLayerEdit(theme);
             ApplyShadow(theme);
             MoveGroupingMetadataToEnd(theme);
@@ -372,6 +380,14 @@ internal static class Program
                 {
                     ids.Add(match.Groups["id"].Value);
                 }
+                foreach (Match match in Regex.Matches(value, @"(?<id>[A-Za-z0-9_.-]+)\.template", RegexOptions.IgnoreCase))
+                {
+                    ids.Add(match.Groups["id"].Value);
+                }
+                foreach (Match match in Regex.Matches(value, @"(?<id>LL[A-Za-z0-9]+(?:_\d{8}_\d{6})+)", RegexOptions.IgnoreCase))
+                {
+                    ids.Add(match.Groups["id"].Value);
+                }
             }
 
             if (root != null)
@@ -539,6 +555,21 @@ internal static class Program
                     $@"(?<![A-Za-z0-9_.-]){Regex.Escape(oldId)}(?=\.turtheme)",
                     newId,
                     RegexOptions.IgnoreCase);
+                result = Regex.Replace(
+                    result,
+                    $@"(?<![A-Za-z0-9_.-]){Regex.Escape(oldId)}(?=\.template)",
+                    newId,
+                    RegexOptions.IgnoreCase);
+                result = Regex.Replace(
+                    result,
+                    $@"(?<![A-Za-z0-9_.-]){Regex.Escape(oldId)}(?=(?:[-_][A-Za-z0-9][A-Za-z0-9_.-]*)?\.(?:mp4|h264|png|jpe?g|gif|webp)|[-_]\d)",
+                    newId,
+                    RegexOptions.IgnoreCase);
+                result = Regex.Replace(
+                    result,
+                    $@"(?<![A-Za-z0-9_.-]){Regex.Escape(oldId)}(?![A-Za-z0-9_.-])",
+                    newId,
+                    RegexOptions.IgnoreCase);
             }
 
             return result;
@@ -619,7 +650,14 @@ internal static class Program
 
             Reflection.TrySet(theme, "videoName", Path.GetFileName(path));
             var themeMediaPath = Path.ChangeExtension(path, ".h264");
-            if (!File.Exists(themeMediaPath)) themeMediaPath = path;
+            if (!File.Exists(source))
+            {
+                themeMediaPath = path;
+            }
+            else if (!File.Exists(themeMediaPath))
+            {
+                themeMediaPath = path;
+            }
             foreach (var name in new[] { "videoPath", "o_videoPath", "videoPath2", "videoPath3" })
                 Reflection.TrySet(theme, name, themeMediaPath);
             foreach (var graph in Graphs(theme).Cast<object>().Where(x => x.GetType().Name == "GraphAnimation"))
@@ -658,13 +696,11 @@ internal static class Program
         private void ApplyAddOperation(object theme)
         {
             var addText = _args.HasValue("AddText");
-            var addData = _args.HasValue("AddDataSource") &&
-                          !_args.HasValue("AddProgressBar") &&
-                          !_args.HasValue("AddClock");
             var addImage = _args.HasValue("AddImage");
-            var addClock = _args.HasValue("AddClock");
+            var addClock = _args.Has("AddClock");
             var addGraph = _args.HasValue("AddProgressBar");
-            var addSensor = _args.HasValue("AddSensor");
+            var addSensor = _args.Has("AddSensor");
+            var addData = _args.HasValue("AddDataSource") && !addGraph && !addClock && !addSensor;
             if (new[] { addText, addData, addImage, addClock, addGraph, addSensor }.Count(x => x) > 1)
                 throw new InvalidOperationException("Only one layer can be added per operation.");
 
@@ -1119,7 +1155,7 @@ internal static class Program
                          ,("LayerClockCenterX", "centerX"), ("LayerClockCenterY", "centerY"),
                          ("LayerClockAngle", "angle"), ("LayerClockEndAngle", "endAngle"),
                          ("LayerClockOffset", "offset"), ("LayerClockOriginX", "o_X"), ("LayerClockOriginY", "o_Y")
-                     })
+                      })
             {
                 SetIfProvided(layer, pair.Item2, pair.Item1);
             }
@@ -1189,6 +1225,28 @@ internal static class Program
                 var parts = Regex.Split(_args.Get("LayerRect"), @"[,; ]+").Where(x => x.Length > 0).Select(int.Parse).ToArray();
                 if (parts.Length != 4) throw new InvalidOperationException("LayerRect must be x,y,width,height");
                 Reflection.TrySet(layer, "rect", new Rectangle(parts[0], parts[1], parts[2], parts[3]));
+            }
+        }
+
+        private void ApplyLayerBatch(object theme)
+        {
+            if (!_args.HasValue("ApplyLayerBatchJson")) return;
+            var path = _args.Get("ApplyLayerBatchJson");
+            if (!File.Exists(path)) throw new FileNotFoundException("Layer batch file not found.", path);
+            var batch = Json.Deserialize<List<List<string>>>(File.ReadAllText(path, Encoding.UTF8))
+                        ?? new List<List<string>>();
+            var parentArgs = _args;
+            try
+            {
+                foreach (var layerArgs in batch)
+                {
+                    _args = Arguments.Parse(layerArgs.ToArray());
+                    ApplyLayerEdit(theme);
+                }
+            }
+            finally
+            {
+                _args = parentArgs;
             }
         }
 
@@ -1702,6 +1760,7 @@ internal static class Program
 
             var canvasWidth = Math.Max(1, _args.GetInt("CanvasWidth", 480));
             var canvasHeight = Math.Max(1, _args.GetInt("CanvasHeight", 480));
+            var isUniversal88 = string.Equals(deviceName, "universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase);
             var autoRotation = rotationDegrees == 0
                 ? GetAutoBackgroundRotationDegrees(ffmpeg, sourcePath, canvasWidth, canvasHeight)
                 : 0;
@@ -1716,27 +1775,39 @@ internal static class Program
             var filter = rotation +
                          $"scale={canvasWidth}:{canvasHeight}:force_original_aspect_ratio=increase:flags=lanczos," +
                          $"crop={canvasWidth}:{canvasHeight},setsar=1,fps=30,format=yuv420p";
-            var encoder = new[] { "-an", "-c:v", "libx264", "-b:v", "2400k", "-tune", "zerolatency", "-pix_fmt", "yuv420p" };
+            if (isUniversal88)
+            {
+                filter = rotation +
+                         $"scale={canvasWidth}:{canvasHeight}:force_original_aspect_ratio=increase:flags=lanczos," +
+                         $"crop={canvasWidth}:{canvasHeight},setsar=1,fps=24,format=yuv420p";
+            }
+            var h264Filter = filter;
+            var encoder = new[]
+            {
+                "-an", "-c:v", "libx264", "-preset", "ultrafast",
+                "-x264opts", "bframes=0", "-profile:v", "baseline",
+                "-level", "3.1", "-refs", "1", "-b:v", "2400k",
+                "-tune", "zerolatency", "-pix_fmt", "yuv420p"
+            };
             var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
             try
             {
                 if (extension == ".h264")
                 {
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter }).Concat(encoder).Concat(new[] { "-movflags", "+faststart", tempMp4 }));
-                    if (normalizedRotation == 0) File.Copy(sourcePath, tempH264, true);
-                    else RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter }).Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
+                    RunFfmpeg(ffmpeg, new[] { "-y", "-i", tempMp4, "-vf", h264Filter }.Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter, "-frames:v", "1", tempPreview }));
                 }
                 else if (extension is ".png" or ".jpg" or ".jpeg")
                 {
                     RunFfmpeg(ffmpeg, new[] { "-y", "-loop", "1", "-i", sourcePath, "-t", "1", "-vf", filter }.Concat(encoder).Concat(new[] { "-movflags", "+faststart", tempMp4 }));
-                    RunFfmpeg(ffmpeg, new[] { "-y", "-loop", "1", "-i", sourcePath, "-t", "1", "-vf", filter }.Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
+                    RunFfmpeg(ffmpeg, new[] { "-y", "-i", tempMp4, "-vf", h264Filter }.Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
                     RunFfmpeg(ffmpeg, new[] { "-y", "-i", sourcePath, "-vf", filter, "-frames:v", "1", tempPreview });
                 }
                 else
                 {
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter }).Concat(encoder).Concat(new[] { "-movflags", "+faststart", tempMp4 }));
-                    RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter }).Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
+                    RunFfmpeg(ffmpeg, new[] { "-y", "-i", tempMp4, "-vf", h264Filter }.Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter, "-frames:v", "1", tempPreview }));
                 }
                 File.Copy(tempMp4, targetMp4, true);

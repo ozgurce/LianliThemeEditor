@@ -6560,7 +6560,7 @@ public partial class MainWindow : Window
             case "HDDTEMP": return "38";
             case "HDDTEMP_F": return "100";
             case "HDDUSED": return "64";
-            case "DRVLOAD": return "12";
+            case "DRVLOAD": return "2";
             case "PUMP": return "2600";
             case "WATERPUMP": return "2600";
             case "WATERTEMPC": return "31";
@@ -6605,7 +6605,17 @@ public partial class MainWindow : Window
         }
 
         RefreshLiveSensorCache();
-        if (!_liveSensorValueCache.TryGetValue(key, out var cachedValue) ||
+        var cacheKey = key;
+        if (IsDriveDataSource(key))
+        {
+            var drive = NormalizeDriveSelector(selector);
+            if (_liveSensorValueCache.ContainsKey($"{key}:{drive}"))
+            {
+                cacheKey = $"{key}:{drive}";
+            }
+        }
+
+        if (!_liveSensorValueCache.TryGetValue(cacheKey, out var cachedValue) ||
             string.IsNullOrWhiteSpace(cachedValue))
         {
             return false;
@@ -6752,7 +6762,9 @@ public partial class MainWindow : Window
                     .Select(r => r.Value)
                     .DefaultIfEmpty(0)
                     .Max();
-                fresh[$"DRVLOAD:{drive}"] = Math.Round(Math.Clamp(activity, 0, 100)).ToString("0", CultureInfo.InvariantCulture);
+                var activityText = Math.Round(Math.Clamp(activity, 0, 100)).ToString("0", CultureInfo.InvariantCulture);
+                fresh[$"DRVLOAD:{drive}"] = activityText;
+                fresh.TryAdd("DRVLOAD", activityText);
             }
 
             foreach (var drive in DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed))
@@ -6761,7 +6773,9 @@ public partial class MainWindow : Window
                 var usedPercent = drive.TotalSize <= 0
                     ? 0
                     : (drive.TotalSize - drive.AvailableFreeSpace) * 100.0 / drive.TotalSize;
-                fresh[$"HDDUSED:{letter}"] = Math.Round(usedPercent).ToString("0", CultureInfo.InvariantCulture);
+                var usedText = Math.Round(usedPercent).ToString("0", CultureInfo.InvariantCulture);
+                fresh[$"HDDUSED:{letter}"] = usedText;
+                fresh.TryAdd("HDDUSED", usedText);
             }
 
             PutMemoryValues(fresh, readings);
@@ -11423,10 +11437,9 @@ public partial class MainWindow : Window
         var isWideScreen = IsWideScreenDeviceModel(deviceModel);
         if (isWideScreen)
         {
-            var filter = outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
-                ? "transpose=clock,scale=480:1920,setsar=1,fps=24,format=yuv420p"
-                : "scale=1920:480,setsar=1,fps=24,format=yuv420p";
-            startInfo.ArgumentList.Add(filter);
+            startInfo.ArgumentList.Add(
+                $"scale={canvas.Width}:{canvas.Height}:force_original_aspect_ratio=increase:flags=lanczos," +
+                $"crop={canvas.Width}:{canvas.Height},setsar=1,fps=24,format=yuv420p");
         }
         else
         {
@@ -12817,7 +12830,7 @@ public partial class MainWindow : Window
             "DATE" => "Date",
             "DAY" => "Day",
             "DOWNDSPEED" => "Download Speed",
-            "DRVLOAD" => "Drive Load",
+            "DRVLOAD" => "Drive Activity",
             "FPS_AVG" => "Average FPS",
             "GPUCLOCK" => "GPU Clock MHz",
             "GPUCLOCK_G" => "GPU Clock GHz",
