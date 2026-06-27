@@ -11989,8 +11989,10 @@ public partial class MainWindow : Window
         AutoApplyGalleryThemesCheck.Content = GetText(text, "settings.applyAutomatically", "Apply automatically");
         AnimateVideoPreviewsCheck.Content = GetText(text, "settings.playAnimatedPreviews", "Play animated previews");
         SettingsUnusedSensorsTitleText.Text = GetText(text, "settings.unusedSensorsTitle", "Map unused L-Connect sensors");
-        SettingsUnusedSensorsDescText.Text = GetText(text, "settings.unusedSensorsDesc", "Kullanılmayan L-Connect Sensörlerini başka değerlere bağla");
+        SettingsUnusedSensorsDescText.Text = GetText(text, "settings.unusedSensorsDesc", "Map unused L-Connect sensors to other values");
         UnusedSensorsComingSoonCheck.Content = GetText(text, "settings.comingSoon", "Coming soon");
+        ApplyLanguageComboText(LanguageCombo, text);
+        ApplyLanguageComboText(SettingsLanguageCombo, text);
         GallerySendThemesButton.Content = GetText(text, "gallery.sendThemes", "Send Themes");
         EditorSendThemeButton.Content = GetText(text, "gallery.sendTheme", "Send Theme");
         GalleryActivateAfterInstallCheck.Content = GetText(text, "gallery.activateAfterInstall", "Activate after install");
@@ -11998,7 +12000,26 @@ public partial class MainWindow : Window
         GalleryTab.Header = GetText(text, "tabs.gallery", "Theme Gallery");
         SettingsTab.Header = GetText(text, "tabs.settings", "Settings");
         DiagnosticsTab.Header = GetText(text, "tabs.diagnostics", "Diagnostics");
-        ThanksTab.Header = GetText(text, "tabs.thanks", "Thanks");
+        ThanksTab.Header = GetText(text, "tabs.thanks", "");
+        ThanksTitleText.Text = GetText(text, "thanks.title", "");
+        ThanksDescriptionText.Text = GetText(text, "thanks.description", "");
+        ThanksGalrimNameText.Text = GetText(text, "thanks.galrimName", "");
+        ThanksGalrimText.Text = GetText(text, "thanks.galrim", "");
+        ThanksRBuschyXNameText.Text = GetText(text, "thanks.rbuschyxName", "");
+        ThanksRBuschyXText.Text = GetText(text, "thanks.rbuschyx", "");
+        ThanksSOncoreNameText.Text = GetText(text, "thanks.sOncoreName", "");
+        ThanksSOncoreText.Text = GetText(text, "thanks.sOncore", "");
+        Thanks88TestersNameText.Text = GetText(text, "thanks.testers88Name", "");
+        Thanks88TestersText.Text = GetText(text, "thanks.testers88", "");
+        ThanksMrDoNameText.Text = GetText(text, "thanks.mrDoName", "");
+        ThanksMrDoText.Text = GetText(text, "thanks.mrDo", "");
+        ThanksJiveturkeyNameText.Text = GetText(text, "thanks.jiveturkeyName", "");
+        ThanksJiveturkeyText.Text = GetText(text, "thanks.jiveturkey", "");
+        ThanksJimmyNameText.Text = GetText(text, "thanks.jimmyName", "");
+        ThanksJimmyText.Text = GetText(text, "thanks.jimmy", "");
+        ThanksHatikoNameText.Text = GetText(text, "thanks.hatikoName", "");
+        ThanksHatikoText.Text = GetText(text, "thanks.hatiko", "");
+        ThanksClosingText.Text = GetText(text, "thanks.closing", "");
         AboutTab.Header = GetText(text, "tabs.about", "About");
         OpenGitHubIssuesButton.Content = GetText(text, "diagnostics.openIssues", "Open GitHub Issues");
         CopyDiagnosticPackageInfoButton.Content = GetText(text, "diagnostics.copyInfo", "Copy Diagnostic Info");
@@ -12237,6 +12258,21 @@ public partial class MainWindow : Window
         UppercaseEditorPanelHeaders();
     }
 
+    private static void ApplyLanguageComboText(ComboBox combo, Dictionary<string, string> text)
+    {
+        foreach (var item in combo.Items.OfType<ComboBoxItem>())
+        {
+            item.Content = item.Tag?.ToString() switch
+            {
+                "en" => GetText(text, "languages.en", "English"),
+                "tr" => GetText(text, "languages.tr", "Turkish"),
+                "ru" => GetText(text, "languages.ru", "Russian"),
+                "zh" => GetText(text, "languages.zh", "Chinese"),
+                _ => item.Content
+            };
+        }
+    }
+
     private void ApplyPreviewContextMenuLanguage(Dictionary<string, string> text)
     {
         var items = PreviewLayerContextMenu.Items.OfType<MenuItem>().ToList();
@@ -12270,7 +12306,6 @@ public partial class MainWindow : Window
             ["Support"] = ("about.support", "Support"),
             ["Report bugs or suggest the next improvement."] = ("about.supportDesc", "Report bugs or suggest the next improvement."),
             ["Diagnostics"] = ("tabs.diagnostics", "Diagnostics"),
-            ["Thanks"] = ("tabs.thanks", "Thanks"),
             ["Collect version, device and log details for troubleshooting."] = ("about.diagnosticsDesc", "Collect version, device and log details for troubleshooting."),
             ["Unsaved Recovery"] = ("recovery.aboutTitle", "Unsaved Recovery"),
             ["An unsaved edit is available."] = ("recovery.genericAvailable", "An unsaved edit is available."),
@@ -16491,8 +16526,8 @@ public partial class MainWindow : Window
     private void UnusedSensorsHelp_Click(object sender, RoutedEventArgs e)
     {
         MessageBox.Show(this,
-            GetLanguageText("settings.unusedSensorsHelp", "Volume, RamModel ve Weather öğeleri L-Connect tarafında çalışmadığı için bu sensörleri farklı sensörlere bağlayın. Örneğin; RamModel'i şu an çalan şarkıya, Volume'yi gerçek ses değerine, RamModeli ise lrclib senkron şarkı sözlerine bağlayabilirsiniz. Bu özellik ileride geliştirilecek olup, pyhton altyapısı ve themeengine.dll'ye yama yaparak çalışacaktır. Tüm sorumluluk size aittir. L-Connect geliştiricilerinin onayı olmadan bu değişikliği yapabilme hakkı kullanıma açılmaycaktır"),
-            GetLanguageText("settings.unusedSensorsTitle", "Kullanılmayan L-Connect sensörleri"), MessageBoxButton.OK, MessageBoxImage.Information);
+            GetLanguageText("settings.unusedSensorsHelp", ""),
+            GetLanguageText("settings.unusedSensorsTitle", ""), MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void FeatureRequestButton_Click(object sender, RoutedEventArgs e) =>

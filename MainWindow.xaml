@@ -3565,13 +3565,13 @@
                                     <StackPanel><TextBlock x:Name="SettingsDevicesTitleText" Text="My devices" FontSize="14" FontWeight="SemiBold"/><TextBlock x:Name="SettingsDevicesDescText" Text="Only selected devices appear across the editor and gallery." Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/><CheckBox x:Name="OwnedHydroshiftSCheck" Content="Hydroshift II LCD-S" IsChecked="True" Checked="OwnedDevices_Changed" Unchecked="OwnedDevices_Changed"/><CheckBox x:Name="OwnedHydroshiftCCheck" Content="Hydroshift II LCD-C" IsChecked="True" Margin="0,7,0,0" Checked="OwnedDevices_Changed" Unchecked="OwnedDevices_Changed"/><CheckBox x:Name="OwnedUniversal88Check" Content="8.8&quot; Universal Screen" IsChecked="True" Margin="0,7,0,0" Checked="OwnedDevices_Changed" Unchecked="OwnedDevices_Changed"/><CheckBox x:Name="OwnedVm92Check" Content="VM 9.2 LCD" IsChecked="True" Margin="0,7,0,0" Checked="OwnedDevices_Changed" Unchecked="OwnedDevices_Changed"/></StackPanel>
                                 </Border>
                                 <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
-                                    <StackPanel><TextBlock x:Name="SettingsLanguageThemeTitleText" Text="Language &amp; theme" FontSize="14" FontWeight="SemiBold"/><TextBlock x:Name="SettingsLanguageThemeDescText" Text="These choices also update the footer controls." Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/><ComboBox x:Name="SettingsLanguageCombo" SelectionChanged="SettingsLanguageCombo_SelectionChanged"><ComboBoxItem Content="English" Tag="en"/><ComboBoxItem Content="Türkçe" Tag="tr"/><ComboBoxItem Content="Русский" Tag="ru"/><ComboBoxItem Content="中文" Tag="zh"/></ComboBox><ComboBox x:Name="SettingsThemeCombo" Margin="0,10,0,0" SelectionChanged="SettingsThemeCombo_SelectionChanged"><ComboBoxItem Content="Dark" Tag="dark"/><ComboBoxItem Content="Light" Tag="light"/></ComboBox></StackPanel>
+                                    <StackPanel><TextBlock x:Name="SettingsLanguageThemeTitleText" Text="Language &amp; theme" FontSize="14" FontWeight="SemiBold"/><TextBlock x:Name="SettingsLanguageThemeDescText" Text="These choices also update the footer controls." Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/><ComboBox x:Name="SettingsLanguageCombo" SelectionChanged="SettingsLanguageCombo_SelectionChanged"><ComboBoxItem Content="" Tag="en"/><ComboBoxItem Content="" Tag="tr"/><ComboBoxItem Content="" Tag="ru"/><ComboBoxItem Content="" Tag="zh"/></ComboBox><ComboBox x:Name="SettingsThemeCombo" Margin="0,10,0,0" SelectionChanged="SettingsThemeCombo_SelectionChanged"><ComboBoxItem Content="Dark" Tag="dark"/><ComboBoxItem Content="Light" Tag="light"/></ComboBox></StackPanel>
                                 </Border>
                                 <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
                                     <StackPanel><TextBlock x:Name="SettingsGalleryTitleText" Text="Theme Gallery" FontSize="14" FontWeight="SemiBold"/><TextBlock x:Name="SettingsGalleryDescText" Text="Automatically apply downloaded themes after installation." Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/><CheckBox x:Name="AutoApplyGalleryThemesCheck" Content="Apply automatically" IsChecked="True" Checked="AutoApplyGalleryThemes_Changed" Unchecked="AutoApplyGalleryThemes_Changed"/><CheckBox x:Name="AnimateVideoPreviewsCheck" Content="Play animated previews" IsChecked="True" Margin="0,7,0,0" Checked="AnimateVideoPreviews_Changed" Unchecked="AnimateVideoPreviews_Changed"/></StackPanel>
                                 </Border>
                                 <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
-                                    <StackPanel><StackPanel Orientation="Horizontal"><TextBlock x:Name="SettingsUnusedSensorsTitleText" Text="Map unused L-Connect sensors" FontSize="14" FontWeight="SemiBold"/><Button Content="?" Width="25" Height="25" Margin="8,0,0,0" Padding="0" Click="UnusedSensorsHelp_Click"/></StackPanel><TextBlock x:Name="SettingsUnusedSensorsDescText" Text="Kullanılmayan L-Connect Sensörlerini başka değerlere bağla" Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/><CheckBox x:Name="UnusedSensorsComingSoonCheck" Content="Coming soon" IsEnabled="False"/></StackPanel>
+                                    <StackPanel><StackPanel Orientation="Horizontal"><TextBlock x:Name="SettingsUnusedSensorsTitleText" Text="Map unused L-Connect sensors" FontSize="14" FontWeight="SemiBold"/><Button Content="?" Width="25" Height="25" Margin="8,0,0,0" Padding="0" Click="UnusedSensorsHelp_Click"/></StackPanel><TextBlock x:Name="SettingsUnusedSensorsDescText" Text="Map unused L-Connect sensors to other values" Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/><CheckBox x:Name="UnusedSensorsComingSoonCheck" Content="Coming soon" IsEnabled="False"/></StackPanel>
                                 </Border>
                             </UniformGrid>
                         </StackPanel>
@@ -3628,7 +3628,7 @@
                     </Border>
                 </Grid>
             </TabItem>
-            <TabItem x:Name="ThanksTab" Header="Thanks">
+            <TabItem x:Name="ThanksTab" Header="">
                 <Grid Margin="0">
                     <Border Style="{DynamicResource Card}" Padding="22">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -3636,8 +3636,8 @@
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Rectangle Width="4" Height="22" Fill="{DynamicResource BrAccent}" RadiusX="2" RadiusY="2" Margin="0,0,10,0"/>
                                     <StackPanel>
-                                        <TextBlock Text="Thanks" FontSize="18" FontWeight="SemiBold"/>
-                                        <TextBlock Text="This editor exists because people kept testing, sharing themes, and giving honest feedback."
+                                        <TextBlock x:Name="ThanksTitleText" Text="" FontSize="18" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="ThanksDescriptionText" Text=""
                                                    Foreground="{DynamicResource BrTextTertiary}" FontSize="11.5" TextWrapping="Wrap"/>
                                     </StackPanel>
                                 </StackPanel>
@@ -3645,57 +3645,57 @@
                                 <UniformGrid Columns="2" Margin="0,22,0,0">
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
                                         <StackPanel>
-                                            <TextBlock Text="Galrim" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for allowing me to use your themes, for testing the editor, and for your excellent feedback."
+                                            <TextBlock x:Name="ThanksGalrimNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksGalrimText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
                                         <StackPanel>
-                                            <TextBlock Text="RBuschyX" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for answering every test request without giving up, and for helping me improve the editor so much."
+                                            <TextBlock x:Name="ThanksRBuschyXNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksRBuschyXText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
                                         <StackPanel>
-                                            <TextBlock Text="S_Oncore" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for trusting me from the very beginning and for the early tests you ran."
+                                            <TextBlock x:Name="ThanksSOncoreNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksSOncoreText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
                                         <StackPanel>
-                                            <TextBlock Text="Wr3ck3r, uhf_Seven, Darcy" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for constantly testing the 8.8-inch Universal Screen support."
+                                            <TextBlock x:Name="Thanks88TestersNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="Thanks88TestersText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
                                         <StackPanel>
-                                            <TextBlock Text="MrDo.LianLi" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for trying to help whenever you could, both at the start of development and later, despite your busy schedule."
+                                            <TextBlock x:Name="ThanksMrDoNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksMrDoText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
                                         <StackPanel>
-                                            <TextBlock Text="jiveturkey" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for the good ideas and for keeping me motivated."
+                                            <TextBlock x:Name="ThanksJiveturkeyNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksJiveturkeyText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
                                         <StackPanel>
-                                            <TextBlock Text="jimmythelips1626" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for doing everything you could to help, even though we are in different countries."
+                                            <TextBlock x:Name="ThanksJimmyNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksJimmyText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
                                     <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
                                         <StackPanel>
-                                            <TextBlock Text="hatiko0953" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock Text="Thank you for helping with the Russian translations from the very beginning."
+                                            <TextBlock x:Name="ThanksHatikoNameText" Text="" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ThanksHatikoText" Text=""
                                                        Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}"/>
                                         </StackPanel>
                                     </Border>
@@ -3706,7 +3706,7 @@
                                         BorderBrush="{DynamicResource BrBorder}"
                                         BorderThickness="1"
                                         CornerRadius="10">
-                                    <TextBlock Text="Thank you to everyone who believed in me and supported me on this path. I am glad you are here."
+                                    <TextBlock x:Name="ThanksClosingText" Text=""
                                                TextWrapping="Wrap" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource BrTextSecondary}"/>
                                 </Border>
                             </StackPanel>
@@ -3973,10 +3973,10 @@
                 <!-- Dil seçimi -->
                 <ComboBox x:Name="LanguageCombo" Grid.Column="5" Height="28" VerticalAlignment="Center"
                           SelectedValuePath="Tag" SelectionChanged="LanguageCombo_SelectionChanged">
-                    <ComboBoxItem Content="English" Tag="en"/>
-                    <ComboBoxItem Content="T&#252;rk&#231;e" Tag="tr"/>
-                    <ComboBoxItem Content="&#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081;" Tag="ru"/>
-                    <ComboBoxItem Content="&#20013;&#25991;" Tag="zh"/>
+                    <ComboBoxItem Content="" Tag="en"/>
+                    <ComboBoxItem Content="" Tag="tr"/>
+                    <ComboBoxItem Content="" Tag="ru"/>
+                    <ComboBoxItem Content="" Tag="zh"/>
                 </ComboBox>
 
                 <!-- Ayırıcı çizgi (Language ile ThemeToggle arasında) -->
