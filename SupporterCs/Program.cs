@@ -1777,11 +1777,11 @@ internal static class Program
                          $"crop={canvasWidth}:{canvasHeight},setsar=1,fps=30,format=yuv420p";
             if (isUniversal88)
             {
-                filter = rotation +
-                         $"scale={canvasWidth}:{canvasHeight}:force_original_aspect_ratio=increase:flags=lanczos," +
-                         $"crop={canvasWidth}:{canvasHeight},setsar=1,fps=24,format=yuv420p";
+                filter = rotation + "scale=1920:480,setsar=1,fps=24,format=yuv420p";
             }
-            var h264Filter = filter;
+            var h264Filter = isUniversal88
+                ? "transpose=clock,scale=480:1920,setsar=1,fps=24,format=yuv420p"
+                : filter;
             var encoder = new[]
             {
                 "-an", "-c:v", "libx264", "-preset", "ultrafast",

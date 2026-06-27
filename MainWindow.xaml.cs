@@ -11437,9 +11437,10 @@ public partial class MainWindow : Window
         var isWideScreen = IsWideScreenDeviceModel(deviceModel);
         if (isWideScreen)
         {
-            startInfo.ArgumentList.Add(
-                $"scale={canvas.Width}:{canvas.Height}:force_original_aspect_ratio=increase:flags=lanczos," +
-                $"crop={canvas.Width}:{canvas.Height},setsar=1,fps=24,format=yuv420p");
+            var filter = outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                ? "transpose=clock,scale=480:1920,setsar=1,fps=24,format=yuv420p"
+                : "scale=1920:480,setsar=1,fps=24,format=yuv420p";
+            startInfo.ArgumentList.Add(filter);
         }
         else
         {
