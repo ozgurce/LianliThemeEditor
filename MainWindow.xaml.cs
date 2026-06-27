@@ -14415,7 +14415,7 @@ public partial class MainWindow : Window
                             JsonSerializer.Serialize(candidateId));
                         var selected = accepted && await WaitForSelectedTemplateAsync(client, path, candidateId);
                         TraceUniversal88Apply($"Candidate result id={candidateId}; accepted={accepted}; selectedConfirmed={selected}");
-                        if (selected)
+                        if (accepted)
                         {
                             await CopyTemplateBackgroundAsync(client, path, UniversalScreenDeviceModel, candidateId, backgroundPath);
                             var profileSaved = await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
@@ -14434,11 +14434,16 @@ public partial class MainWindow : Window
                                 UniversalScreenDeviceModel,
                                 candidateId,
                                 backgroundPath);
+                            selected = selected || await WaitForSelectedTemplateAsync(client, path, candidateId);
                             TraceUniversal88Apply(
                                 $"SUCCESS via L-Connect candidate={candidateId}; SaveProfile={profileSaved}; " +
                                 $"localProfilePatched={localProfilePatched}; " +
-                                $"backgroundProfilePatched={backgroundProfilePatched}; forceApplied={forceApplied}");
-                            return true;
+                                $"backgroundProfilePatched={backgroundProfilePatched}; forceApplied={forceApplied}; " +
+                                $"selectedAfterForce={selected}");
+                            if (selected || forceApplied)
+                            {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -14661,16 +14666,17 @@ public partial class MainWindow : Window
         string devicePath,
         string expectedTemplateId)
     {
-        for (var attempt = 0; attempt < 5; attempt++)
+        const int attempts = 48;
+        for (var attempt = 0; attempt < attempts; attempt++)
         {
             if (attempt > 0)
             {
-                await Task.Delay(160);
+                await Task.Delay(250);
             }
 
             var selectedId = await GetLConnectSelectedTemplateIdAsync(client, devicePath);
             TraceUniversal88Apply(
-                $"Selection poll attempt={attempt + 1}/5; expected={expectedTemplateId}; " +
+                $"Selection poll attempt={attempt + 1}/{attempts}; expected={expectedTemplateId}; " +
                 $"observed={(string.IsNullOrWhiteSpace(selectedId) ? "<empty>" : selectedId)}");
             if (string.Equals(selectedId, expectedTemplateId, StringComparison.OrdinalIgnoreCase))
             {
