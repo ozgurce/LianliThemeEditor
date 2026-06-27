@@ -154,6 +154,24 @@
       "packageUrl": "packages/hydroshift-m1.zip"
     },
     {
+      "id": "m10-hydroshift-c",
+      "name": "m10 (LCD-C)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-m10.png",
+      "packageUrl": "packages/hydroshift-m10.zip"
+    },
+    {
+      "id": "m10-hydroshift-s",
+      "name": "m10 (LCD-S)",
+      "author": "Lian Li",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/hydroshift-m10.png",
+      "packageUrl": "packages/hydroshift-m10.zip"
+    },
+    {
       "id": "m2-hydroshift-c",
       "name": "m2 (LCD-C)",
       "author": "Lian Li",
