@@ -14993,13 +14993,19 @@ public partial class MainWindow : Window
                 await CopyTemplateBackgroundAsync(client, devicePath, deviceModel, templateId, backgroundPath);
             }
 
-            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyTemplate", JsonSerializer.Serialize(templateId));
+            var candidateJson = JsonSerializer.Serialize(templateId);
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "StopVideo", "{}");
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyTemplate", candidateJson);
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "Apply2DTemplate", candidateJson);
             accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyScreenContent", "{}");
             await Task.Delay(260);
             accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ReloadAssets", "{}");
             await Task.Delay(180);
-            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyTemplate", JsonSerializer.Serialize(templateId));
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyTemplate", candidateJson);
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "Apply2DTemplate", candidateJson);
             accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyScreenContent", "{}");
         }
         catch (Exception ex)
         {
@@ -15482,16 +15488,17 @@ public partial class MainWindow : Window
                 }
 
                 var changed = false;
-                if (preferLandscape)
+                var previousLandscape = root["IsLandscape"]?.GetValue<bool?>();
+                if (previousLandscape != preferLandscape)
                 {
-                    changed |= PatchUniversal88TemplateConfig(root, "LandscapeTemplateConfig", templateId);
-                    changed |= PatchUniversal88TemplateConfig(root, "PortraitTemplateConfig", templateId);
+                    root["IsLandscape"] = preferLandscape;
+                    changed = true;
                 }
-                else
-                {
-                    changed |= PatchUniversal88TemplateConfig(root, "PortraitTemplateConfig", templateId);
-                    changed |= PatchUniversal88TemplateConfig(root, "LandscapeTemplateConfig", templateId);
-                }
+
+                changed |= PatchUniversal88TemplateConfig(
+                    root,
+                    preferLandscape ? "LandscapeTemplateConfig" : "PortraitTemplateConfig",
+                    templateId);
 
                 if (!changed)
                 {
@@ -15519,9 +15526,11 @@ public partial class MainWindow : Window
         }
 
         var previous = config["SelectedTemplateId"]?.GetValue<string>();
+        var previousCustomEnabled = config["IsCustomThemeEnabled"]?.GetValue<bool?>();
         config["SelectedTemplateId"] = templateId;
         config["IsCustomThemeEnabled"] = false;
-        return !string.Equals(previous, templateId, StringComparison.OrdinalIgnoreCase);
+        return !string.Equals(previous, templateId, StringComparison.OrdinalIgnoreCase) ||
+               previousCustomEnabled != false;
     }
 
     private static bool TrySetUniversal88TemplateBackgroundProfile(string templateId, string backgroundPath)
