@@ -10890,20 +10890,22 @@ public partial class MainWindow : Window
                 LoadBackgroundPreview(imported.BackgroundPath, Path.GetFileName(imported.BackgroundPath));
             }
 
+            var applyRequested = activateAfterInstall;
+            var applyAccepted = false;
+            var lConnectTemplateId = string.IsNullOrWhiteSpace(imported.LConnectId)
+                ? imported.Id
+                : imported.LConnectId;
             if (activateAfterInstall)
             {
                 item.Status = "Activating";
                 item.Progress = 98;
                 SetStatus($"Activating theme: {item.Name}");
-                var lConnectTemplateId = string.IsNullOrWhiteSpace(imported.LConnectId)
-                    ? imported.Id
-                    : imported.LConnectId;
-                var accepted = await ActivateInstalledThemeAsync(
+                applyAccepted = await ActivateInstalledThemeAsync(
                     lConnectTemplateId,
                     GetSelectedDeviceModel(),
                     imported.Path,
                     imported.BackgroundPath);
-                item.Status = accepted ? "Installed and active" : "Installed";
+                item.Status = applyAccepted ? "Installed and active" : "Installed";
             }
             else
             {
@@ -10919,6 +10921,7 @@ public partial class MainWindow : Window
             item.IsInstalled = true;
             await NotifyGalleryDownloadAsync(item);
             SetBusy(false, $"Theme installed: {item.Name}");
+            ShowGalleryInstallResult(item, imported, lConnectTemplateId, applyRequested, applyAccepted);
             return true;
         }
         catch (Exception ex)
@@ -10938,6 +10941,43 @@ public partial class MainWindow : Window
             TryDeleteFile(tempPackage);
             item.IsBusy = false;
         }
+    }
+
+    private void ShowGalleryInstallResult(
+        GalleryThemeItem item,
+        TemplateOption imported,
+        string lConnectTemplateId,
+        bool applyRequested,
+        bool applyAccepted)
+    {
+        var applyStatus = !applyRequested
+            ? GetLanguageText("gallery.resultApplyNotRequested", "Not requested")
+            : applyAccepted
+                ? GetLanguageText("gallery.resultApplyAccepted", "Apply accepted / active request completed")
+                : GetLanguageText("gallery.resultApplyFailed", "Apply was requested but not confirmed");
+        var backgroundStatus = !string.IsNullOrWhiteSpace(imported.BackgroundPath) && File.Exists(imported.BackgroundPath)
+            ? GetLanguageText("gallery.resultBackgroundAvailable", "Background file installed")
+            : GetLanguageText("gallery.resultBackgroundMissing", "No installed background file was detected");
+
+        var message = string.Join(Environment.NewLine, new[]
+        {
+            FormatLanguageText("gallery.resultTheme", "Theme: {0}", item.Name),
+            FormatLanguageText("gallery.resultDevice", "Device: {0}", item.DeviceName),
+            FormatLanguageText("gallery.resultInstall", "Install: {0}", GetLanguageText("gallery.resultInstallOk", "Installed in L-Connect")),
+            FormatLanguageText("gallery.resultApplyRequested", "Apply requested: {0}", applyRequested ? GetLanguageText("common.yes", "Yes") : GetLanguageText("common.no", "No")),
+            FormatLanguageText("gallery.resultApply", "Apply result: {0}", applyStatus),
+            FormatLanguageText("gallery.resultTemplateId", "Editor template ID: {0}", imported.Id),
+            FormatLanguageText("gallery.resultLConnectId", "L-Connect template ID: {0}", string.IsNullOrWhiteSpace(lConnectTemplateId) ? "-" : lConnectTemplateId),
+            FormatLanguageText("gallery.resultBackground", "Background: {0}", backgroundStatus),
+            FormatLanguageText("gallery.resultTemplatePath", "Template path: {0}", imported.Path)
+        });
+
+        MessageBox.Show(
+            this,
+            message,
+            GetLanguageText("gallery.resultTitle", "Gallery install result"),
+            MessageBoxButton.OK,
+            applyRequested && !applyAccepted ? MessageBoxImage.Warning : MessageBoxImage.Information);
     }
 
     private async Task DownloadGalleryPackageForInstallAsync(
