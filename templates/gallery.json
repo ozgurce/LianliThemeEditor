@@ -395,6 +395,15 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/omega-vault-beacafee.png",
       "packageUrl": "packages/omega-vault-beacafee.zip"
+    },
+    {
+      "id": "test-e319385e",
+      "name": "test",
+      "author": "dido",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/test-e319385e.png",
+      "packageUrl": "packages/test-e319385e.lltheme"
     }
   ]
 }
