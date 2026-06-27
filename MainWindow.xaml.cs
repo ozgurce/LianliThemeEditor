@@ -1992,7 +1992,13 @@ public partial class MainWindow : Window
                 : GetLanguageText("status.layerSaved", "Layer saved."));
             if (!IsOfflineMode)
             {
-                _ = RefreshLConnectAfterSingleApplyAsync();
+                SetApplyProgress(92, GetLanguageText("status.sendingApply", "Sending to L-Connect..."));
+                if (!await TriggerLConnectRefreshAsync(skipUniversalPreviewUpdate: true, fastApply: true))
+                {
+                    SetStatus(GetLanguageText(
+                        "status.layerSavedRefreshPending",
+                        "Layer was saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
+                }
             }
             SetApplyProgress(96, GetLanguageText("status.refreshingEditor", "Refreshing editor..."));
             LayerGrid.Items.Refresh();
@@ -2018,26 +2024,6 @@ public partial class MainWindow : Window
         finally
         {
             HideApplyProgress();
-        }
-    }
-
-    private async Task RefreshLConnectAfterSingleApplyAsync()
-    {
-        try
-        {
-            if (!await TriggerLConnectRefreshAsync(skipUniversalPreviewUpdate: true, fastApply: true))
-            {
-                SetStatus(GetLanguageText(
-                    "status.layerSavedRefreshPending",
-                    "Layer was saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
-            }
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Error("Background L-Connect refresh after single apply failed.", ex);
-            SetStatus(GetLanguageText(
-                "status.layerSavedRefreshPending",
-                "Layer was saved. If L-Connect does not update immediately, reopen the template in L-Connect."));
         }
     }
 
@@ -10940,18 +10926,7 @@ public partial class MainWindow : Window
                 : imported.LConnectId;
             item.IsInstalled = true;
             await NotifyGalleryDownloadAsync(item);
-            SetBusy(false, $"Theme installed: {item.Name}");
-            var diagnosticPath = "";
-            if (!imported.LConnectVisible || (applyRequested && !applyAccepted))
-            {
-                diagnosticPath = CreateGalleryInstallDiagnosticPackage(
-                    item,
-                    imported,
-                    lConnectTemplateId,
-                    applyRequested,
-                    applyAccepted);
-            }
-            ShowGalleryInstallResult(item, imported, lConnectTemplateId, applyRequested, applyAccepted, diagnosticPath);
+            SetBusy(false, BuildGalleryInstallStatus(item, imported, applyRequested, applyAccepted));
             return true;
         }
         catch (Exception ex)
@@ -10973,172 +10948,28 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ShowGalleryInstallResult(
+    private string BuildGalleryInstallStatus(
         GalleryThemeItem item,
         TemplateOption imported,
-        string lConnectTemplateId,
-        bool applyRequested,
-        bool applyAccepted,
-        string diagnosticPath)
-    {
-        var applyStatus = !applyRequested
-            ? GetLanguageText("gallery.resultApplyNotRequested", "Not requested")
-            : !imported.LConnectVisible
-                ? GetLanguageText("gallery.resultApplySkippedNotVisible", "Skipped because L-Connect has not listed the imported template yet")
-            : applyAccepted
-                ? GetLanguageText("gallery.resultApplyAccepted", "Apply accepted / active request completed")
-                : GetLanguageText("gallery.resultApplyFailed", "Apply was requested but not confirmed");
-        var installStatus = imported.LConnectVisible
-            ? GetLanguageText("gallery.resultInstallOk", "Installed in L-Connect")
-            : GetLanguageText("gallery.resultInstallRefreshPending", "Installed on disk; L-Connect refresh pending");
-        var backgroundStatus = !string.IsNullOrWhiteSpace(imported.BackgroundPath) && File.Exists(imported.BackgroundPath)
-            ? GetLanguageText("gallery.resultBackgroundAvailable", "Background file installed")
-            : GetLanguageText("gallery.resultBackgroundMissing", "No installed background file was detected");
-
-        var lines = new List<string>
-        {
-            FormatLanguageText("gallery.resultTheme", "Theme: {0}", item.Name),
-            FormatLanguageText("gallery.resultDevice", "Device: {0}", item.DeviceName),
-            FormatLanguageText("gallery.resultInstall", "Install: {0}", installStatus),
-            FormatLanguageText("gallery.resultApplyRequested", "Apply requested: {0}", applyRequested ? GetLanguageText("common.yes", "Yes") : GetLanguageText("common.no", "No")),
-            FormatLanguageText("gallery.resultApply", "Apply result: {0}", applyStatus),
-            FormatLanguageText("gallery.resultTemplateId", "Editor template ID: {0}", imported.Id),
-            FormatLanguageText("gallery.resultLConnectId", "L-Connect template ID: {0}", string.IsNullOrWhiteSpace(lConnectTemplateId) ? "-" : lConnectTemplateId),
-            FormatLanguageText("gallery.resultBackground", "Background: {0}", backgroundStatus),
-            FormatLanguageText("gallery.resultTemplatePath", "Template path: {0}", imported.Path)
-        };
-        if (!string.IsNullOrWhiteSpace(diagnosticPath))
-        {
-            lines.Add(FormatLanguageText("gallery.resultDiagnostic", "Diagnostic package: {0}", diagnosticPath));
-        }
-        var message = string.Join(Environment.NewLine, lines);
-
-        MessageBox.Show(
-            this,
-            message,
-            GetLanguageText("gallery.resultTitle", "Gallery install result"),
-            MessageBoxButton.OK,
-            applyRequested && (!applyAccepted || !imported.LConnectVisible) ? MessageBoxImage.Warning : MessageBoxImage.Information);
-    }
-
-    private string CreateGalleryInstallDiagnosticPackage(
-        GalleryThemeItem item,
-        TemplateOption imported,
-        string lConnectTemplateId,
         bool applyRequested,
         bool applyAccepted)
     {
-        try
+        if (applyRequested && applyAccepted && imported.LConnectVisible)
         {
-            var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            var safeId = SanitizeFileName(string.IsNullOrWhiteSpace(item.Id) ? imported.Id : item.Id);
-            var outputPath = Path.Combine(desktop, $"LianLiThemeEditor-GalleryDiagnostic-{safeId}-{DateTime.Now:yyyyMMdd-HHmmss}.zip");
-            var summary = BuildGalleryInstallDiagnosticSummary(item, imported, lConnectTemplateId, applyRequested, applyAccepted);
-            var files = GetGalleryInstallDiagnosticFiles(imported);
-            var textEntries = new List<(string Name, string Content)>
-            {
-                ("lconnect/request-trace.txt", GetLConnectRequestTraceText()),
-                ("lconnect/profile-summary.txt", BuildLConnectProfileSummary()),
-                ("lconnect/template-files.txt", BuildTemplateFileListing(imported))
-            };
-
-            _diagnosticService.CreatePackage(outputPath, summary, files, textEntries);
-            return outputPath;
-        }
-        catch (Exception ex)
-        {
-            AppLogger.Error("Gallery install diagnostic package creation failed.", ex);
-            return "";
-        }
-    }
-
-    private string BuildGalleryInstallDiagnosticSummary(
-        GalleryThemeItem item,
-        TemplateOption imported,
-        string lConnectTemplateId,
-        bool applyRequested,
-        bool applyAccepted)
-    {
-        return string.Join(Environment.NewLine, new[]
-        {
-            "Lian Li LCD Theme Editor gallery install diagnostic",
-            $"CreatedUtc: {DateTime.UtcNow:O}",
-            $"Version: {GetAppDisplayVersion()}",
-            $"Built: {BuildInfo.BuiltAt}",
-            $"Theme: {item.Name}",
-            $"GalleryId: {item.Id}",
-            $"PackageUrl: {item.PackageUrl}",
-            $"Device: {item.DeviceName} ({item.DeviceModel})",
-            $"EditorTemplateId: {imported.Id}",
-            $"LConnectTemplateId: {lConnectTemplateId}",
-            $"LConnectVisible: {imported.LConnectVisible}",
-            $"ApplyRequested: {applyRequested}",
-            $"ApplyAccepted: {applyAccepted}",
-            $"TemplatePath: {imported.Path}",
-            $"TemplateExists: {File.Exists(imported.Path)}",
-            $"BackgroundPath: {imported.BackgroundPath}",
-            $"BackgroundExists: {File.Exists(imported.BackgroundPath)}",
-            $"SelectedDevice: {GetSelectedDeviceDisplayName()} ({GetSelectedDeviceModel()})",
-            $"CurrentTemplate: {_currentTemplateId}",
-            $"CurrentTemplatePath: {_currentTemplatePath}",
-            $"OS: {Environment.OSVersion}",
-            $".NET: {Environment.Version}"
-        });
-    }
-
-    private static IEnumerable<string> GetGalleryInstallDiagnosticFiles(TemplateOption imported)
-    {
-        var files = new List<string>();
-        void AddFile(string path)
-        {
-            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
-            {
-                files.Add(path);
-            }
+            return FormatLanguageText("gallery.statusInstalledAndActive", "Theme installed and applied: {0}", item.Name);
         }
 
-        AddFile(imported.Path);
-        AddFile(imported.BackgroundPath);
-
-        var root = @"C:\ProgramData\Lian-Li\L-Connect 3";
-        var logDir = Path.Combine(root, "logs");
-        if (Directory.Exists(logDir))
+        if (applyRequested && imported.LConnectVisible)
         {
-            files.AddRange(Directory.EnumerateFiles(logDir, "L-Connect*.log")
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .Take(8));
+            return FormatLanguageText("gallery.statusInstalledApplyPending", "Theme installed; apply was not confirmed: {0}", item.Name);
         }
 
-        var profileDir = Path.Combine(root, "profile");
-        if (Directory.Exists(profileDir))
+        if (!imported.LConnectVisible)
         {
-            files.AddRange(Directory.EnumerateFiles(profileDir)
-                .OrderByDescending(File.GetLastWriteTimeUtc)
-                .Take(8));
+            return FormatLanguageText("gallery.statusInstalledRefreshPending", "Theme installed; waiting for L-Connect to list it: {0}", item.Name);
         }
 
-        return files.Distinct(StringComparer.OrdinalIgnoreCase);
-    }
-
-    private static string BuildTemplateFileListing(TemplateOption imported)
-    {
-        var root = !string.IsNullOrWhiteSpace(imported.Path)
-            ? Path.GetDirectoryName(imported.Path) ?? ""
-            : "";
-        if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
-        {
-            return "Template directory was not found.";
-        }
-
-        var lines = Directory.EnumerateFiles(root, "*.template")
-            .OrderByDescending(File.GetLastWriteTimeUtc)
-            .Take(80)
-            .Select(path =>
-            {
-                var file = new FileInfo(path);
-                return $"{file.LastWriteTimeUtc:O} | {file.Length} | {file.Name}";
-            });
-        return string.Join(Environment.NewLine, lines);
+        return FormatLanguageText("gallery.statusInstalled", "Theme installed: {0}", item.Name);
     }
 
     private static string BuildLConnectProfileSummary()
