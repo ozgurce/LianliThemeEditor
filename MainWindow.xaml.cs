@@ -2954,11 +2954,7 @@ public partial class MainWindow : Window
                 catch (Exception ex) { AppLogger.Error("Saved shadow links could not be read.", ex); }
             }
 
-            var appPath = @"C:\Program Files\Lian-Li\L-Connect 3\L-Connect 3.exe";
-            if (System.IO.File.Exists(appPath))
-            {
-                Process.Start(new ProcessStartInfo(appPath) { UseShellExecute = true });
-            }
+            StartLConnectApplication();
 
             _backgroundDirty = false;
 
@@ -3013,6 +3009,15 @@ public partial class MainWindow : Window
         }
 
         return success;
+    }
+
+    private static void StartLConnectApplication()
+    {
+        var appPath = @"C:\Program Files\Lian-Li\L-Connect 3\L-Connect 3.exe";
+        if (System.IO.File.Exists(appPath))
+        {
+            Process.Start(new ProcessStartInfo(appPath) { UseShellExecute = true });
+        }
     }
 
     private static bool TryStopService(string serviceName, TimeSpan timeout)
@@ -9328,6 +9333,7 @@ public partial class MainWindow : Window
         }
 
         var lConnectId = importedId;
+        var lConnectImportVisible = !installThroughLConnect;
         var installedTemplatePath = destinationTemplate;
         if (installThroughLConnect)
         {
@@ -9359,10 +9365,16 @@ public partial class MainWindow : Window
                     var previousImportedIds = (await GetLConnectTemplateIdsAsync(client, path))
                         .Where(id => IsLConnectImportedTemplateId(id, importedId))
                         .ToList();
-                    var importedLConnectId = await ImportTemplateIntoLConnectAsync(client, path, importZip);
+                    var importedLConnectId = await ImportTemplateIntoLConnectAsync(
+                        client,
+                        path,
+                        importZip,
+                        deviceModel,
+                        importedId);
                     if (!string.IsNullOrWhiteSpace(importedLConnectId))
                     {
                         lConnectId = importedLConnectId;
+                        lConnectImportVisible = true;
                         if (!string.IsNullOrWhiteSpace(importedBackgroundPath) && File.Exists(importedBackgroundPath))
                         {
                             await CopyTemplateBackgroundAsync(
@@ -9470,7 +9482,8 @@ public partial class MainWindow : Window
             Id = importedId,
             LConnectId = lConnectId,
             Path = installedTemplatePath,
-            BackgroundPath = importedBackgroundPath
+            BackgroundPath = importedBackgroundPath,
+            LConnectVisible = lConnectImportVisible
         };
     }
 
@@ -10895,7 +10908,7 @@ public partial class MainWindow : Window
             var lConnectTemplateId = string.IsNullOrWhiteSpace(imported.LConnectId)
                 ? imported.Id
                 : imported.LConnectId;
-            if (activateAfterInstall)
+            if (activateAfterInstall && imported.LConnectVisible)
             {
                 item.Status = "Activating";
                 item.Progress = 98;
@@ -10906,6 +10919,11 @@ public partial class MainWindow : Window
                     imported.Path,
                     imported.BackgroundPath);
                 item.Status = applyAccepted ? "Installed and active" : "Installed";
+            }
+            else if (activateAfterInstall)
+            {
+                item.Status = "Installed; L-Connect refresh pending";
+                SetStatus($"Theme installed, but L-Connect has not refreshed it yet: {item.Name}");
             }
             else
             {
@@ -10952,9 +10970,14 @@ public partial class MainWindow : Window
     {
         var applyStatus = !applyRequested
             ? GetLanguageText("gallery.resultApplyNotRequested", "Not requested")
+            : !imported.LConnectVisible
+                ? GetLanguageText("gallery.resultApplySkippedNotVisible", "Skipped because L-Connect has not listed the imported template yet")
             : applyAccepted
                 ? GetLanguageText("gallery.resultApplyAccepted", "Apply accepted / active request completed")
                 : GetLanguageText("gallery.resultApplyFailed", "Apply was requested but not confirmed");
+        var installStatus = imported.LConnectVisible
+            ? GetLanguageText("gallery.resultInstallOk", "Installed in L-Connect")
+            : GetLanguageText("gallery.resultInstallRefreshPending", "Installed on disk; L-Connect refresh pending");
         var backgroundStatus = !string.IsNullOrWhiteSpace(imported.BackgroundPath) && File.Exists(imported.BackgroundPath)
             ? GetLanguageText("gallery.resultBackgroundAvailable", "Background file installed")
             : GetLanguageText("gallery.resultBackgroundMissing", "No installed background file was detected");
@@ -10963,7 +10986,7 @@ public partial class MainWindow : Window
         {
             FormatLanguageText("gallery.resultTheme", "Theme: {0}", item.Name),
             FormatLanguageText("gallery.resultDevice", "Device: {0}", item.DeviceName),
-            FormatLanguageText("gallery.resultInstall", "Install: {0}", GetLanguageText("gallery.resultInstallOk", "Installed in L-Connect")),
+            FormatLanguageText("gallery.resultInstall", "Install: {0}", installStatus),
             FormatLanguageText("gallery.resultApplyRequested", "Apply requested: {0}", applyRequested ? GetLanguageText("common.yes", "Yes") : GetLanguageText("common.no", "No")),
             FormatLanguageText("gallery.resultApply", "Apply result: {0}", applyStatus),
             FormatLanguageText("gallery.resultTemplateId", "Editor template ID: {0}", imported.Id),
@@ -10977,7 +11000,7 @@ public partial class MainWindow : Window
             message,
             GetLanguageText("gallery.resultTitle", "Gallery install result"),
             MessageBoxButton.OK,
-            applyRequested && !applyAccepted ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            applyRequested && (!applyAccepted || !imported.LConnectVisible) ? MessageBoxImage.Warning : MessageBoxImage.Information);
     }
 
     private async Task DownloadGalleryPackageForInstallAsync(
@@ -14940,7 +14963,12 @@ public partial class MainWindow : Window
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(20) };
             foreach (var path in GetLConnectDevicePaths())
             {
-                var importedId = await ImportTemplateIntoLConnectAsync(client, path, importZip);
+                var importedId = await ImportTemplateIntoLConnectAsync(
+                    client,
+                    path,
+                    importZip,
+                    deviceModel,
+                    templateId);
                 var candidateIds = new[] { importedId }
                     .Concat(GetActivationTemplateIdCandidates(templateId, templatePath, backgroundPath))
                     .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -15015,25 +15043,115 @@ public partial class MainWindow : Window
         return accepted;
     }
 
-    private async Task<string> ImportTemplateIntoLConnectAsync(HttpClient client, string devicePath, string importZip)
+    private async Task<string> ImportTemplateIntoLConnectAsync(
+        HttpClient client,
+        string devicePath,
+        string importZip,
+        string deviceModel,
+        string baseTemplateId)
     {
         await SendLConnectDeviceRequestAsync(client, devicePath, "ReloadAssets", "{}");
         var beforeIds = await GetLConnectTemplateIdsAsync(client, devicePath);
+        var beforeFiles = GetInstalledTemplateFileSnapshot(deviceModel);
         if (!await SendLConnectDeviceRequestAsync(client, devicePath, "ImportTemplate", JsonSerializer.Serialize(importZip), requireDataSuccess: true))
         {
             return "";
         }
 
-        await SendLConnectDeviceRequestAsync(client, devicePath, "ReloadAssets", "{}");
-        var afterIds = await GetLConnectTemplateIdsAsync(client, devicePath);
-        var beforeLookup = new HashSet<string>(beforeIds, StringComparer.OrdinalIgnoreCase);
-        var newId = afterIds.FirstOrDefault(id => !beforeLookup.Contains(id));
-        if (!string.IsNullOrWhiteSpace(newId))
+        var importedId = await WaitForImportedTemplateIdAsync(
+            client,
+            devicePath,
+            deviceModel,
+            baseTemplateId,
+            beforeIds,
+            beforeFiles);
+        if (!string.IsNullOrWhiteSpace(importedId))
         {
-            return newId;
+            return importedId;
         }
 
         return "";
+    }
+
+    private async Task<string> WaitForImportedTemplateIdAsync(
+        HttpClient client,
+        string devicePath,
+        string deviceModel,
+        string baseTemplateId,
+        IReadOnlyCollection<string> beforeIds,
+        IReadOnlyCollection<string> beforeFiles)
+    {
+        var beforeLookup = new HashSet<string>(beforeIds, StringComparer.OrdinalIgnoreCase);
+        var diskCandidate = "";
+        for (var attempt = 0; attempt < 14; attempt++)
+        {
+            await SendLConnectDeviceRequestAsync(client, devicePath, "ReloadAssets", "{}");
+            var afterIds = await GetLConnectTemplateIdsAsync(client, devicePath);
+            var newId = afterIds.FirstOrDefault(id => !beforeLookup.Contains(id));
+            if (!string.IsNullOrWhiteSpace(newId))
+            {
+                return newId;
+            }
+
+            diskCandidate = FindNewestImportedTemplateIdOnDisk(deviceModel, baseTemplateId, beforeFiles);
+            if (!string.IsNullOrWhiteSpace(diskCandidate) &&
+                afterIds.Contains(diskCandidate, StringComparer.OrdinalIgnoreCase))
+            {
+                return diskCandidate;
+            }
+
+            await Task.Delay(300);
+        }
+
+        return "";
+    }
+
+    private static IReadOnlyCollection<string> GetInstalledTemplateFileSnapshot(string deviceModel)
+    {
+        try
+        {
+            var root = GetTemplateRoot(deviceModel);
+            return Directory.Exists(root)
+                ? Directory.EnumerateFiles(root, "*.template")
+                    .Select(Path.GetFullPath)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase)
+                : Array.Empty<string>();
+        }
+        catch
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    private static string FindNewestImportedTemplateIdOnDisk(
+        string deviceModel,
+        string baseTemplateId,
+        IReadOnlyCollection<string> beforeFiles)
+    {
+        if (string.IsNullOrWhiteSpace(deviceModel) || string.IsNullOrWhiteSpace(baseTemplateId))
+        {
+            return "";
+        }
+
+        try
+        {
+            var root = GetTemplateRoot(deviceModel);
+            if (!Directory.Exists(root))
+            {
+                return "";
+            }
+
+            var sanitizedBase = SanitizeFileName(baseTemplateId);
+            return Directory.EnumerateFiles(root, $"{sanitizedBase}_????????_??????.template")
+                .Where(path => !beforeFiles.Contains(Path.GetFullPath(path)))
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .Select(Path.GetFileNameWithoutExtension)
+                .FirstOrDefault() ?? "";
+        }
+        catch
+        {
+            return "";
+        }
     }
 
     private async Task<List<string>> GetLConnectTemplateIdsAsync(HttpClient client, string devicePath)
