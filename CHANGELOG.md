@@ -1,5 +1,12 @@
 # Changelog
 
+## V 1.5
+
+- Fixed 8.8" Universal Screen gallery/import/apply targeting by using the actual L-Connect template endpoint (`vid_1cbe&pid_a088`) and excluding the wireless transmitter endpoint (`vid_0416&pid_8040`) from template operations.
+- Removed the temporary Gallery install diagnostic result popup and automatic gallery diagnostic ZIP generation. Gallery install/apply results now stay in the card progress/status area and the editor status bar.
+- Made single-layer Apply wait for the L-Connect send/refresh result instead of firing it in the background, so editor-side Apply now reports the device-send state like Apply All.
+- Rebuilt the L-Connect HTTP Import Tracer package so tracing starts immediately and only waits for Enter when the user is finished.
+
 ## V 1.4
 
 - Fixed 8.8" Universal Screen background export/import compatibility. L-Connect packages now reference the raw `.h264` background, with `.h264` encoded as 480x1920 Constrained Baseline and `.mp4` kept as the 1920x480 preview companion.

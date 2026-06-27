@@ -1,6 +1,6 @@
 # Lian Li LCD Template Editor
 
-**Current release:** V 1.4
+**Current release:** V 1.5
 
 Lian Li LCD Template Editor is an unofficial Windows editor for L-Connect 3 LCD templates. It is built for editing, repairing, exporting, importing, previewing, sharing, and applying LCD themes without manually digging through L-Connect template/profile files.
 
@@ -433,6 +433,13 @@ This project is licensed under the PolyForm Noncommercial License 1.0.0.
 You may use, copy, modify, and distribute it for noncommercial purposes. Commercial use, resale, paid distribution, or use in a commercial product or service requires a separate written commercial license from the copyright holder.
 
 ## Changelog
+
+### V 1.5
+
+- Fixed 8.8" Universal Screen gallery/import/apply targeting by using the actual L-Connect template endpoint (`vid_1cbe&pid_a088`) and excluding the wireless transmitter endpoint (`vid_0416&pid_8040`) from template operations.
+- Removed the temporary Gallery install diagnostic result popup and automatic gallery diagnostic ZIP generation. Gallery install/apply results now stay in the card progress/status area and the editor status bar.
+- Made single-layer Apply wait for the L-Connect send/refresh result instead of firing it in the background, so editor-side Apply now reports the device-send state like Apply All.
+- Rebuilt the L-Connect HTTP Import Tracer package so tracing starts immediately and only waits for Enter when the user is finished.
 
 ### V 1.4
 

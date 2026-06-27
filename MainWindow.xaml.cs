@@ -12066,7 +12066,7 @@ public partial class MainWindow : Window
         var text = LoadLanguage(lang);
         _languageText = text;
         ColorPickerDialog.TextProvider = GetLanguageText;
-        Title = GetText(text, "app.title", "Lian Li LCD Template Editor V 1.4");
+        Title = GetText(text, "app.title", "Lian Li LCD Template Editor V 1.5");
         DeviceLabel.Text = GetText(text, "top.device", "DEVICE");
         TemplateLabel.Text = GetText(text, "top.templateId", "TEMPLATE");
         LanguageLabel.Text = GetText(text, "footer.language", "Language");
