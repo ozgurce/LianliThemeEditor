@@ -978,11 +978,18 @@ public partial class MainWindow : Window
             {
                 var activeTemplateId = await TryGetActiveTemplateIdFromLConnectAsync(deviceModel);
                 var activeTemplatePath = ResolveTemplatePathByIdOrAlias(deviceModel, activeTemplateId);
-                result = !string.IsNullOrWhiteSpace(activeTemplatePath)
-                    ? await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath))
-                    : !string.IsNullOrWhiteSpace(activeTemplateId)
-                        ? await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, false, activeTemplateId))
-                        : await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, true, ""));
+                if (!string.IsNullOrWhiteSpace(activeTemplatePath) && File.Exists(activeTemplatePath))
+                {
+                    result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath));
+                }
+                else if (!string.IsNullOrWhiteSpace(_currentTemplatePath) && File.Exists(_currentTemplatePath))
+                {
+                    result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, _currentTemplatePath));
+                }
+                else
+                {
+                    throw new InvalidOperationException("L-Connect active template could not be resolved.");
+                }
             }
             else
             {
@@ -1029,12 +1036,12 @@ public partial class MainWindow : Window
         {
             var activeTemplateId = await TryGetActiveTemplateIdFromLConnectAsync(deviceModel);
             var activeTemplatePath = ResolveTemplatePathByIdOrAlias(deviceModel, activeTemplateId);
-            result = !string.IsNullOrWhiteSpace(activeTemplatePath)
+            result = !string.IsNullOrWhiteSpace(activeTemplatePath) && File.Exists(activeTemplatePath)
                 ? await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath))
-                : !string.IsNullOrWhiteSpace(activeTemplateId)
-                    ? await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, false, activeTemplateId))
-                    : await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, true, ""));
-            if (string.IsNullOrWhiteSpace(result.TemplatePath) || !File.Exists(result.TemplatePath))
+                : null;
+            if (result == null ||
+                string.IsNullOrWhiteSpace(result.TemplatePath) ||
+                !File.Exists(result.TemplatePath))
             {
                 result = null;
             }
@@ -1199,18 +1206,7 @@ public partial class MainWindow : Window
                 return (deviceModel, _currentTemplatePath);
             }
 
-            var active = !string.IsNullOrWhiteSpace(activeTemplateId)
-                    ? await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, false, activeTemplateId))
-                    : await Task.Run(() => _supporter.LoadLayersAsync(deviceModel, true, ""));
-            if (string.IsNullOrWhiteSpace(active.TemplatePath) || !File.Exists(active.TemplatePath))
-            {
-                throw new InvalidOperationException("L-Connect active template could not be resolved.");
-            }
-            _currentTemplatePath = active.TemplatePath;
-            _currentTemplateId = active.TemplateId;
-            _currentBackgroundPath = active.BackgroundPath;
-            TemplateIdBox.Text = active.TemplateId;
-            TemplatePathText.Text = active.TemplatePath;
+            throw new InvalidOperationException("L-Connect active template could not be resolved.");
         }
         else
         {
@@ -14680,6 +14676,7 @@ public partial class MainWindow : Window
 
     private async Task<string> TryGetActiveTemplateIdFromLConnectAsync(string deviceModel)
     {
+        var candidates = new List<string>();
         try
         {
             using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(4) };
@@ -14688,7 +14685,7 @@ public partial class MainWindow : Window
                 var templateId = await GetLConnectSelectedTemplateIdAsync(client, path);
                 if (!string.IsNullOrWhiteSpace(ResolveTemplatePathByIdOrAlias(deviceModel, templateId)))
                 {
-                    return templateId;
+                    candidates.Add(templateId);
                 }
             }
         }
@@ -14696,7 +14693,33 @@ public partial class MainWindow : Window
         {
         }
 
-        return "";
+        return ChooseBestActiveTemplateIdCandidate(deviceModel, candidates);
+    }
+
+    private static string ChooseBestActiveTemplateIdCandidate(string deviceModel, IEnumerable<string> candidates)
+    {
+        return candidates
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(id => new
+            {
+                Id = id,
+                Path = ResolveTemplatePathByIdOrAlias(deviceModel, id)
+            })
+            .Where(item => !string.IsNullOrWhiteSpace(item.Path) && File.Exists(item.Path))
+            .OrderBy(item => IsProgramDataTemplatePath(item.Path) ? 0 : 1)
+            .ThenByDescending(item => File.GetLastWriteTimeUtc(item.Path))
+            .Select(item => item.Id)
+            .FirstOrDefault() ?? "";
+    }
+
+    private static bool IsProgramDataTemplatePath(string templatePath)
+    {
+        var root = Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3");
+        return !string.IsNullOrWhiteSpace(templatePath) &&
+               Path.GetFullPath(templatePath).StartsWith(
+                   Path.GetFullPath(root),
+                   StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<bool> ReloadInstalledTemplatesInLConnectAsync()

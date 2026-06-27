@@ -62,11 +62,7 @@ public sealed class ThemeInstallationService
     public static string ResolveTemplatePath(string deviceModel, string? templateId)
     {
         if (string.IsNullOrWhiteSpace(deviceModel) || string.IsNullOrWhiteSpace(templateId)) return "";
-        var roots = new[]
-        {
-            Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", deviceModel, "template"),
-            Path.Combine(@"C:\Program Files\Lian-Li\L-Connect 3", "Assets", deviceModel, "template")
-        };
+        var roots = GetTemplateRoots(deviceModel);
         foreach (var root in roots.Where(Directory.Exists))
         {
             var exact = Path.Combine(root, templateId + ".template");
@@ -82,5 +78,42 @@ public sealed class ThemeInstallationService
             catch (Exception ex) { AppLogger.Error($"Template identity could not be inspected: {file}", ex); }
         }
         return "";
+    }
+
+    private static IReadOnlyList<string> GetTemplateRoots(string deviceModel)
+    {
+        var roots = new List<string>
+        {
+            Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", deviceModel, "template"),
+            Path.Combine(@"C:\Program Files\Lian-Li\L-Connect 3", "Assets", deviceModel, "template")
+        };
+
+        AddSiblingTemplateRoots(roots, @"C:\ProgramData\Lian-Li\L-Connect 3");
+        AddSiblingTemplateRoots(roots, Path.Combine(@"C:\Program Files\Lian-Li\L-Connect 3", "Assets"));
+
+        return roots
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static void AddSiblingTemplateRoots(List<string> roots, string baseDir)
+    {
+        if (!Directory.Exists(baseDir)) return;
+        try
+        {
+            foreach (var dir in Directory.EnumerateDirectories(baseDir))
+            {
+                var templateRoot = Path.Combine(dir, "template");
+                if (Directory.Exists(templateRoot))
+                {
+                    roots.Add(templateRoot);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Template roots could not be scanned: {baseDir}", ex);
+        }
     }
 }

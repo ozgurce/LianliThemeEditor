@@ -171,7 +171,10 @@ internal static class Program
                     _profileDir,
                     _deviceModel,
                     _lConnectDir);
-                _templatePath = Path.Combine(_templateRoot, activeId + ".template");
+                var activePath = ProfileStore.ResolveActiveTemplatePath(_deviceModel, _lConnectDir, activeId);
+                _templatePath = string.IsNullOrWhiteSpace(activePath)
+                    ? Path.Combine(_templateRoot, activeId + ".template")
+                    : activePath;
             }
             else if (_args.HasValue("TemplateId"))
             {
@@ -2629,8 +2632,7 @@ internal static class Program
                     if (json.TryGetValue("SelectedTemplateId", out var value) && value != null && !string.IsNullOrWhiteSpace(value.ToString()))
                     {
                         var templateId = value.ToString()!;
-                        if (File.Exists(Path.Combine(DefaultProgramData, deviceModel, "template", templateId + ".template")) ||
-                            File.Exists(Path.Combine(lConnectDir, "Assets", deviceModel, "template", templateId + ".template")))
+                        if (TemplateExistsForActiveId(deviceModel, lConnectDir, templateId))
                         {
                             return templateId;
                         }
@@ -2639,24 +2641,66 @@ internal static class Program
                 catch { }
             }
 
-            foreach (var root in new[]
-                     {
-                         Path.Combine(DefaultProgramData, deviceModel, "template"),
-                         Path.Combine(lConnectDir, "Assets", deviceModel, "template")
-                     })
+            throw new InvalidOperationException(
+                $"No active template was found for {deviceModel}.");
+        }
+
+        private static bool TemplateExistsForActiveId(string deviceModel, string lConnectDir, string templateId)
+        {
+            return !string.IsNullOrWhiteSpace(ResolveActiveTemplatePath(deviceModel, lConnectDir, templateId));
+        }
+
+        public static string ResolveActiveTemplatePath(string deviceModel, string lConnectDir, string templateId)
+        {
+            foreach (var root in ActiveTemplateRoots(deviceModel, lConnectDir).Where(Directory.Exists))
             {
-                if (!Directory.Exists(root)) continue;
-                var firstTemplate = Directory.GetFiles(root, "*.template")
-                    .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
-                    .FirstOrDefault();
-                if (!string.IsNullOrWhiteSpace(firstTemplate))
+                var candidate = Path.Combine(root, templateId + ".template");
+                if (File.Exists(candidate))
                 {
-                    return Path.GetFileNameWithoutExtension(firstTemplate);
+                    return candidate;
                 }
             }
 
-            throw new InvalidOperationException(
-                $"No active or fallback template was found for {deviceModel}.");
+            return "";
+        }
+
+        private static IEnumerable<string> ActiveTemplateRoots(string deviceModel, string lConnectDir)
+        {
+            yield return Path.Combine(DefaultProgramData, deviceModel, "template");
+            yield return Path.Combine(lConnectDir, "Assets", deviceModel, "template");
+
+            foreach (var root in SiblingTemplateRoots(DefaultProgramData))
+            {
+                yield return root;
+            }
+
+            foreach (var root in SiblingTemplateRoots(Path.Combine(lConnectDir, "Assets")))
+            {
+                yield return root;
+            }
+        }
+
+        private static IEnumerable<string> SiblingTemplateRoots(string baseDir)
+        {
+            if (!Directory.Exists(baseDir)) yield break;
+            IEnumerable<string> directories;
+            try
+            {
+                directories = Directory.EnumerateDirectories(baseDir).ToList();
+            }
+            catch
+            {
+                yield break;
+            }
+
+            foreach (var dir in directories)
+            {
+                var templateRoot = Path.Combine(dir, "template");
+                if (Directory.Exists(templateRoot))
+                {
+                    yield return templateRoot;
+                }
+            }
         }
 
         public static void SetTemplateBackground(string profileDir, string templateId, string path)
