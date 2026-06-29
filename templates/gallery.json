@@ -431,6 +431,42 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/gengar-imported-a26bf262.png",
       "packageUrl": "packages/gengar-imported-a26bf262.lltheme"
+    },
+    {
+      "id": "007-fl-vertical",
+      "name": "007 FL Vertical",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/007-fl-vertical.png",
+      "packageUrl": "packages/007-fl-vertical.lltheme"
+    },
+    {
+      "id": "cyberpunk2077-v5lc-vertical",
+      "name": "Cyberpunk2077 V5LC Vertical",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyberpunk2077-v5lc-vertical.png",
+      "packageUrl": "packages/cyberpunk2077-v5lc-vertical.lltheme"
+    },
+    {
+      "id": "doom-the-dark-ages-v2-vert",
+      "name": "Doom the Dark Ages V2 Vertical",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/doom-the-dark-ages-v2-vert.png",
+      "packageUrl": "packages/doom-the-dark-ages-v2-vert.lltheme"
+    },
+    {
+      "id": "spaceship-dashboard-vertical",
+      "name": "Spaceship Dashboard Vertical",
+      "author": "Galrim",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/spaceship-dashboard-vertical.png",
+      "packageUrl": "packages/spaceship-dashboard-vertical.lltheme"
     }
   ]
 }
