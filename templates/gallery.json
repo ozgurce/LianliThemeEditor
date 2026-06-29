@@ -458,6 +458,15 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/spaceship-dashboard-vertical.png",
       "packageUrl": "packages/spaceship-dashboard-vertical.lltheme"
+    },
+    {
+      "id": "colored-cards-4bbd9d8c",
+      "name": "Colored Cards",
+      "author": "\u00D6zg\u00FCr",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/colored-cards-4bbd9d8c.png",
+      "packageUrl": "packages/colored-cards-4bbd9d8c.lltheme"
     }
   ]
 }
