@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
 namespace ThemeEditorSupporter;
@@ -109,9 +110,21 @@ internal static class Program
                 return;
             }
 
+            if (_args.Has("InspectBitmaps"))
+            {
+                InspectBitmaps(theme);
+                return;
+            }
+
             if (_args.Has("RenderGraphPreview"))
             {
                 RenderGraphPreview(theme);
+                return;
+            }
+
+            if (_args.Has("RenderLayerCanvas"))
+            {
+                RenderLayerCanvas(theme);
                 return;
             }
 
@@ -137,6 +150,14 @@ internal static class Program
             if (_args.HasValue("UpdateThemePreview"))
             {
                 UpdateThemePreview(theme, _args.Get("UpdateThemePreview"));
+                return;
+            }
+
+            if (_args.Has("EnsureBackgroundLayer"))
+            {
+                EnsureBackgroundLayer(theme, resetMedia: true);
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
                 return;
             }
 
@@ -236,12 +257,15 @@ internal static class Program
             var layers = Graphs(theme).Cast<object>().Select((graph, index) => LayerInspector.Read(theme, graph, index, _templatePath)).ToList();
             var templateId = Path.GetFileNameWithoutExtension(_templatePath);
             var profileBackground = ProfileStore.GetTemplateBackground(_profileDir, templateId, _deviceModel);
+            var backgroundPath = string.IsNullOrWhiteSpace(profileBackground)
+                ? ResolveTemplateBackgroundPath(theme)
+                : profileBackground;
             var result = new Dictionary<string, object?>
             {
                 ["TemplatePath"] = _templatePath,
                 ["TemplateId"] = templateId,
-                ["Background"] = string.IsNullOrWhiteSpace(profileBackground) ? ThemeBackgroundName(theme) : Path.GetFileName(profileBackground),
-                ["BackgroundPath"] = string.IsNullOrWhiteSpace(profileBackground) ? ThemeBackgroundPath(theme) : profileBackground,
+                ["Background"] = Path.GetFileName(backgroundPath),
+                ["BackgroundPath"] = backgroundPath,
                 ["Layers"] = layers,
                 ["ProfileModulars"] = Array.Empty<object>()
             };
@@ -253,6 +277,84 @@ internal static class Program
                 foreach (var layer in layers) Console.WriteLine($"{layer["Index"],3} {layer["Type"],20} {layer["DataSource"],18}");
             }
         }
+
+        private void InspectBitmaps(object theme)
+        {
+            var rows = new List<Dictionary<string, object?>>();
+            foreach (var row in InspectObjectBitmaps(theme, "Theme", -1))
+            {
+                rows.Add(row);
+            }
+
+            foreach (var graph in Graphs(theme).Cast<object>().Select((Graph, Index) => new { Graph, Index }))
+            {
+                rows.AddRange(InspectObjectBitmaps(graph.Graph, graph.Graph.GetType().Name, graph.Index));
+            }
+
+            if (_args.Has("Json"))
+            {
+                Console.WriteLine(Json.Serialize(rows));
+                return;
+            }
+
+            foreach (var row in rows)
+            {
+                Console.WriteLine($"{row["Index"],3} {row["Type"],16} {row["Property"],28} {row["Width"],5}x{row["Height"],-5} x={row["X"],5} y={row["Y"],5} zoom={row["ZoomRate"],5} img={row["ImgName"]}");
+            }
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> InspectObjectBitmaps(object source, string typeName, int index)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            foreach (var property in source.GetType().GetProperties(flags))
+            {
+                if (property.GetIndexParameters().Length > 0)
+                {
+                    continue;
+                }
+
+                Bitmap? bitmap = null;
+                try { bitmap = property.GetValue(source) as Bitmap; } catch { }
+                if (bitmap == null)
+                {
+                    continue;
+                }
+
+                yield return CreateBitmapInspectRow(source, typeName, index, property.Name, bitmap);
+            }
+
+            foreach (var field in source.GetType().GetFields(flags))
+            {
+                Bitmap? bitmap = null;
+                try { bitmap = field.GetValue(source) as Bitmap; } catch { }
+                if (bitmap == null)
+                {
+                    continue;
+                }
+
+                yield return CreateBitmapInspectRow(source, typeName, index, field.Name, bitmap);
+            }
+        }
+
+        private static Dictionary<string, object?> CreateBitmapInspectRow(
+            object source,
+            string typeName,
+            int index,
+            string propertyName,
+            Bitmap bitmap) =>
+            new()
+            {
+                ["Index"] = index,
+                ["Type"] = typeName,
+                ["Property"] = propertyName,
+                ["ImgName"] = Reflection.GetString(source, "ImgName"),
+                ["VideoName"] = Reflection.GetString(source, "videoName"),
+                ["X"] = Reflection.Get(source, "posX"),
+                ["Y"] = Reflection.Get(source, "posY"),
+                ["ZoomRate"] = Reflection.Get(source, "zoom_rate"),
+                ["Width"] = bitmap.Width,
+                ["Height"] = bitmap.Height
+            };
 
         private List<GraphStyle> GetGraphStyles()
         {
@@ -663,7 +765,7 @@ internal static class Program
             }
             foreach (var name in new[] { "videoPath", "o_videoPath", "videoPath2", "videoPath3" })
                 Reflection.TrySet(theme, name, themeMediaPath);
-            foreach (var graph in Graphs(theme).Cast<object>().Where(x => x.GetType().Name == "GraphAnimation"))
+            foreach (var graph in EnsureBackgroundLayer(theme, resetMedia: false))
             {
                 Reflection.TrySet(graph, "ImgName", Path.GetFileName(path));
                 Reflection.TrySet(graph, "videoName", Path.GetFileName(path));
@@ -672,6 +774,43 @@ internal static class Program
             }
             SetThemeZoomRate(theme, 1.0);
             Console.WriteLine("BackgroundPath: " + path);
+        }
+
+        private List<object> EnsureBackgroundLayer(object theme, bool resetMedia)
+        {
+            var list = Graphs(theme);
+            var animations = list.Cast<object>()
+                .Where(layer => layer.GetType().Name == "GraphAnimation")
+                .ToList();
+            if (animations.Count == 0)
+            {
+                var sample = FindSampleAcrossTemplates("GraphAnimation")
+                             ?? throw new InvalidOperationException("No GraphAnimation sample exists.");
+                var layer = TemplateSerializer.Clone(sample);
+                list.Insert(0, layer);
+                animations.Add(layer);
+            }
+
+            foreach (var graph in animations)
+            {
+                Reflection.TrySet(graph, "hide", false);
+                Reflection.TrySet(graph, "zoom_rate", 1.0);
+                if (!resetMedia) continue;
+                foreach (var name in new[] { "ImgName", "videoName", "FilePath", "Path", "ImagePath" })
+                {
+                    Reflection.TrySet(graph, name, "");
+                }
+            }
+
+            if (resetMedia)
+            {
+                foreach (var name in new[] { "videoName", "videoPath", "o_videoPath", "videoPath2", "videoPath3" })
+                {
+                    Reflection.TrySet(theme, name, "");
+                }
+            }
+
+            return animations;
         }
 
         private void ApplyLegacyPrimaryFields(object theme)
@@ -892,6 +1031,7 @@ internal static class Program
             {
                 throw new InvalidOperationException("Layer is not a ThemeEngine graph layer.");
             }
+            ApplyRawLayerEdit(layer);
             var data = Reflection.Get(layer, "m_data");
             var currentValue = Reflection.GetString(data, "Value");
             if (string.IsNullOrWhiteSpace(currentValue) || currentValue == "0")
@@ -913,6 +1053,119 @@ internal static class Program
                 rendered = output;
             }
             Console.WriteLine(rendered);
+        }
+
+        private void RenderLayerCanvas(object theme)
+        {
+            var list = Graphs(theme);
+            var index = _args.GetInt("LayerIndex");
+            ValidateIndex(list, index);
+            var layer = TemplateSerializer.Clone(list[index]!);
+            ApplyRawLayerEdit(layer);
+
+            var width = Math.Max(1, _args.GetInt("CanvasWidth", 1920));
+            var height = Math.Max(1, _args.GetInt("CanvasHeight", 480));
+            var output = _args.Get("Output", Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "layer-canvas.png"));
+            using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                var render = layer.GetType().GetMethod("Render", new[] { typeof(Graphics), typeof(bool), typeof(bool), typeof(bool) });
+                render?.Invoke(layer, new object[] { graphics, true, true, false });
+            }
+            Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+            bitmap.SetResolution(96f, 96f);
+            bitmap.Save(output, ImageFormat.Png);
+            Console.WriteLine(output);
+        }
+
+        private void ApplyRawLayerEdit(object layer)
+        {
+            if (!_args.HasValue("RawPath")) return;
+            var target = ResolveRawTarget(layer, _args.Get("RawPath"));
+            if (target.Object == null || string.IsNullOrWhiteSpace(target.Member))
+            {
+                throw new InvalidOperationException("RawPath could not be resolved: " + _args.Get("RawPath"));
+            }
+            SetRawMember(target.Object, target.Member, _args.Get("RawValue"));
+        }
+
+        private static (object? Object, string Member) ResolveRawTarget(object layer, string path)
+        {
+            var parts = (path ?? "").Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0) return (null, "");
+            object? current = layer;
+            var start = 0;
+            if (parts[0].Equals("layer", StringComparison.OrdinalIgnoreCase))
+            {
+                start = 1;
+            }
+            else if (parts[0].Equals("data", StringComparison.OrdinalIgnoreCase))
+            {
+                current = Reflection.Get(layer, "m_data");
+                start = 1;
+            }
+            else if (parts[0].Equals("font", StringComparison.OrdinalIgnoreCase))
+            {
+                current = Reflection.Get(layer, "fontConfig");
+                start = 1;
+            }
+            else if (parts[0].Equals("alignment", StringComparison.OrdinalIgnoreCase))
+            {
+                current = Reflection.Get(Reflection.Get(layer, "fontConfig"), "alignment");
+                start = 1;
+            }
+            else if (parts[0].Equals("styleInfo", StringComparison.OrdinalIgnoreCase))
+            {
+                current = Reflection.Get(layer, "styleInfo");
+                start = 1;
+            }
+
+            for (var i = start; i < parts.Length - 1; i++)
+            {
+                current = Reflection.Get(current, parts[i]);
+            }
+            return (current, parts.Last());
+        }
+
+        private static void SetRawMember(object target, string member, string value)
+        {
+            var type = target.GetType();
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
+            var property = type.GetProperty(member, flags);
+            if (property != null && property.CanWrite)
+            {
+                property.SetValue(target, ConvertRawValue(value, property.PropertyType));
+                return;
+            }
+            var field = type.GetField(member, flags) ?? type.GetField($"<{member}>k__BackingField", flags);
+            if (field != null)
+            {
+                field.SetValue(target, ConvertRawValue(value, field.FieldType));
+                return;
+            }
+            throw new MissingMemberException(type.FullName, member);
+        }
+
+        private static object? ConvertRawValue(string value, Type targetType)
+        {
+            var underlying = Nullable.GetUnderlyingType(targetType) ?? targetType;
+            if (underlying == typeof(string)) return value;
+            if (underlying == typeof(bool)) return bool.Parse(value);
+            if (underlying == typeof(int)) return int.Parse(value, CultureInfo.InvariantCulture);
+            if (underlying == typeof(byte)) return byte.Parse(value, CultureInfo.InvariantCulture);
+            if (underlying == typeof(float)) return float.Parse(value, CultureInfo.InvariantCulture);
+            if (underlying == typeof(double)) return double.Parse(value, CultureInfo.InvariantCulture);
+            if (underlying == typeof(Color)) return ColorParser.Parse(value);
+            if (underlying.IsEnum) return Enum.Parse(underlying, value, true);
+            if (underlying.IsGenericType && underlying.GetGenericTypeDefinition() == typeof(Queue<>) &&
+                underlying.GetGenericArguments()[0] == typeof(string))
+            {
+                return new Queue<string>(Regex.Split(value, @"[,; ]+").Where(x => x.Length > 0));
+            }
+            if (value.Equals("null", StringComparison.OrdinalIgnoreCase)) return null;
+            return value;
         }
 
         private void RenderClockCanvas(object theme)
@@ -1153,7 +1406,7 @@ internal static class Program
                          ("LayerDirection", "direction"), ("LayerLineWidth", "lineWidth"), ("LayerColumnWidth", "columnWidth"),
                          ("LayerBorderWidth", "borderWidth"), ("LayerInnerCircleRadius", "InnerCircleRadius"),
                          ("LayerSplitBlockWidth", "SplitBlockWidth"), ("LayerSplitBlankWidth", "SplitBlankWidth"),
-                         ("LayerMaxValue", "maxValue"), ("LayerStartPercentage", "startPer"), ("LayerTotalAngle", "totalAngel"),
+                         ("LayerMinValue", "minValue"), ("LayerMaxValue", "maxValue"), ("LayerStartPercentage", "startPer"), ("LayerTotalAngle", "totalAngel"),
                          ("LayerTypeName", "TypeName"), ("LayerSubTypeName", "SubTypeName")
                          ,("LayerClockCenterX", "centerX"), ("LayerClockCenterY", "centerY"),
                          ("LayerClockAngle", "angle"), ("LayerClockEndAngle", "endAngle"),
@@ -1329,6 +1582,18 @@ internal static class Program
         {
             Reflection.TrySet(layer, "ImgName", mediaName);
             Reflection.TrySet(layer, "videoName", mediaName);
+            if (layer.GetType().Name == "GraphAnimation")
+            {
+                var videoPath = ResolveAnimationMediaPath(mediaName);
+                var videoName = Path.GetFileName(videoPath);
+                Reflection.TrySet(layer, "ImgName", videoName);
+                Reflection.TrySet(layer, "videoName", videoName);
+                Reflection.TrySet(layer, "FilePath", videoPath);
+                Reflection.TrySet(layer, "Path", videoPath);
+                Reflection.TrySet(layer, "ImagePath", videoPath);
+                return;
+            }
+
             var imagePath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "image", mediaName);
             Reflection.TrySet(layer, "FilePath", imagePath);
             Reflection.TrySet(layer, "Path", imagePath);
@@ -1339,6 +1604,29 @@ internal static class Program
                 var zoom = Reflection.GetDouble(layer, "zoom_rate", 1);
                 EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
             }
+        }
+
+        private string ResolveAnimationMediaPath(string mediaName)
+        {
+            if (string.IsNullOrWhiteSpace(mediaName))
+            {
+                return mediaName;
+            }
+
+            if (Path.IsPathRooted(mediaName) && File.Exists(mediaName))
+            {
+                return mediaName;
+            }
+
+            var videoDir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "video");
+            var videoPath = Path.Combine(videoDir, Path.GetFileName(mediaName));
+            if (File.Exists(videoPath))
+            {
+                return videoPath;
+            }
+
+            var h264Path = Path.ChangeExtension(videoPath, ".h264");
+            return File.Exists(h264Path) ? h264Path : videoPath;
         }
 
         private void UpdateLayerZoom(object theme, object layer, double zoom)
@@ -1737,6 +2025,191 @@ internal static class Program
             return "";
         }
 
+        private string ResolveTemplateBackgroundPath(object theme)
+        {
+            var backgroundPath = ThemeBackgroundPath(theme);
+            if (File.Exists(backgroundPath))
+            {
+                return backgroundPath;
+            }
+
+            var graphAnimationBackground = ResolveGraphAnimationBackgroundPath(theme);
+            if (!string.IsNullOrWhiteSpace(graphAnimationBackground))
+            {
+                return graphAnimationBackground;
+            }
+
+            var embeddedBackground = ExtractEmbeddedBackgroundImage(theme);
+            if (!string.IsNullOrWhiteSpace(embeddedBackground))
+            {
+                return embeddedBackground;
+            }
+
+            var resolvedMedia = ResolveTemplateMediaPath(backgroundPath);
+            return string.IsNullOrWhiteSpace(resolvedMedia) ? backgroundPath : resolvedMedia;
+        }
+
+        private string ResolveGraphAnimationBackgroundPath(object theme)
+        {
+            foreach (var graph in Graphs(theme).Cast<object>().Where(graph => graph.GetType().Name == "GraphAnimation"))
+            {
+                foreach (var value in new[]
+                         {
+                             Reflection.GetString(graph, "FilePath"),
+                             Reflection.GetString(graph, "videoPath"),
+                             Reflection.GetString(graph, "o_videoPath"),
+                             Reflection.GetString(graph, "ImgName"),
+                             Reflection.GetString(graph, "videoName")
+                         })
+                {
+                    if (string.IsNullOrWhiteSpace(value))
+                    {
+                        continue;
+                    }
+
+                    if (File.Exists(value))
+                    {
+                        return value;
+                    }
+
+                    var resolved = ResolveTemplateMediaPath(value);
+                    if (!string.IsNullOrWhiteSpace(resolved) && File.Exists(resolved))
+                    {
+                        return resolved;
+                    }
+                }
+            }
+
+            return "";
+        }
+
+        private string ResolveTemplateMediaPath(string mediaName)
+        {
+            if (string.IsNullOrWhiteSpace(mediaName))
+            {
+                return "";
+            }
+
+            var fileName = Path.GetFileName(mediaName);
+            var baseName = Path.GetFileNameWithoutExtension(fileName);
+            if (string.IsNullOrWhiteSpace(baseName))
+            {
+                return "";
+            }
+
+            var lConnectAssetRoot = Path.Combine(_lConnectDir, "Assets");
+            var searchModels = new List<string> { _deviceModel };
+            if (_deviceModel.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase))
+            {
+                searchModels.Add("hydroshift-ii-lcd-c");
+            }
+            else if (_deviceModel.Equals("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase))
+            {
+                searchModels.Add("hydroshift-ii-lcd-s");
+            }
+            else if (_deviceModel.Equals("vm-9.2-inch", StringComparison.OrdinalIgnoreCase))
+            {
+                searchModels.Add("universal-screen-8.8-inch");
+            }
+
+            var roots = new List<string>();
+            var lcdRoot = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(_templatePath))!)!;
+            foreach (var model in searchModels.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                roots.Add(Path.Combine(DefaultProgramData, model, "video"));
+                roots.Add(Path.Combine(DefaultProgramData, model, "image"));
+                roots.Add(Path.Combine(DefaultProgramData, model, "theme"));
+                roots.Add(Path.Combine(_lConnectDir, "Assets", model, "video"));
+                roots.Add(Path.Combine(_lConnectDir, "Assets", model, "image"));
+                roots.Add(Path.Combine(_lConnectDir, "Assets", model, "theme"));
+                roots.Add(Path.Combine(lConnectAssetRoot, model, "video"));
+                roots.Add(Path.Combine(lConnectAssetRoot, model, "image"));
+                roots.Add(Path.Combine(lConnectAssetRoot, model, "theme"));
+            }
+            roots.Add(Path.Combine(lcdRoot, "video"));
+            roots.Add(Path.Combine(lcdRoot, "image"));
+            roots.Add(Path.Combine(lcdRoot, "theme"));
+
+            foreach (var root in roots.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var exact = Path.Combine(root, fileName);
+                if (File.Exists(exact))
+                {
+                    return exact;
+                }
+
+                try
+                {
+                    var match = Directory.EnumerateFiles(root, baseName + "*.*")
+                        .Where(path => IsSupportedBackgroundMediaFile(path) && IsBackgroundNameCandidate(path, baseName))
+                        .OrderBy(path => Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                        .ThenByDescending(path => new FileInfo(path).Length)
+                        .FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(match))
+                    {
+                        return match;
+                    }
+                }
+                catch { }
+            }
+
+            return "";
+        }
+
+        private string ExtractEmbeddedBackgroundImage(object theme)
+        {
+            if (Reflection.Get(theme, "BgImg") is not Bitmap bitmap ||
+                bitmap.Width < 64 ||
+                bitmap.Height < 64)
+            {
+                return "";
+            }
+
+            try
+            {
+                var directory = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "embedded-backgrounds");
+                Directory.CreateDirectory(directory);
+                var output = Path.Combine(
+                    directory,
+                    Path.GetFileNameWithoutExtension(_templatePath) + "-background.png");
+                using var copy = new Bitmap(bitmap);
+                copy.Save(output, ImageFormat.Png);
+                return output;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        private static bool IsSupportedBackgroundMediaFile(string path) =>
+            path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".h264", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsBackgroundNameCandidate(string path, string baseName)
+        {
+            var candidateBaseName = Path.GetFileNameWithoutExtension(path);
+            if (string.Equals(candidateBaseName, baseName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!candidateBaseName.StartsWith(baseName, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            var suffix = candidateBaseName.Length > baseName.Length
+                ? candidateBaseName.Substring(baseName.Length)
+                : "";
+            return suffix.StartsWith("_", StringComparison.Ordinal) ||
+                   suffix.StartsWith("-", StringComparison.Ordinal);
+        }
+
         private string SyncUploadedBackgroundMedia(string sourcePath, int rotationDegrees)
         {
             var templateId = Path.GetFileNameWithoutExtension(_templatePath);
@@ -1760,6 +2233,13 @@ internal static class Program
             var tempPreview = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".png");
             var ffmpeg = Path.Combine(_lConnectDir, "x64", "ffmpeg.exe");
             if (!File.Exists(ffmpeg)) ffmpeg = "ffmpeg";
+            var normalizedJpegInput = "";
+            var preparedSourcePath = NormalizeJpegOrientationToPng(sourcePath);
+            if (!string.Equals(preparedSourcePath, sourcePath, StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedJpegInput = preparedSourcePath;
+                sourcePath = preparedSourcePath;
+            }
 
             var canvasWidth = Math.Max(1, _args.GetInt("CanvasWidth", 480));
             var canvasHeight = Math.Max(1, _args.GetInt("CanvasHeight", 480));
@@ -1780,12 +2260,22 @@ internal static class Program
                          $"crop={canvasWidth}:{canvasHeight},setsar=1,fps=30,format=yuv420p";
             if (isUniversal88)
             {
-                filter = rotation + "scale=1920:480,setsar=1,fps=24,format=yuv420p";
+                var targetWidth = canvasWidth >= canvasHeight ? 1920 : 480;
+                var targetHeight = canvasWidth >= canvasHeight ? 480 : 1920;
+                filter = rotation + $"scale={targetWidth}:{targetHeight},setsar=1";
             }
             var h264Filter = isUniversal88
-                ? "transpose=clock,scale=480:1920,setsar=1,fps=24,format=yuv420p"
+                ? canvasWidth >= canvasHeight
+                    ? "transpose=clock,scale=480:1920,setsar=1"
+                    : "scale=480:1920,setsar=1"
                 : filter;
-            var encoder = new[]
+            var encoder = isUniversal88
+                ? new[]
+                {
+                    "-an", "-r", "24", "-c:v", "libx264", "-preset", "ultrafast",
+                    "-threads", "0", "-x264opts", "bframes=0", "-pix_fmt", "yuv420p"
+                }
+                : new[]
             {
                 "-an", "-c:v", "libx264", "-preset", "ultrafast",
                 "-x264opts", "bframes=0", "-profile:v", "baseline",
@@ -1826,9 +2316,80 @@ internal static class Program
             }
             finally
             {
-                foreach (var path in new[] { tempMp4, tempH264, tempPreview })
+                foreach (var path in new[] { tempMp4, tempH264, tempPreview, normalizedJpegInput })
                     try { if (File.Exists(path)) File.Delete(path); } catch { }
             }
+        }
+
+        private static string NormalizeJpegOrientationToPng(string sourcePath)
+        {
+            var extension = Path.GetExtension(sourcePath);
+            if (!extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) &&
+                !extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
+            {
+                return sourcePath;
+            }
+
+            using var image = Image.FromFile(sourcePath);
+            ApplyExifOrientation(image);
+            var output = Path.Combine(
+                Path.GetTempPath(),
+                Path.GetFileNameWithoutExtension(sourcePath) + "-oriented-" + Guid.NewGuid().ToString("N") + ".png");
+            image.Save(output, ImageFormat.Png);
+            return output;
+        }
+
+        private static void ApplyExifOrientation(Image image)
+        {
+            const int orientationId = 0x0112;
+            if (!image.PropertyIdList.Contains(orientationId))
+            {
+                return;
+            }
+
+            try
+            {
+                var property = image.GetPropertyItem(orientationId);
+                if (property?.Value == null || property.Value.Length < 2)
+                {
+                    return;
+                }
+
+                var orientation = ReadExifOrientation(property.Value);
+                var rotateFlip = orientation switch
+                {
+                    2 => RotateFlipType.RotateNoneFlipX,
+                    3 => RotateFlipType.Rotate180FlipNone,
+                    4 => RotateFlipType.Rotate180FlipX,
+                    5 => RotateFlipType.Rotate90FlipX,
+                    6 => RotateFlipType.Rotate90FlipNone,
+                    7 => RotateFlipType.Rotate270FlipX,
+                    8 => RotateFlipType.Rotate270FlipNone,
+                    _ => RotateFlipType.RotateNoneFlipNone
+                };
+                if (rotateFlip != RotateFlipType.RotateNoneFlipNone)
+                {
+                    image.RotateFlip(rotateFlip);
+                }
+                image.RemovePropertyItem(orientationId);
+            }
+            catch
+            {
+            }
+        }
+
+        private static ushort ReadExifOrientation(byte[] value)
+        {
+            var littleEndian = BitConverter.ToUInt16(value, 0);
+            if (littleEndian >= 1 && littleEndian <= 8)
+            {
+                return littleEndian;
+            }
+
+            var bigEndian = (ushort)((value[0] << 8) | value[1]);
+            return bigEndian >= 1 && bigEndian <= 8
+                ? bigEndian
+                : littleEndian;
         }
 
         private static int GetAutoBackgroundRotationDegrees(
@@ -2040,7 +2601,8 @@ internal static class Program
                 ["UseSubsection"] = Reflection.GetBool(graph, "useSubsection"), ["FillBack"] = Reflection.GetBool(graph, "fillBack"),
                 ["Revert"] = Reflection.GetBool(graph, "revert"), ["FrontAlpha"] = Reflection.Get(graph, "FrontAlpha"),
                 ["BackAlpha"] = Reflection.Get(graph, "BackAlpha"), ["TransparentBackground"] = Reflection.GetBool(graph, "trBack"),
-                ["MaxValue"] = Reflection.Get(graph, "maxValue"), ["InvertDirection"] = Reflection.GetBool(graph, "rollDirection"),
+                ["MinValue"] = Reflection.Get(graph, "minValue"), ["MaxValue"] = Reflection.Get(graph, "maxValue"),
+                ["InvertDirection"] = Reflection.GetBool(graph, "rollDirection"),
                 ["StartPercentage"] = Reflection.Get(graph, "startPer"), ["TotalAngle"] = Reflection.Get(graph, "totalAngel"),
                 ["UseBlock"] = Reflection.GetBool(graph, "useBlock"), ["RingBorder"] = Reflection.GetBool(graph, "HasRingBorder"),
                 ["Round"] = Reflection.GetBool(graph, "round"), ["SubTypeName"] = Reflection.GetString(graph, "SubTypeName"),
@@ -2206,6 +2768,7 @@ internal static class Program
                     previewValue = "53";
                     SetPreviewDataValue(clone, previewValue);
                 }
+                PrepareGraphLinePreviewData(clone, previewValue);
                 Reflection.TrySet(clone, "posX", frame.OffsetX);
                 Reflection.TrySet(clone, "posY", frame.OffsetY);
                 using var bitmap = new Bitmap(frame.Size.Width, frame.Size.Height, PixelFormat.Format32bppArgb);
@@ -2310,6 +2873,30 @@ internal static class Program
             if (data == null) return;
             Reflection.TrySet(data, "Value", value);
             Reflection.TrySet(data, "ValueWithUnit", value);
+        }
+
+        private static void PrepareGraphLinePreviewData(object layer, string previewValue)
+        {
+            if (layer.GetType().Name != "GraphLine") return;
+            var data = Reflection.Get(layer, "m_data");
+            if (data == null) return;
+
+            var width = Math.Max(1, Reflection.GetInt(layer, "width"));
+            var columnWidth = Math.Max(1, Reflection.GetInt(layer, "columnWidth", 5));
+            var sampleCount = Math.Max(2, width / columnWidth);
+            var maxValue = Math.Max(1.0, Reflection.GetDouble(layer, "maxValue", 100.0));
+            var queue = new Queue<string>();
+            for (var i = 0; i < sampleCount; i++)
+            {
+                var t = sampleCount <= 1 ? 0.0 : i / (double)(sampleCount - 1);
+                var wave = 0.5 + 0.5 * Math.Sin((t * Math.PI * 4.0) - (Math.PI / 2.0));
+                var value = Math.Round(maxValue * (0.18 + wave * 0.78));
+                queue.Enqueue(value.ToString(CultureInfo.InvariantCulture));
+            }
+
+            Reflection.TrySet(data, "DataQueue", queue);
+            Reflection.TrySet(data, "queueLen", sampleCount.ToString(CultureInfo.InvariantCulture));
+            SetPreviewDataValue(layer, previewValue);
         }
 
         private static Type ThemeType(string name) =>

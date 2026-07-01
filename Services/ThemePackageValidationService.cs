@@ -19,7 +19,10 @@ public sealed class ThemePackageValidationService
         ".mp4", ".gif", ".jpg", ".jpeg", ".png", ".h264", ".webp"
     };
 
-    public ThemeValidationResult Validate(string packagePath, IEnumerable<string>? installedTemplateIds = null)
+    public ThemeValidationResult Validate(
+        string packagePath,
+        IEnumerable<string>? installedTemplateIds = null,
+        string fallbackDeviceModel = "")
     {
         var result = new ThemeValidationResult();
         if (string.IsNullOrWhiteSpace(packagePath) || !File.Exists(packagePath))
@@ -50,12 +53,13 @@ public sealed class ThemePackageValidationService
             using var reader = new StreamReader(manifestEntry.Open());
             using var document = JsonDocument.Parse(reader.ReadToEnd());
             var root = document.RootElement;
-            var device = GetString(root, "DeviceModel");
-            var id = GetString(root, "TemplateId");
-            var templateFile = GetString(root, "TemplateFile");
+            var device = GetFirstString(root, "DeviceModel", "deviceModel", "device");
+            if (string.IsNullOrWhiteSpace(device)) device = fallbackDeviceModel;
+            var id = GetFirstString(root, "TemplateId", "templateId", "id");
+            var templateFile = GetFirstString(root, "TemplateFile", "templateFile", "template");
             result = new ThemeValidationResult { DeviceModel = device, TemplateId = id, TemplateFile = templateFile };
 
-            var version = root.TryGetProperty("FormatVersion", out var versionNode) && versionNode.TryGetInt32(out var parsed) ? parsed : 0;
+            var version = TryGetInt(root, out var parsed, "FormatVersion", "formatVersion") ? parsed : 1;
             if (version != 1) result.Issues.Add(Error($"Unsupported package version: {version}."));
             if (!SupportedDevices.Contains(device)) result.Issues.Add(Error("The target device is not supported."));
             if (string.IsNullOrWhiteSpace(id)) result.Issues.Add(Error("Template ID is empty."));
@@ -71,7 +75,7 @@ public sealed class ThemePackageValidationService
                 if (entry.Length > 500L * 1024 * 1024) result.Issues.Add(Error($"File is too large: {entry.Name}"));
             }
 
-            var background = GetString(root, "BackgroundFile");
+            var background = GetFirstString(root, "BackgroundFile", "backgroundFile", "background");
             if (string.IsNullOrWhiteSpace(background))
             {
                 if (TemplateRequiresExternalBackground(templateEntry))
@@ -120,8 +124,32 @@ public sealed class ThemePackageValidationService
         return result;
     }
 
-    private static string GetString(JsonElement root, string name) =>
-        root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? "" : "";
+    private static string GetFirstString(JsonElement root, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (root.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String)
+            {
+                return value.GetString() ?? "";
+            }
+        }
+
+        return "";
+    }
+
+    private static bool TryGetInt(JsonElement root, out int value, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            if (root.TryGetProperty(name, out var node) && node.TryGetInt32(out value))
+            {
+                return true;
+            }
+        }
+
+        value = 0;
+        return false;
+    }
     private static string Normalize(string path) => (path ?? "").Replace('\\', '/');
     private static ZipArchiveEntry? GetPackageEntry(ZipArchive archive, string entryName)
     {

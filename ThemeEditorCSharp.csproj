@@ -8,13 +8,13 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>LianLiThemeEditor</AssemblyName>
     <RootNamespace>ThemeEditorCSharp</RootNamespace>
-    <Version>1.5.0</Version>
-    <AssemblyVersion>1.5.0.0</AssemblyVersion>
-    <FileVersion>1.5.0.0</FileVersion>
-    <InformationalVersion>V 1.5</InformationalVersion>
-    <Title>Lian Li LCD Template Editor V 1.5</Title>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <InformationalVersion>V 2.0</InformationalVersion>
+    <Title>Lian Li LCD Template Editor V 2.0</Title>
     <Product>Lian Li LCD Template Editor</Product>
-    <Authors>LianLiThemeEditor contributors</Authors>
+    <Authors>Ozgur Yalcin</Authors>
     <ApplicationIcon>editor.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;tmp\**;release\**;cloudflare\**;bin\**;obj\**</DefaultItemExcludes>
@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <None Include="lang\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="templates\blank-seeds\*.template" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe" Link="LianLiThemeEditor.TemplateWorker.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe.config" Link="LianLiThemeEditor.TemplateWorker.exe.config" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
   </ItemGroup>

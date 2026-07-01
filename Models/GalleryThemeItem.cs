@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Windows.Media;
 
@@ -18,6 +19,15 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     private int _voteCount;
     private double _averageRating;
     private int _userRating;
+    private int _hoverRating;
+    private string _installedLabel = "Installed";
+    private string _downloadLabel = "Download";
+    private string _reinstallLabel = "Reinstall";
+    private string _downloadsFormat = "{0:N0} downloads";
+    private string _ratingFormat = "{0:0.0} / 5 ({1:N0} votes)";
+    private string _noVotesYetLabel = "No votes yet";
+    private string _rateLabel = "Rate";
+    private string _authorFormat = "Author: {0}";
 
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
@@ -27,6 +37,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     public string Changelog { get; set; } = "";
     public string DeviceModel { get; set; } = "";
     public string DeviceName { get; set; } = "";
+    public string Orientation { get; set; } = "";
     public string PackageUrl { get; set; } = "";
     public string PreviewUrl { get; set; } = "";
     public ImageSource? Preview
@@ -34,19 +45,28 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
         get => _preview;
         set => SetField(ref _preview, value);
     }
-    public double CardWidth => IsWideDevice ? 438 : 260;
-    public double CardHeight => IsWideDevice ? 336 : 430;
-    public double PreviewHeight => IsWideDevice ? 132 : 260;
-    public string AspectLabel => IsWideDevice ? "1920 x 480" : "480 x 480";
+    public double CardWidth => IsLandscapeWideDevice ? 438 : 260;
+    public double CardHeight => IsLandscapeWideDevice ? 286 : 402;
+    public double PreviewHeight => IsLandscapeWideDevice ? 132 : 260;
+    public string AspectLabel => IsWideDevice
+        ? (IsPortraitWideDevice ? "480 x 1920" : "1920 x 480")
+        : "480 x 480";
     public Stretch PreviewStretch => IsWideDevice ? Stretch.Uniform : Stretch.UniformToFill;
-    public string InstallBadgeText => IsInstalled ? "Installed" : "";
-    public string DownloadButtonText => IsInstalled ? "Reinstall" : "Download";
-    public string StatsText => $"{DownloadCount:N0} downloads";
+    public string InstallBadgeText => IsInstalled ? _installedLabel : "";
+    public string DownloadButtonText => IsInstalled ? _reinstallLabel : _downloadLabel;
+    public string StatsText => string.Format(CultureInfo.CurrentCulture, _downloadsFormat, DownloadCount);
+    public string DownloadCountText => DownloadCount.ToString("N0", CultureInfo.CurrentCulture);
     public string RatingText => VoteCount > 0
-        ? $"{AverageRating:0.0} / 5 ({VoteCount:N0} votes)"
-        : "No votes yet";
+        ? string.Format(CultureInfo.CurrentCulture, _ratingFormat, AverageRating, VoteCount)
+        : _noVotesYetLabel;
     public string AverageStars => VoteCount > 0 ? BuildStars((int)Math.Round(AverageRating, MidpointRounding.AwayFromZero)) : "-----";
-    public string UserStars => UserRating > 0 ? BuildStars(UserRating) : "Rate";
+    public string AverageStar1Brush => GetAverageStarBrush(1);
+    public string AverageStar2Brush => GetAverageStarBrush(2);
+    public string AverageStar3Brush => GetAverageStarBrush(3);
+    public string AverageStar4Brush => GetAverageStarBrush(4);
+    public string AverageStar5Brush => GetAverageStarBrush(5);
+    public string UserStars => UserRating > 0 ? BuildStars(UserRating) : _rateLabel;
+    public string AuthorText => string.Format(CultureInfo.CurrentCulture, _authorFormat, Author);
     public string VoteStar1 => GetVoteStar(1);
     public string VoteStar2 => GetVoteStar(2);
     public string VoteStar3 => GetVoteStar(3);
@@ -61,6 +81,13 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     private bool IsWideDevice =>
         string.Equals(DeviceModel, "universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsPortraitWideDevice =>
+        IsWideDevice &&
+        string.Equals(Orientation, "portrait", StringComparison.OrdinalIgnoreCase);
+
+    private bool IsLandscapeWideDevice =>
+        IsWideDevice && !IsPortraitWideDevice;
 
     public bool IsBusy
     {
@@ -113,6 +140,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
             if (SetField(ref _downloadCount, Math.Max(0, value)))
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(StatsText)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DownloadCountText)));
             }
         }
     }
@@ -126,6 +154,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RatingText)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStars)));
+                NotifyAverageStarBrushesChanged();
             }
         }
     }
@@ -139,6 +168,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RatingText)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStars)));
+                NotifyAverageStarBrushesChanged();
             }
         }
     }
@@ -160,7 +190,59 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
         }
     }
 
+    public int HoverRating
+    {
+        get => _hoverRating;
+        set
+        {
+            if (SetField(ref _hoverRating, Math.Clamp(value, 0, 5)))
+            {
+                NotifyAverageStarBrushesChanged();
+            }
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
+
+    public void ApplyLocalization(
+        string installedLabel,
+        string downloadLabel,
+        string reinstallLabel,
+        string downloadsFormat,
+        string ratingFormat,
+        string noVotesYetLabel,
+        string rateLabel,
+        string authorFormat)
+    {
+        _installedLabel = installedLabel;
+        _downloadLabel = downloadLabel;
+        _reinstallLabel = reinstallLabel;
+        _downloadsFormat = downloadsFormat;
+        _ratingFormat = ratingFormat;
+        _noVotesYetLabel = noVotesYetLabel;
+        _rateLabel = rateLabel;
+        _authorFormat = authorFormat;
+
+        foreach (var propertyName in new[]
+                 {
+                     nameof(InstallBadgeText),
+                     nameof(DownloadButtonText),
+                     nameof(StatsText),
+                     nameof(DownloadCountText),
+                     nameof(RatingText),
+                     nameof(AverageStars),
+                     nameof(AverageStar1Brush),
+                     nameof(AverageStar2Brush),
+                     nameof(AverageStar3Brush),
+                     nameof(AverageStar4Brush),
+                     nameof(AverageStar5Brush),
+                     nameof(UserStars),
+                     nameof(AuthorText)
+                 })
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+    }
 
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
@@ -177,8 +259,33 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     private static string BuildStars(int rating)
     {
         rating = Math.Clamp(rating, 0, 5);
-        return new string('★', rating) + new string('☆', 5 - rating);
+        return new string('\u2605', rating) + new string('\u2606', 5 - rating);
     }
 
-    private string GetVoteStar(int star) => UserRating >= star ? "★" : "☆";
+    private string GetAverageStarBrush(int star)
+    {
+        if (HoverRating > 0)
+        {
+            return HoverRating >= star ? "#FFFFC83D" : "#8891A2B8";
+        }
+
+        if (VoteCount <= 0)
+        {
+            return "#8891A2B8";
+        }
+
+        var rounded = (int)Math.Round(AverageRating, MidpointRounding.AwayFromZero);
+        return rounded >= star ? "#FFFFC83D" : "#8891A2B8";
+    }
+
+    private void NotifyAverageStarBrushesChanged()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStar1Brush)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStar2Brush)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStar3Brush)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStar4Brush)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AverageStar5Brush)));
+    }
+
+    private string GetVoteStar(int star) => UserRating >= star ? "\u2605" : "\u2606";
 }

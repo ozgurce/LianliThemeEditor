@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace ThemeEditorCSharp.Models;
 
@@ -9,6 +10,9 @@ public sealed class LayerRow : INotifyPropertyChanged
     private readonly HashSet<string> _writableFontProperties = new(StringComparer.OrdinalIgnoreCase);
     private bool _isLocked;
     private bool _isDirty;
+    private bool _isLayerListDragging;
+    private bool _isLayerDropBefore;
+    private bool _isLayerDropAfter;
     private string _groupId = "";
     private string _groupName = "";
     private string _groupColor = "#246FF2";
@@ -16,12 +20,25 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string Index { get; set; } = "";
     public string Type { get; set; } = "";
     public string DataSource { get; set; } = "";
+    public string DataSourceDisplay { get; set; } = "";
     public string OriginalDataSource { get; set; } = "";
     public string DataRate { get; set; } = "";
     public string Text { get; set; } = "";
     public string Media { get; set; } = "";
     public string MediaPath { get; set; } = "";
     public string Description { get; set; } = "";
+    public string TypeDisplay { get; set; } = "";
+    public string LayerDataTitle =>
+        !string.IsNullOrWhiteSpace(DataSourceDisplay)
+            ? DataSourceDisplay
+            : !string.IsNullOrWhiteSpace(Media)
+                ? Media
+                : !string.IsNullOrWhiteSpace(Text)
+                    ? Text
+                    : "-";
+    public string LayerTypeSubtitle => !string.IsNullOrWhiteSpace(TypeDisplay)
+        ? TypeDisplay
+        : string.IsNullOrWhiteSpace(Description) ? Type : Description;
     public string IconData { get; set; } = "";
     public string IconColor { get; set; } = "#246FF2";
     public bool IsEditorMetadata { get; set; }
@@ -57,6 +74,7 @@ public sealed class LayerRow : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+    public bool IgnoreImgVideoMode { get; set; }
     public bool IsLocked
     {
         get => _isLocked;
@@ -74,6 +92,39 @@ public sealed class LayerRow : INotifyPropertyChanged
         {
             if (_isDirty == value) return;
             _isDirty = value;
+            OnPropertyChanged();
+        }
+    }
+    [JsonIgnore]
+    public bool IsLayerListDragging
+    {
+        get => _isLayerListDragging;
+        set
+        {
+            if (_isLayerListDragging == value) return;
+            _isLayerListDragging = value;
+            OnPropertyChanged();
+        }
+    }
+    [JsonIgnore]
+    public bool IsLayerDropBefore
+    {
+        get => _isLayerDropBefore;
+        set
+        {
+            if (_isLayerDropBefore == value) return;
+            _isLayerDropBefore = value;
+            OnPropertyChanged();
+        }
+    }
+    [JsonIgnore]
+    public bool IsLayerDropAfter
+    {
+        get => _isLayerDropAfter;
+        set
+        {
+            if (_isLayerDropAfter == value) return;
+            _isLayerDropAfter = value;
             OnPropertyChanged();
         }
     }
@@ -139,6 +190,7 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string FrontAlpha { get; set; } = "";
     public string BackAlpha { get; set; } = "";
     public string TransparentBackground { get; set; } = "";
+    public string MinValue { get; set; } = "";
     public string MaxValue { get; set; } = "";
     public string InvertDirection { get; set; } = "";
     public string StartPercentage { get; set; } = "";
@@ -197,3 +249,5 @@ public sealed class LayerRow : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
+
+

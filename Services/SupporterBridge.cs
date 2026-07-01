@@ -80,7 +80,7 @@ public sealed class SupporterBridge
     }
 
     private static string NormalizeLayerText(string value) =>
-        Regex.Replace((value ?? "").Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' '), @"\s{2,}", " ").Trim();
+        (value ?? "").Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
 
     private List<string> BuildApplyLayerArgs(string deviceModel, string templatePath, LayerRow layer)
     {
@@ -186,6 +186,7 @@ public sealed class SupporterBridge
             AddIfPresent(args, "-LayerFrontAlpha", layer.FrontAlpha, layer.CanWrite("FrontAlpha"));
             AddIfPresent(args, "-LayerBackAlpha", layer.BackAlpha, layer.CanWrite("BackAlpha"));
             AddIfPresent(args, "-LayerTransparentBackground", layer.TransparentBackground, layer.CanWrite("trBack"));
+            AddIfPresent(args, "-LayerMinValue", layer.MinValue, layer.CanWrite("minValue"));
             AddIfPresent(args, "-LayerMaxValue", layer.MaxValue, layer.CanWrite("maxValue"));
             AddIfPresent(args, "-LayerInvertDirection", layer.InvertDirection, layer.CanWrite("rollDirection"));
             AddIfPresent(args, "-LayerStartPercentage", layer.StartPercentage, layer.CanWrite("startPer"));
@@ -388,6 +389,7 @@ public sealed class SupporterBridge
         AddIfPresent(args, "-LayerFrontAlpha", layer.FrontAlpha);
         AddIfPresent(args, "-LayerBackAlpha", layer.BackAlpha);
         AddIfPresent(args, "-LayerTransparentBackground", layer.TransparentBackground);
+        AddIfPresent(args, "-LayerMinValue", layer.MinValue);
         AddIfPresent(args, "-LayerMaxValue", layer.MaxValue);
         AddIfPresent(args, "-LayerInvertDirection", layer.InvertDirection);
         AddIfPresent(args, "-LayerStartPercentage", layer.StartPercentage);
@@ -545,6 +547,20 @@ public sealed class SupporterBridge
         args.AddRange(new[]
         {
             "-UpdateThemePreview", imagePath,
+            "-NoBackup"
+        });
+        await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task EnsureBackgroundLayerAsync(
+        string deviceModel,
+        string templatePath,
+        CancellationToken cancellationToken = default)
+    {
+        var args = BaseTemplateArgs(deviceModel, templatePath);
+        args.AddRange(new[]
+        {
+            "-EnsureBackgroundLayer",
             "-NoBackup"
         });
         await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
@@ -929,6 +945,7 @@ public sealed class SupporterBridge
                     FrontAlpha = GetValue(layer, "FrontAlpha"),
                     BackAlpha = GetValue(layer, "BackAlpha"),
                     TransparentBackground = GetValue(layer, "TransparentBackground"),
+                    MinValue = GetValue(layer, "MinValue"),
                     MaxValue = GetValue(layer, "MaxValue"),
                     InvertDirection = GetValue(layer, "InvertDirection"),
                     StartPercentage = GetValue(layer, "StartPercentage"),
@@ -964,17 +981,17 @@ public sealed class SupporterBridge
     {
         return layer.Type switch
         {
-            "GraphAnimation" => ("M10,6 L26,16 L10,26 Z", "#7C3AED"),
+            "GraphAnimation" => ("M5,6 H27 V26 H5 Z M8,6 V26 M24,6 V26 M12,12 L21,16 L12,20 Z", "#7C3AED"),
             "GraphItem" when string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase)
-                => ("M6,7 H26 V11 H20 V26 H12 V11 H6 Z", "#DC2626"),
-            "GraphItem" => ("M5,25 V18 H11 V25 Z M13,25 V9 H19 V25 Z M21,25 V14 H27 V25 Z", "#06B6D4"),
-            "GraphImage" => ("M5,7 H27 V25 H5 Z M8,22 L14,15 L18,19 L22,13 L27,22 Z M10,11 A2,2 0 1 1 9.9,11", "#16A34A"),
-            "GraphClock" => ("M16,5 A11,11 0 1 1 15.9,5 M16,9 V16 L21,19", "#F59E0B"),
-            "GraphSensor" => ("M16,4 A12,12 0 1 1 15.9,4 M9,18 A7,7 0 0 1 23,18 M16,18 L21,12", "#14B8A6"),
-            "GraphStatuBar" => ("M4,12 H10 V20 H4 Z M12,12 H18 V20 H12 Z M20,12 H26 V20 H20 Z M28,12 H30 V20 H28 Z", "#EA7C17"),
-            "GraphDynamicBar" or "DynamicBar" => ("M5,14 H27 V18 H5 Z M18,9 H23 V23 H18 Z", "#0D9488"),
-            "GraphArchBar" => ("M5,25 A11,11 0 1 1 27,25 L23,25 A7,7 0 1 0 9,25 Z", "#DB2777"),
-            "GraphLine" => ("M5,24 L11,17 L16,20 L22,9 L28,13 L28,18 L22,14 L17,25 L12,22 L8,27 Z", "#4F46E5"),
+                => ("M5,6 H27 V12 H20 V27 H12 V12 H5 Z", "#E11D48"),
+            "GraphItem" => ("M6,8 H26 V24 H6 Z M9,17 H13 V20 H9 Z M15,13 H18 V20 H15 Z M20,15 H23 V20 H20 Z M24,5 A3,3 0 1 1 23.9,5", "#0284C7"),
+            "GraphImage" => ("M5,7 H27 V25 H5 Z M8,22 L14,15 L18,19 L23,13 L27,22 Z M10,11 A2,2 0 1 1 9.9,11", "#059669"),
+            "GraphClock" => ("M4,26 A12,12 0 0 1 28,26 H23 A7,7 0 0 0 9,26 Z M16,21 L25,11 L28,14 L19,24 Z M14,22 H19 V27 H14 Z", "#F97316"),
+            "GraphSensor" => ("M16,4 A12,12 0 1 1 4,16 H10 A6,6 0 1 0 16,10 Z M16,14 A2,2 0 1 1 15.9,14", "#0891B2"),
+            "GraphStatuBar" => ("M4,16 H9 V25 H4 Z M11,13 H16 V25 H11 Z M18,10 H23 V25 H18 Z M25,7 H30 V25 H25 Z", "#EA580C"),
+            "GraphDynamicBar" or "DynamicBar" => ("M5,12 H27 A4,4 0 0 1 27,20 H5 A4,4 0 0 1 5,12 M18,10 A6,6 0 1 1 17.9,10", "#0F766E"),
+            "GraphArchBar" => ("M4,27 A12,12 0 1 1 28,27 H22 A7,7 0 1 0 10,27 Z", "#DB2777"),
+            "GraphLine" => ("M4,25 C9,9 14,27 19,15 S27,9 29,7 V27 H4 Z", "#4F46E5"),
             _ => ("M6,6 H26 V26 H6 Z", "#64748B")
         };
     }
@@ -983,7 +1000,7 @@ public sealed class SupporterBridge
     {
         return (layer.Type ?? "") switch
         {
-            "GraphAnimation" => "Animation",
+            "GraphAnimation" => "Background",
             "GraphImage" => "Image",
             "GraphClock" => "Gauge",
             "GraphSensor" => "Sensor",

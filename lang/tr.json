@@ -1,6 +1,7 @@
-﻿{
+{
   "app": {
-    "title": "Lian Li LCD Template Editor V 1.5"
+    "title": "Lian Li LCD Template Editor V 1.7",
+    "versionBuildFormat": "Sürüm {0}  |  Derleme {1}"
   },
   "common": {
     "apply": "Uygula",
@@ -26,7 +27,10 @@
     "left": "Sol",
     "right": "Sağ",
     "center": "Orta",
-    "duplicate": "Kopyala"
+    "duplicate": "Kopyala",
+    "open": "Aç",
+    "delete": "Sil",
+    "deleteAll": "Tümünü sil"
   },
   "top": {
     "useActiveTemplate": "Aktif temayı kullan",
@@ -44,7 +48,17 @@
     "templateLoadedSimple": "Tema: yüklendi",
     "templateLoadedSimpleWithId": "Tema: {0}",
     "backgroundEmpty": "Arka plan: -",
-    "backgroundLoaded": "Arka plan: {0}"
+    "backgroundLoaded": "Arka plan: {0}",
+    "activeTheme": "Aktif Tema",
+    "newTheme": "Yeni Tema",
+    "offlineMode": "Çevrimdışı"
+  },
+  "newTheme": {
+    "title": "Yeni Tema",
+    "source": "Bos tema, cihazla uyumlu template yapisindan olusturulacak: {0}",
+    "nameLabel": "Tema adi",
+    "blankSeed": "Bos seed",
+    "create": "Olustur"
   },
   "sections": {
     "layers": "Katmanlar",
@@ -55,11 +69,13 @@
     "preview": "Önizleme",
     "graphSettings": "Grafik Boyutları ve Görünümü",
     "imageSettings": "Görsel Ayarları",
-    "advancedGraph": "Gelişmiş Grafik"
+    "gaugeSettings": "Gösterge Ayarları",
+    "advancedGraph": "Gelişmiş Grafik",
+    "textAndFormat": "YAZI VE BİÇİM"
   },
   "align": {
-    "matchHorizontal": "Yatay=",
-    "matchVertical": "Dikey="
+    "matchHorizontal": "X=",
+    "matchVertical": "Y="
   },
   "grid": {
     "type": "TÜR",
@@ -95,6 +111,7 @@
     "fontGradientDirection": "GEÇİŞ YÖNÜ",
     "useGradient": "Renk geçişi kullan",
     "imageFile": "GÖRSEL DOSYASI",
+    "gaugeNeedle": "GÖSTERGE İBRESİ",
     "rotate": "DÖNDÜR",
     "rect": "KIRPMA ALANI",
     "zoomRate": "YAKINLAŞTIRMA",
@@ -151,7 +168,28 @@
     "alignment": "HİZALAMA",
     "maxValue": "EN YÜKSEK DEĞER",
     "startPercentage": "BAŞLANGIÇ %",
-    "totalAngle": "TOPLAM AÇI"
+    "totalAngle": "TOPLAM AÇI",
+    "widthShort": "G",
+    "heightShort": "Y",
+    "properties": "Özellikler",
+    "mainText": "ANA METİN",
+    "topText": "ÜST METİN",
+    "bottomText": "ALT METİN",
+    "ringStart": "HALKA BAŞI",
+    "ringEnd": "HALKA SONU",
+    "ringStyle": "HALKA STİLİ",
+    "lineWidthShort": "ÇİZGİ G",
+    "columnWidthShort": "SÜTUN G",
+    "borderWidthShort": "KENAR G",
+    "innerRadiusShort": "İÇ R",
+    "minValue": "MİN DEĞER",
+    "ringEndValue": "HALKA SONU",
+    "clockCenter": "MERKEZ X / Y",
+    "clockAngles": "BAŞLANGIÇ / TOPLAM",
+    "clockRateOffset": "ORAN OFSETİ (0-1)",
+    "clockOrigin": "ORİJİN X / Y",
+    "dragCenter": "Merkezi sürükle",
+    "shadow": "GÖLGE"
   },
   "edit": {
     "applyToShadow": "Gölgeye de uygula",
@@ -170,6 +208,7 @@
     "addText": "Yazı Ekle",
     "addData": "Veri Katmanı Ekle",
     "chooseAddImage": "Görsel Seç ve Ekle",
+    "chooseAddGaugeNeedle": "Gösterge İbresi Seç ve Ekle",
     "addLinearBar": "Çubuk Ekle",
     "addArcBar": "Yay Gösterge Ekle",
     "addImage": "Görsel Ekle",
@@ -190,8 +229,11 @@
     "descCurvedBar": "Halka veya yay",
     "descImage": "PNG veya JPG görsel",
     "typeAnimation": "Animasyon",
+    "typeGauge": "Gösterge",
+    "descGauge": "Dönen gösterge ibresi",
     "chooseBackground": "Arka Plan Seç",
-    "addTypedLayer": "{0} Ekle"
+    "addTypedLayer": "{0} Ekle",
+    "addedWithLayer": "Katmanla birlikte eklendi."
   },
   "shadow": {
     "addShadow": "Gölge Ekle",
@@ -209,7 +251,9 @@
     "landscape": "Yatay",
     "portrait": "Dikey",
     "vm92DirectApplyNotice": "Bu ekran için direkt uygulama şimdilik desteklenmiyor. ZIP olarak dışa aktarıp L-Connect'ten içeri aktarmalısın.",
-    "convert88To92": "8.8 temasını 9.2 temasına dönüştür"
+    "convert88To92": "8.8 temasını 9.2 temasına dönüştür",
+    "auto": "Otomatik",
+    "solo": "Solo"
   },
   "footer": {
     "language": "Dil",
@@ -268,7 +312,55 @@
     "resultBackgroundMissing": "Kurulu arka plan dosyası algılanmadı",
     "resultTemplatePath": "Tema yolu: {0}",
     "resultDiagnostic": "Tanı paketi: {0}",
-    "votingNotConfigured": "Cloudflare istatistik adresi henüz ayarlanmamış. Worker URL adresini templates/gallery-stats-url.txt dosyasına ekleyin."
+    "votingNotConfigured": "Cloudflare istatistik adresi henüz ayarlanmamış. Worker URL adresini templates/gallery-stats-url.txt dosyasına ekleyin.",
+    "installState": "Yükleme durumu",
+    "noThemesMatch": "Filtrelerle eşleşen tema yok.",
+    "allThemes": "Tüm temalar",
+    "installed": "Yüklü",
+    "notInstalled": "Yüklü değil",
+    "official": "Resmi",
+    "officialOnly": "Sadece resmi",
+    "custom": "Özel",
+    "customOnly": "Sadece özel",
+    "customFirst": "Özel önce",
+    "newest": "En yeni",
+    "orientation": "Yön",
+    "landscape": "Yatay",
+    "portrait": "Dikey",
+    "landscapeOnly": "Sadece yatay",
+    "portraitOnly": "Sadece dikey",
+    "download": "İndir",
+    "reinstall": "Yeniden kur",
+    "downloadsFormat": "{0:N0} indirme",
+    "ratingFormat": "{0:0.0} / 5 ({1:N0} oy)",
+    "noVotesYet": "Henüz oy yok",
+    "rate": "Puan ver",
+    "authorFormat": "Yazar: {0}",
+    "sourceWithCount": "GitHub galerisi ({0} tema)",
+    "sourceUnavailable": "GitHub galerisi kullanılamıyor",
+    "loadFailedWithMessage": "GitHub galerisi yüklenemedi. Bağlantınızı kontrol edip yenileyin.\n{0}",
+    "loadingPreview": "Önizleme yükleniyor",
+    "previewUnavailable": "Önizleme yok",
+    "statusInstalledInLConnect": "L-Connect içinde yüklü",
+    "downloading": "İndiriliyor",
+    "installing": "Kuruluyor",
+    "activating": "Etkinleştiriliyor",
+    "installedAndActive": "Yüklendi ve etkin",
+    "activationFinishing": "Etkinleştirme tamamlanıyor",
+    "installedRefreshPendingShort": "Yüklendi; L-Connect yenilemesi bekleniyor",
+    "error": "Hata",
+    "installFailed": "Galeri teması kurulamadı.",
+    "themeCouldNotBeInstalled": "Tema kurulamadı",
+    "statusDownloadingTheme": "Tema indiriliyor: {0}",
+    "statusInstallingTheme": "Tema kuruluyor: {0}",
+    "statusActivatingTheme": "Tema etkinleştiriliyor: {0}",
+    "statusInstalledRefreshPendingDetail": "Tema kuruldu, ancak L-Connect henüz yenilemedi: {0}",
+    "statusActivationStillRunning": "Tema kuruldu; L-Connect etkinleştirmeyi hâlâ tamamlıyor: {0}",
+    "fiveStars": "5 yıldız",
+    "fourPlusStars": "4+ yıldız",
+    "threePlusStars": "3+ yıldız",
+    "twoPlusStars": "2+ yıldız",
+    "noThemesReturned": "GitHub galerisinden tema dönmedi."
   },
   "about": {
     "checkUpdates": "Güncellemeleri Kontrol Et",
@@ -366,6 +458,9 @@
     "importingTheme": "Tema içe aktarılıyor...",
     "themeImported": "Tema paketi içe aktarıldı.",
     "importFailed": "İçe aktarma başarısız.",
+    "creatingTheme": "Tema olusturuluyor...",
+    "themeCreated": "Tema olusturuldu: {0}",
+    "createThemeFailed": "Tema olusturulamadi.",
     "templateChangedReloaded": "Şablon L-Connect'te değişti. Katmanlar yenilendi.",
     "layerDuplicated": "Katman kopyalandı.",
     "applyingChanges": "Değişen katmanlar uygulanıyor...",
@@ -428,7 +523,24 @@
     "importCancelled": "İçe aktarma iptal edildi.",
     "diagnosticsCreated": "Tanılama paketi oluşturuldu.",
     "layoutChanged": "Yerleşim değişti. Kaydetmek için Uygula'ya basın.",
-    "alignmentSelection": "Hizalamak için en az bir katman seçin."
+    "selectedLayersHidden": "Seçili katman(lar) gizlendi. Kaydetmek için Uygula'ya basın.",
+    "selectedLayersShown": "Seçili katman(lar) gösterildi. Kaydetmek için Uygula'ya basın.",
+    "selectedLayersLocked": "Seçili katman(lar) önizlemede kilitlendi.",
+    "selectedLayersUnlocked": "Seçili katman(lar) önizlemede açıldı.",
+    "selectedLayersMoved": "Seçili katman(lar) {0} px taşındı. Kaydetmek için Uygula'ya basın.",
+    "soloEnabled": "Solo modu seçili katman(lar) için açıldı.",
+    "soloDisabled": "Solo modu kapatıldı.",
+    "groupCreated": "\"{0}\" grubu oluşturuldu.",
+    "groupRenamed": "Grup \"{0}\" olarak yeniden adlandırıldı.",
+    "groupSelected": "\"{0}\" grubu seçildi. Birlikte taşımak için ok tuşlarını kullanın veya önizlemede seçili bir katmanı sürükleyin.",
+    "groupHidden": "\"{0}\" grubu gizlendi. Kaydetmek için Uygula'ya basın.",
+    "groupShown": "\"{0}\" grubu gösterildi. Kaydetmek için Uygula'ya basın.",
+    "groupLocked": "\"{0}\" grubu kilitlendi.",
+    "groupUnlocked": "\"{0}\" grubunun kilidi açıldı.",
+    "groupRemovedKeptLayers": "\"{0}\" grubu kaldırıldı; katmanlar korundu.",
+    "alignmentSelection": "Hizalamak için en az bir katman seçin.",
+    "sendingLayersBackward": "Seçili katmanlar geriye gönderiliyor...",
+    "bringingLayersForward": "Seçili katmanlar öne getiriliyor..."
   },
   "messages": {
     "loadFailed": "Yükleme başarısız",
@@ -462,6 +574,7 @@
     "exportThemeFailed": "Tema dışa aktarılamadı",
     "exportLConnectFailed": "L-Connect paketi dışa aktarılamadı",
     "importThemeFailed": "Tema içe aktarılamadı",
+    "createThemeFailed": "Tema olusturulamadi",
     "themeExported": "Tema dışa aktarıldı",
     "lConnectExported": "L-Connect paketi dışa aktarıldı",
     "lConnectImportHint": "L-Connect içinde HydroShift tema ekranını açın, Tema İçe Aktar seçeneğine basın ve bu ZIP dosyasını seçin.",
@@ -491,7 +604,10 @@
     "deviceRefreshRejected": "Katman kaydedildi ancak L-Connect yenileme komutunu kabul etmedi.",
     "linkOpenFailed": "Bağlantı açılamadı.\n\n{0}",
     "linkOpenFailedTitle": "Bağlantı açılamadı",
-    "noTemplateFound": "Bu cihaz için tema bulunamadı."
+    "noTemplateFound": "Bu cihaz için tema bulunamadı.",
+    "andMoreLayers": "...ve {0} tane daha",
+    "applyChangedLayersPrompt": "Bu değişen katmanlar uygulansın mı?",
+    "confirmApplyTheme": "\"{0}\" teması {1} cihazına uygulansın mı?"
   },
   "dialogs": {
     "exportTheme": "Lian Li temasını dışa aktar",
@@ -501,8 +617,8 @@
     "lConnectTemplateFilter": "L-Connect tema paketi (*.zip)|*.zip",
     "chooseImage": "LCD görselini seç",
     "chooseBackgroundMedia": "LCD arka plan medyasını seç",
-    "mediaFilter": "Medya dosyaları (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|Tüm dosyalar (*.*)|*.*",
-    "imageFilter": "Görsel dosyaları (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|Tüm dosyalar (*.*)|*.*",
+    "mediaFilter": "Medya dosyaları (*.mp4;*.gif;*.jpg;*.jpeg;*.h264)|*.mp4;*.gif;*.jpg;*.jpeg;*.h264|Tüm dosyalar (*.*)|*.*",
+    "imageFilter": "Görsel dosyaları (*.png;*.jpg;*.jpeg;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp|Tüm dosyalar (*.*)|*.*",
     "exportThemeName": "Tema Adını Belirle",
     "exportThemeNamePrompt": "L-Connect'te kullanılacak tema adı:",
     "convert88To92Open": "8.8 L-Connect ZIP'i seç",
@@ -538,7 +654,16 @@
     "distributeY": "Kanvasa dikey olarak eşit dağıt",
     "soloLayers": "Yalnızca seçili katmanları göster",
     "templateId": "Tema ID",
-    "pickShadowColor": "Gölge rengini seç"
+    "pickShadowColor": "Gölge rengini seç",
+    "deleteTheme": "Seçili resmi olmayan temayı sil",
+    "unsavedChanges": "Kaydedilmemiş değişiklikler",
+    "pauseBackgroundPreview": "Arkaplan önizlemesini duraklat",
+    "startAngle": "Başlangıç açısı",
+    "totalAngle": "Toplam açı",
+    "editSelectedLayers": "Seçili katmanları düzenle",
+    "offlineMode": "Değişiklikleri L-Connect'e göndermeden yerel kopyada çalış",
+    "matchX": "Seçili katmanların X değerini eşleştir",
+    "matchY": "Seçili katmanların Y değerini eşleştir"
   },
   "properties": {
     "noLayerSelected": "Bir katman seçin",
@@ -548,6 +673,7 @@
     "myDevices": "Cihazlarım",
     "myDevicesDesc": "Yalnızca seçtiğiniz cihazlar editörde ve tema galerisinde görünür.",
     "languageTheme": "Dil ve tema",
+    "universal88DeviceCount": "8.8 ekran sayısı",
     "languageThemeDesc": "Bu seçimler alt çubuktaki kontrolleri de günceller.",
     "themeGallery": "Tema Galerisi",
     "themeGalleryDesc": "İndirilen temalar kurulumdan sonra otomatik uygulansın.",
@@ -560,11 +686,46 @@
     "description": "Editörün nasıl davranacağını seçin.",
     "layerGrouping": "Katman gruplama",
     "layerGroupingDesc": "Kaydedilen grupları katman listesinde göster.",
-    "enabled": "Etkin"
+    "enabled": "Etkin",
+    "showLegacyToolbarActions": "Araç çubuğunda Kaydet ve Tümünü Uygula göster",
+    "editing": "Düzenleme",
+    "editingDesc": "Editör davranışını değiştiren kontroller.",
+    "themeList": "Tema listesi",
+    "themeListDensity": "Tema listesi yoğunluğu",
+    "backupBehavior": "Yedekleme davranışı",
+    "backupBehaviorDesc": "Uygulama ve silme işlemleri için yedek ayarları.",
+    "installedThemesDefaultFilters": "Yüklü temalar varsayılan filtreleri",
+    "developerDiagnostics": "Geliştirici tanılama",
+    "developerDiagnosticsDesc": "Sadece geliştiriciye yönelik tanılama görünümleri ve loglar.",
+    "backups": "Yedekler",
+    "backupsDesc": "Editör yedek klasörlerini görüntüle, aç veya kaldır.",
+    "allowDeletingOfficialThemes": "Resmi temaları silmeye izin ver",
+    "showOfficialThemes": "Resmi temaları göster",
+    "autoRefreshLConnect": "Uygulamadan sonra L-Connect’i otomatik yenile",
+    "backupBeforeApply": "Uygulamadan önce yedekle",
+    "confirmBeforeApply": "Uygulamadan önce onay iste",
+    "rememberApplyTarget": "Uygulama hedefini hatırla",
+    "backupBeforeDelete": "Silmeden önce yedekle",
+    "convert88To92": "8.8 temasını 9.2 temasına dönüştür",
+    "saveSettings": "Ayarları kaydet",
+    "themeListDesc": "Yüklü temaların nasıl gösterileceği.",
+    "thumbnailQuality": "Küçük resim kalitesi",
+    "thumbnailFast": "Hızlı",
+    "thumbnailBalanced": "Dengeli",
+    "thumbnailHigh": "Yüksek",
+    "densityCompact": "Kompakt",
+    "densityComfortable": "Rahat",
+    "installedThemesDesc": "Filtreleme ve resmi tema görünürlüğü.",
+    "noBackupsFound": "Yedek bulunamadı.",
+    "deviceNamePlaceholder": "Cihaz adı",
+    "displayNameTooltip": "Görünen ad",
+    "universalDisplayNameTooltip": "8.8 #{0} görünen adı"
   },
   "window": {
     "minimize": "Küçült",
-    "maximize": "Büyüt"
+    "maximize": "Büyüt",
+    "headerTitle": "Lian Li LCD Tema Editörü",
+    "titleFormat": "Lian Li LCD Tema Editörü {0}"
   },
   "dataSources": {
     "APM": "ÖÖ / ÖS",
@@ -631,7 +792,8 @@
     "settings": "Ayarlar",
     "diagnostics": "Tanılama",
     "about": "Hakkında",
-    "thanks": "Thanks"
+    "thanks": "Teşekkürler",
+    "localThemes": "Yüklü Temalar"
   },
   "groups": {
     "name": "Grup adı",
@@ -726,30 +888,62 @@
     "soloSelected": "Seçilileri solo göster"
   },
   "thanks": {
-    "title": "Thanks",
-    "description": "This editor exists because people kept testing, sharing themes, and giving honest feedback.",
+    "title": "Teşekkürler",
+    "description": "Bu editör; test eden, tema paylaşan ve dürüst geri bildirim veren insanlar sayesinde var.",
     "galrimName": "Galrim",
-    "galrim": "Thank you for allowing me to use your themes, for testing the editor, and for your excellent feedback.",
+    "galrim": "Temalarını kullanmama izin verdiğin, editörü test ettiğin ve değerli geri bildirimlerin için teşekkürler.",
     "rbuschyxName": "RBuschyX",
-    "rbuschyx": "Thank you for answering every test request without giving up, and for helping me improve the editor so much.",
+    "rbuschyx": "Her test isteğine vazgeçmeden yanıt verdiğin ve editörü bu kadar geliştirmeme yardım ettiğin için teşekkürler.",
     "sOncoreName": "S_Oncore",
-    "sOncore": "Thank you for trusting me from the very beginning and for the early tests you ran.",
+    "sOncore": "En başından beri güvendiğin ve ilk testleri yaptığın için teşekkürler.",
     "testers88Name": "Wr3ck3r, uhf_Seven, Darcy",
-    "testers88": "Thank you for constantly testing the 8.8-inch Universal Screen support.",
+    "testers88": "8.8 inç Universal Screen desteğini sürekli test ettiğiniz için teşekkürler.",
     "mrDoName": "MrDo.LianLi",
-    "mrDo": "Thank you for trying to help whenever you could, both at the start of development and later, despite your busy schedule.",
+    "mrDo": "Geliştirmenin başında ve sonrasında, yoğunluğuna rağmen elinden geldikçe yardım etmeye çalıştığın için teşekkürler.",
     "jiveturkeyName": "jiveturkey",
-    "jiveturkey": "Thank you for the good ideas and for keeping me motivated.",
+    "jiveturkey": "İyi fikirlerin ve motivasyonumu canlı tuttuğun için teşekkürler.",
     "jimmyName": "jimmythelips1626",
-    "jimmy": "Thank you for doing everything you could to help, even though we are in different countries.",
+    "jimmy": "Farklı ülkelerde olsak da yardım etmek için elinden geleni yaptığın için teşekkürler.",
     "hatikoName": "hatiko0953",
-    "hatiko": "Thank you for helping with the Russian translations from the very beginning.",
-    "closing": "Thank you to everyone who believed in me and supported me on this path. I am glad you are here."
+    "hatiko": "Rusça çevirilere en başından beri yardım ettiğin için teşekkürler.",
+    "closing": "Bana inanan ve bu yolda destek olan herkese teşekkürler. İyi ki varsınız."
   },
   "languages": {
     "en": "İngilizce",
     "tr": "Türkçe",
     "ru": "Rusça",
-    "zh": "Çince"
+    "zh": "Çince",
+    "de": "Almanca",
+    "ko": "Korece"
+  },
+  "settingsTabs": {
+    "devices": "Cihazlar",
+    "editor": "Editör",
+    "gallery": "Galeri",
+    "developer": "Geliştirici",
+    "others": "Diğer"
+  },
+  "localThemes": {
+    "count": "{0} / {1} yüklü tema",
+    "sortDevice": "Cihaz",
+    "title": "Yüklü Temalar",
+    "installedTemplates": "Yüklü şablonlar",
+    "devices": "Cihazlar",
+    "orientation": "Yön",
+    "source": "Kaynak",
+    "sort": "Sıralama",
+    "noThemesMatch": "Filtrelerle eşleşen tema yok.",
+    "sortNameAz": "Ad A-Z",
+    "sortCustomFirst": "Özel önce",
+    "sortNewest": "En yeni"
+  },
+  "devices": {
+    "hydroshiftS": "Hydroshift II LCD-S",
+    "hydroshiftC": "Hydroshift II LCD-C",
+    "universal88": "8.8\" Universal Screen",
+    "vm92": "VM 9.2 LCD"
+  },
+  "template": {
+    "idFormat": "Şablon ID: {0}"
   }
 }

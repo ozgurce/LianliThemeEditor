@@ -1,6 +1,7 @@
-﻿{
+{
   "app": {
-    "title": "Lian Li LCD Template Editor V 1.5"
+    "title": "Lian Li LCD Template Editor V 1.7",
+    "versionBuildFormat": "Version {0}  |  Built {1}"
   },
   "common": {
     "apply": "Apply",
@@ -26,7 +27,10 @@
     "left": "Left",
     "right": "Right",
     "center": "Center",
-    "duplicate": "Duplicate"
+    "duplicate": "Duplicate",
+    "open": "Open",
+    "delete": "Delete",
+    "deleteAll": "Delete all"
   },
   "top": {
     "useActiveTemplate": "Use active template",
@@ -44,7 +48,17 @@
     "templateLoadedSimple": "Template: loaded",
     "templateLoadedSimpleWithId": "Template: {0}",
     "backgroundEmpty": "Background: -",
-    "backgroundLoaded": "Background: {0}"
+    "backgroundLoaded": "Background: {0}",
+    "activeTheme": "Active Theme",
+    "newTheme": "New Theme",
+    "offlineMode": "Offline"
+  },
+  "newTheme": {
+    "title": "New Theme",
+    "source": "A blank theme will be created from the device-compatible template structure: {0}",
+    "nameLabel": "Theme name",
+    "blankSeed": "Blank seed",
+    "create": "Create"
   },
   "sections": {
     "layers": "Layers",
@@ -55,11 +69,13 @@
     "preview": "Preview",
     "graphSettings": "Graph Dimensions & Styling",
     "imageSettings": "Image Settings",
-    "advancedGraph": "Advanced Graph"
+    "gaugeSettings": "Gauge Settings",
+    "advancedGraph": "Advanced Graph",
+    "textAndFormat": "TEXT AND FORMAT"
   },
   "align": {
-    "matchHorizontal": "Horizontal=",
-    "matchVertical": "Vertical="
+    "matchHorizontal": "X=",
+    "matchVertical": "Y="
   },
   "grid": {
     "type": "TYPE",
@@ -95,6 +111,7 @@
     "fontGradientDirection": "GRADIENT DIR",
     "useGradient": "Use gradient",
     "imageFile": "IMAGE FILE",
+    "gaugeNeedle": "GAUGE NEEDLE",
     "rotate": "ROTATE",
     "rect": "RECT",
     "zoomRate": "ZOOM RATE",
@@ -151,7 +168,28 @@
     "alignment": "ALIGNMENT",
     "maxValue": "MAX VALUE",
     "startPercentage": "START %",
-    "totalAngle": "TOTAL ANGLE"
+    "totalAngle": "TOTAL ANGLE",
+    "widthShort": "W",
+    "heightShort": "H",
+    "properties": "Properties",
+    "mainText": "MAIN TEXT",
+    "topText": "TOP TEXT",
+    "bottomText": "BOTTOM TEXT",
+    "ringStart": "RING START",
+    "ringEnd": "RING END",
+    "ringStyle": "RING STYLE",
+    "lineWidthShort": "LINE W",
+    "columnWidthShort": "COLUMN W",
+    "borderWidthShort": "BORDER W",
+    "innerRadiusShort": "INNER R",
+    "minValue": "MIN VALUE",
+    "ringEndValue": "RING END",
+    "clockCenter": "CENTER X / Y",
+    "clockAngles": "START / TOTAL",
+    "clockRateOffset": "RATE OFFSET (0-1)",
+    "clockOrigin": "ORIGIN X / Y",
+    "dragCenter": "Drag center",
+    "shadow": "SHADOW"
   },
   "edit": {
     "applyToShadow": "Apply to shadow",
@@ -170,6 +208,7 @@
     "addText": "Add Text",
     "addData": "Add Data",
     "chooseAddImage": "Choose & Add Image",
+    "chooseAddGaugeNeedle": "Choose & Add Gauge Needle",
     "addLinearBar": "Add Linear Bar",
     "addArcBar": "Add Arc Bar",
     "addImage": "Add Image",
@@ -190,8 +229,11 @@
     "descRingGraph": "Circular sensor gauge",
     "descImage": "PNG or JPG",
     "typeAnimation": "Animation",
+    "typeGauge": "Gauge",
+    "descGauge": "Rotating gauge needle",
     "chooseBackground": "Choose Background",
-    "addTypedLayer": "Add {0}"
+    "addTypedLayer": "Add {0}",
+    "addedWithLayer": "Added with layer."
   },
   "shadow": {
     "addShadow": "Add Shadow",
@@ -209,7 +251,9 @@
     "landscape": "Landscape",
     "portrait": "Portrait",
     "vm92DirectApplyNotice": "Direct apply is not supported for this screen yet. Export it as a ZIP and import it from L-Connect.",
-    "convert88To92": "Convert 8.8 theme to 9.2 theme"
+    "convert88To92": "Convert 8.8 theme to 9.2 theme",
+    "auto": "Auto",
+    "solo": "Solo"
   },
   "footer": {
     "language": "Language",
@@ -268,7 +312,55 @@
     "resultBackgroundMissing": "No installed background file was detected",
     "resultTemplatePath": "Template path: {0}",
     "resultDiagnostic": "Diagnostic package: {0}",
-    "votingNotConfigured": "Cloudflare stats URL is not configured yet. Add the Worker URL to templates/gallery-stats-url.txt."
+    "votingNotConfigured": "Cloudflare stats URL is not configured yet. Add the Worker URL to templates/gallery-stats-url.txt.",
+    "installState": "Install state",
+    "noThemesMatch": "No themes match the filters.",
+    "allThemes": "All themes",
+    "installed": "Installed",
+    "notInstalled": "Not installed",
+    "official": "Official",
+    "officialOnly": "Official only",
+    "custom": "Custom",
+    "customOnly": "Custom only",
+    "customFirst": "Custom first",
+    "newest": "Newest",
+    "orientation": "Orientation",
+    "landscape": "Landscape",
+    "portrait": "Portrait",
+    "landscapeOnly": "Landscape only",
+    "portraitOnly": "Portrait only",
+    "download": "Download",
+    "reinstall": "Reinstall",
+    "downloadsFormat": "{0:N0} downloads",
+    "ratingFormat": "{0:0.0} / 5 ({1:N0} votes)",
+    "noVotesYet": "No votes yet",
+    "rate": "Rate",
+    "authorFormat": "Author: {0}",
+    "sourceWithCount": "GitHub gallery ({0} themes)",
+    "sourceUnavailable": "GitHub gallery unavailable",
+    "loadFailedWithMessage": "GitHub gallery could not be loaded. Check your connection and refresh.\n{0}",
+    "loadingPreview": "Loading preview",
+    "previewUnavailable": "Preview unavailable",
+    "statusInstalledInLConnect": "Installed in L-Connect",
+    "downloading": "Downloading",
+    "installing": "Installing",
+    "activating": "Activating",
+    "installedAndActive": "Installed and active",
+    "activationFinishing": "Activation finishing",
+    "installedRefreshPendingShort": "Installed; L-Connect refresh pending",
+    "error": "Error",
+    "installFailed": "Gallery theme install failed.",
+    "themeCouldNotBeInstalled": "Theme could not be installed",
+    "statusDownloadingTheme": "Downloading theme: {0}",
+    "statusInstallingTheme": "Installing theme: {0}",
+    "statusActivatingTheme": "Activating theme: {0}",
+    "statusInstalledRefreshPendingDetail": "Theme installed, but L-Connect has not refreshed it yet: {0}",
+    "statusActivationStillRunning": "Theme installed; L-Connect is still activating it: {0}",
+    "fiveStars": "5 stars",
+    "fourPlusStars": "4+ stars",
+    "threePlusStars": "3+ stars",
+    "twoPlusStars": "2+ stars",
+    "noThemesReturned": "No themes were returned by the GitHub gallery."
   },
   "about": {
     "checkUpdates": "Check for Updates",
@@ -366,6 +458,9 @@
     "importingTheme": "Importing theme...",
     "themeImported": "Theme package imported.",
     "importFailed": "Import failed.",
+    "creatingTheme": "Creating theme...",
+    "themeCreated": "Theme created: {0}",
+    "createThemeFailed": "Create theme failed.",
     "templateChangedReloaded": "The template changed in L-Connect. Layers were refreshed.",
     "layerDuplicated": "Layer duplicated.",
     "applyingChanges": "Applying changed layers...",
@@ -428,7 +523,24 @@
     "importCancelled": "Import cancelled.",
     "diagnosticsCreated": "Diagnostic package created.",
     "layoutChanged": "Layout changed. Press Apply to save.",
-    "alignmentSelection": "Select at least one layer to align."
+    "selectedLayersHidden": "Selected layer(s) hidden. Press Apply to save.",
+    "selectedLayersShown": "Selected layer(s) shown. Press Apply to save.",
+    "selectedLayersLocked": "Selected layer(s) locked in preview.",
+    "selectedLayersUnlocked": "Selected layer(s) unlocked in preview.",
+    "selectedLayersMoved": "Moved selected layer(s) by {0} px. Press Apply to save.",
+    "soloEnabled": "Solo mode enabled for selected layer(s).",
+    "soloDisabled": "Solo mode disabled.",
+    "groupCreated": "Created group \"{0}\".",
+    "groupRenamed": "Renamed group to \"{0}\".",
+    "groupSelected": "Selected group \"{0}\". Use arrow keys or drag one selected layer on preview to move together.",
+    "groupHidden": "Group \"{0}\" hidden. Press Apply to save.",
+    "groupShown": "Group \"{0}\" shown. Press Apply to save.",
+    "groupLocked": "Group \"{0}\" locked.",
+    "groupUnlocked": "Group \"{0}\" unlocked.",
+    "groupRemovedKeptLayers": "Removed group \"{0}\"; its layers were kept.",
+    "alignmentSelection": "Select at least one layer to align.",
+    "sendingLayersBackward": "Sending selected layer(s) backward...",
+    "bringingLayersForward": "Bringing selected layer(s) forward..."
   },
   "messages": {
     "loadFailed": "Load failed",
@@ -462,6 +574,7 @@
     "exportThemeFailed": "Theme export failed",
     "exportLConnectFailed": "L-Connect export failed",
     "importThemeFailed": "Theme import failed",
+    "createThemeFailed": "Create theme failed",
     "themeExported": "Theme exported",
     "lConnectExported": "L-Connect package exported",
     "lConnectImportHint": "In L-Connect, open the HydroShift template screen, choose Import Template, and select this ZIP.",
@@ -491,7 +604,10 @@
     "deviceRefreshRejected": "The layer was saved, but L-Connect did not accept the refresh command.",
     "linkOpenFailed": "The link could not be opened.\n\n{0}",
     "linkOpenFailedTitle": "Link could not be opened",
-    "noTemplateFound": "No template was found for this device."
+    "noTemplateFound": "No template was found for this device.",
+    "andMoreLayers": "...and {0} more",
+    "applyChangedLayersPrompt": "Apply these changed layers?",
+    "confirmApplyTheme": "Apply \"{0}\" to {1}?"
   },
   "dialogs": {
     "exportTheme": "Export Lian Li theme",
@@ -501,8 +617,8 @@
     "lConnectTemplateFilter": "L-Connect template package (*.zip)|*.zip",
     "chooseImage": "Choose LCD image",
     "chooseBackgroundMedia": "Choose LCD background media",
-    "mediaFilter": "Media files (*.mp4;*.gif;*.h264)|*.mp4;*.gif;*.h264|All files (*.*)|*.*",
-    "imageFilter": "Image files (*.png;*.jpg;*.gif)|*.png;*.jpg;*.gif|All files (*.*)|*.*",
+    "mediaFilter": "Media files (*.mp4;*.gif;*.jpg;*.jpeg;*.h264)|*.mp4;*.gif;*.jpg;*.jpeg;*.h264|All files (*.*)|*.*",
+    "imageFilter": "Image files (*.png;*.jpg;*.jpeg;*.gif;*.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp|All files (*.*)|*.*",
     "exportThemeName": "Export theme name",
     "exportThemeNamePrompt": "Theme name to use in L-Connect:",
     "convert88To92Open": "Choose an 8.8 L-Connect ZIP",
@@ -538,7 +654,16 @@
     "distributeY": "Distribute vertically across canvas",
     "soloLayers": "Show only selected layer(s)",
     "templateId": "Template ID",
-    "pickShadowColor": "Pick Shadow Color"
+    "pickShadowColor": "Pick Shadow Color",
+    "deleteTheme": "Delete selected non-official theme",
+    "unsavedChanges": "Unsaved changes",
+    "pauseBackgroundPreview": "Pause background preview",
+    "startAngle": "Start angle",
+    "totalAngle": "Total angle",
+    "editSelectedLayers": "Edit selected layers",
+    "offlineMode": "Work on a local copy without sending changes to L-Connect",
+    "matchX": "Match selected layers X",
+    "matchY": "Match selected layers Y"
   },
   "properties": {
     "noLayerSelected": "Select a layer",
@@ -548,6 +673,7 @@
     "myDevices": "My devices",
     "myDevicesDesc": "Only selected devices appear across the editor and gallery.",
     "languageTheme": "Language & theme",
+    "universal88DeviceCount": "8.8 screen count",
     "languageThemeDesc": "These choices also update the footer controls.",
     "themeGallery": "Theme Gallery",
     "themeGalleryDesc": "Automatically apply downloaded themes after installation.",
@@ -560,11 +686,46 @@
     "description": "Choose how the editor behaves.",
     "layerGrouping": "Layer grouping",
     "layerGroupingDesc": "Show saved groups in the layer list.",
-    "enabled": "Enabled"
+    "enabled": "Enabled",
+    "showLegacyToolbarActions": "Show Save and Apply All in toolbar",
+    "editing": "Editing",
+    "editingDesc": "Controls that change editor behavior.",
+    "themeList": "Theme list",
+    "themeListDensity": "Theme list density",
+    "backupBehavior": "Backup behavior",
+    "backupBehaviorDesc": "Backup actions around apply and delete.",
+    "installedThemesDefaultFilters": "Installed Themes default filters",
+    "developerDiagnostics": "Developer diagnostics",
+    "developerDiagnosticsDesc": "Developer-only diagnostic views and logs.",
+    "backups": "Backups",
+    "backupsDesc": "View, open, or remove editor backup folders.",
+    "allowDeletingOfficialThemes": "Allow deleting official themes",
+    "showOfficialThemes": "Show official themes",
+    "autoRefreshLConnect": "Auto refresh L-Connect after apply",
+    "backupBeforeApply": "Backup before apply",
+    "confirmBeforeApply": "Confirm before apply",
+    "rememberApplyTarget": "Remember apply target",
+    "backupBeforeDelete": "Backup before delete",
+    "convert88To92": "Convert 8.8 theme to 9.2 theme",
+    "saveSettings": "Save settings",
+    "themeListDesc": "How installed themes are displayed.",
+    "thumbnailQuality": "Thumbnail quality",
+    "thumbnailFast": "Fast",
+    "thumbnailBalanced": "Balanced",
+    "thumbnailHigh": "High",
+    "densityCompact": "Compact",
+    "densityComfortable": "Comfortable",
+    "installedThemesDesc": "Filtering and official theme visibility.",
+    "noBackupsFound": "No backups found.",
+    "deviceNamePlaceholder": "Device name",
+    "displayNameTooltip": "Display name",
+    "universalDisplayNameTooltip": "8.8 #{0} display name"
   },
   "window": {
     "minimize": "Minimize",
-    "maximize": "Maximize"
+    "maximize": "Maximize",
+    "headerTitle": "Lian Li LCD Template Editor",
+    "titleFormat": "Lian Li LCD Template Editor {0}"
   },
   "dataSources": {
     "APM": "AM / PM",
@@ -631,7 +792,8 @@
     "settings": "Settings",
     "diagnostics": "Diagnostics",
     "about": "About",
-    "thanks": "Thanks"
+    "thanks": "Thanks",
+    "localThemes": "Installed Themes"
   },
   "groups": {
     "name": "Group name",
@@ -750,6 +912,38 @@
     "en": "English",
     "tr": "Turkish",
     "ru": "Russian",
-    "zh": "Chinese"
+    "zh": "Chinese",
+    "de": "German",
+    "ko": "Korean"
+  },
+  "settingsTabs": {
+    "devices": "Devices",
+    "editor": "Editor",
+    "gallery": "Gallery",
+    "developer": "Developer",
+    "others": "Others"
+  },
+  "localThemes": {
+    "count": "{0} of {1} installed templates",
+    "sortDevice": "Device",
+    "title": "Installed Themes",
+    "installedTemplates": "Installed templates",
+    "devices": "Devices",
+    "orientation": "Orientation",
+    "source": "Source",
+    "sort": "Sort",
+    "noThemesMatch": "No themes match the filters.",
+    "sortNameAz": "Name A-Z",
+    "sortCustomFirst": "Custom first",
+    "sortNewest": "Newest"
+  },
+  "devices": {
+    "hydroshiftS": "Hydroshift II LCD-S",
+    "hydroshiftC": "Hydroshift II LCD-C",
+    "universal88": "8.8\" Universal Screen",
+    "vm92": "VM 9.2 LCD"
+  },
+  "template": {
+    "idFormat": "Template ID: {0}"
   }
 }
