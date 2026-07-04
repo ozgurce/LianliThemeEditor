@@ -1545,9 +1545,10 @@ public partial class MainWindow : Window
                                 PreviewSurface.UpdateLayout();
                             },
                             System.Windows.Threading.DispatcherPriority.Render);
-                        var previewBytes = RenderCurrentThemePreview(
-                            cleanEditorOverlay: true,
-                            forceBackgroundVisible: true);
+                        var previewBytes = File.Exists(previewSource) &&
+                                           Path.GetExtension(previewSource).Equals(".png", StringComparison.OrdinalIgnoreCase)
+                            ? RenderCurrentThemePreviewOverBackground(previewSource, cleanEditorOverlay: true)
+                            : RenderCurrentThemePreview(cleanEditorOverlay: true, forceBackgroundVisible: true);
                         var lConnectExportPreviewPath = Path.Combine(
                             Path.GetTempPath(),
                             $"lconnect-export-preview-{Guid.NewGuid():N}.png");
@@ -11858,6 +11859,56 @@ public partial class MainWindow : Window
                 BackgroundImage.Opacity = previousImageOpacity;
             }
 
+            if (cleanEditorOverlay)
+            {
+                LayerGrid.SelectedItem = selectedItem;
+                DrawPreview();
+            }
+        }
+    }
+
+    private byte[] RenderCurrentThemePreviewOverBackground(
+        string backgroundImagePath,
+        bool cleanEditorOverlay = false)
+    {
+        object? selectedItem = null;
+        try
+        {
+            if (cleanEditorOverlay)
+            {
+                selectedItem = LayerGrid.SelectedItem;
+                LayerGrid.SelectedItem = null;
+                DrawPreview();
+            }
+
+            PreviewCanvas.UpdateLayout();
+            var canvas = GetTemplateCanvasPixels();
+            var background = new BitmapImage();
+            background.BeginInit();
+            background.CacheOption = BitmapCacheOption.OnLoad;
+            background.UriSource = new Uri(backgroundImagePath, UriKind.Absolute);
+            background.EndInit();
+            background.Freeze();
+
+            var drawingVisual = new DrawingVisual();
+            using (var context = drawingVisual.RenderOpen())
+            {
+                context.DrawImage(background, new Rect(0, 0, canvas.Width, canvas.Height));
+                var overlayBrush = new VisualBrush(PreviewCanvas);
+                context.DrawRectangle(overlayBrush, null, new Rect(0, 0, canvas.Width, canvas.Height));
+            }
+
+            var bitmap = new RenderTargetBitmap(canvas.Width, canvas.Height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(drawingVisual);
+
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = new MemoryStream();
+            encoder.Save(stream);
+            return stream.ToArray();
+        }
+        finally
+        {
             if (cleanEditorOverlay)
             {
                 LayerGrid.SelectedItem = selectedItem;
