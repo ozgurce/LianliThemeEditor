@@ -14048,7 +14048,7 @@ public partial class MainWindow : Window
 
     private static List<(string Name, string Source)> GetConvertFixLayerFontNames(IEnumerable<LayerRow> layers)
     {
-        var fonts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var fontLayerCounts = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
         foreach (var layer in layers.Where(layer => !layer.IsEditorMetadata))
         {
             foreach (var candidate in GetLayerFontCandidates(layer))
@@ -14059,22 +14059,19 @@ public partial class MainWindow : Window
                     continue;
                 }
 
-                var source = $"#{layer.Index} {FirstNonEmpty(layer.TypeDisplay, layer.Type)}";
-                if (fonts.TryGetValue(font, out var existing))
+                if (!fontLayerCounts.TryGetValue(font, out var layerKeys))
                 {
-                    if (!existing.Contains(source, StringComparison.OrdinalIgnoreCase))
-                    {
-                        fonts[font] = existing + ", " + source;
-                    }
+                    layerKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    fontLayerCounts[font] = layerKeys;
                 }
-                else
-                {
-                    fonts[font] = source;
-                }
+
+                layerKeys.Add(string.IsNullOrWhiteSpace(layer.Index) ? Guid.NewGuid().ToString("N") : layer.Index);
             }
         }
 
-        return fonts.Select(item => (item.Key, item.Value)).ToList();
+        return fontLayerCounts
+            .Select(item => (item.Key, $"Used in {item.Value.Count} layer(s)"))
+            .ToList();
     }
 
     private static IEnumerable<string> GetLayerFontCandidates(LayerRow layer)
@@ -17367,6 +17364,7 @@ public partial class MainWindow : Window
         }
 
         var canvas = GetTemplateCanvasPixels();
+        var sourceSize = TryGetVideoPixelSize(sourcePath);
         var candidates = new List<string>();
         try
         {
@@ -17382,6 +17380,8 @@ public partial class MainWindow : Window
                         timestamp,
                         canvas.Width,
                         canvas.Height,
+                        sourceSize.Width,
+                        sourceSize.Height,
                         outputPath))
                 {
                     candidates.Add(outputPath);
@@ -17408,6 +17408,8 @@ public partial class MainWindow : Window
         string timestamp,
         int width,
         int height,
+        int sourceWidth,
+        int sourceHeight,
         string outputPath)
     {
         var startInfo = new ProcessStartInfo
@@ -17424,16 +17426,33 @@ public partial class MainWindow : Window
             startInfo.ArgumentList.Add("-f");
             startInfo.ArgumentList.Add("h264");
         }
-        startInfo.ArgumentList.Add("-ss");
-        startInfo.ArgumentList.Add(timestamp);
+        var frameIndex = Math.Max(1, (int)Math.Round(double.Parse(timestamp, CultureInfo.InvariantCulture) * 24.0));
+        if (extension != ".h264")
+        {
+            startInfo.ArgumentList.Add("-ss");
+            startInfo.ArgumentList.Add(timestamp);
+        }
         startInfo.ArgumentList.Add("-i");
         startInfo.ArgumentList.Add(sourcePath);
         startInfo.ArgumentList.Add("-frames:v");
         startInfo.ArgumentList.Add("1");
         startInfo.ArgumentList.Add("-vf");
-        startInfo.ArgumentList.Add(
-            $"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos," +
-            $"crop={width}:{height}");
+        var filters = new List<string>();
+        if (extension == ".h264")
+        {
+            filters.Add($"select=eq(n\\,{frameIndex})");
+        }
+        var sourceLandscape = sourceWidth >= sourceHeight;
+        var targetLandscape = width >= height;
+        if (sourceWidth > 0 &&
+            sourceHeight > 0 &&
+            sourceLandscape != targetLandscape)
+        {
+            filters.Add("transpose=1");
+        }
+        filters.Add($"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos");
+        filters.Add($"crop={width}:{height}");
+        startInfo.ArgumentList.Add(string.Join(",", filters));
         startInfo.ArgumentList.Add(outputPath);
 
         using var process = new Process { StartInfo = startInfo };
