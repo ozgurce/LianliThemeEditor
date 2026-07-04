@@ -15581,7 +15581,8 @@ public partial class MainWindow : Window
                     GetSelectedDeviceModel(),
                     imported.Path,
                     imported.BackgroundPath,
-                    item);
+                    item,
+                    updatePreview: false);
                 applyAccepted = activationResult == GalleryActivationResult.Applied;
                 applyStillRunning = activationResult == GalleryActivationResult.StillRunning;
                 item.Status = applyAccepted
@@ -15645,13 +15646,15 @@ public partial class MainWindow : Window
         string deviceModel,
         string templatePath,
         string backgroundPath,
-        GalleryThemeItem item)
+        GalleryThemeItem item,
+        bool updatePreview = true)
     {
         var activationTask = ActivateInstalledThemeAsync(
             templateId,
             deviceModel,
             templatePath,
-            backgroundPath);
+            backgroundPath,
+            updatePreview);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(20));
         var completedTask = await Task.WhenAny(activationTask, timeoutTask);
         if (completedTask == activationTask)
@@ -20514,11 +20517,16 @@ public partial class MainWindow : Window
         string templateId,
         string deviceModel,
         string templatePath,
-        string backgroundPath)
+        string backgroundPath,
+        bool updatePreview = true)
     {
         if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return await ActivateUniversal88ThemeAsync(templateId, templatePath, backgroundPath);
+            return await ActivateUniversal88ThemeAsync(
+                templateId,
+                templatePath,
+                backgroundPath,
+                updatePreview: updatePreview);
         }
 
         var activatedId = await _themeInstallationService.ActivateAsync(
