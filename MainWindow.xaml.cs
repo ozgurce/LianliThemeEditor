@@ -16010,6 +16010,19 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(tempPreviewPath) && File.Exists(tempPreviewPath))
             {
                 await _supporter.UpdateThemePreviewAsync(snapshot.DeviceModel, tempTemplate, tempPreviewPath);
+                if (IsWideScreenDeviceModel(snapshot.DeviceModel))
+                {
+                    try
+                    {
+                        await _supporter.UpdateAnimationPreviewBitmapsAsync(snapshot.DeviceModel, tempTemplate, tempPreviewPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Warning(
+                            $"Export animation preview bitmaps could not be updated for {exportTemplateId}: " +
+                            $"{ex.GetType().Name}: {ex.Message}");
+                    }
+                }
             }
 
             var normalized = new ThemeExportSnapshot

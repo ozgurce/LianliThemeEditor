@@ -552,6 +552,17 @@ public sealed class SupporterBridge
         await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task UpdateAnimationPreviewBitmapsAsync(string deviceModel, string templatePath, string imagePath, CancellationToken cancellationToken = default)
+    {
+        var args = BaseTemplateArgs(deviceModel, templatePath);
+        args.AddRange(new[]
+        {
+            "-UpdateAnimationPreviewBitmaps", imagePath,
+            "-NoBackup"
+        });
+        await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task EnsureBackgroundLayerAsync(
         string deviceModel,
         string templatePath,
