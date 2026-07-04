@@ -38,10 +38,7 @@ internal static class Program
         catch (Exception ex)
         {
             var error = Unwrap(ex);
-            Console.Error.WriteLine(
-                string.Equals(Environment.GetEnvironmentVariable("LIANLI_THEME_SUPPORTER_TRACE"), "1", StringComparison.Ordinal)
-                    ? error.ToString()
-                    : error.Message);
+            Console.Error.WriteLine(error.Message);
             return 1;
         }
     }

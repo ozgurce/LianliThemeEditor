@@ -376,8 +376,6 @@ public partial class MainWindow : Window
     private readonly DiagnosticService _diagnosticService = new();
     private readonly LConnectClientService _lConnectClient = new();
     private string _universal88ApplyTraceId = "";
-    private readonly object _lConnectRequestTraceLock = new();
-    private readonly Queue<string> _lConnectRequestTrace = new();
     private int _universal88DeviceCount = 1;
     private readonly Dictionary<string, string> _deviceDisplayNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly GallerySubmissionService _gallerySubmissionService = new();
@@ -22978,16 +22976,6 @@ public partial class MainWindow : Window
         string body)
     {
         var result = await _lConnectClient.SendDeviceRequestForJsonAsync(client, devicePath, type, body);
-        RecordLConnectRequestTrace(
-            type,
-            devicePath,
-            body,
-            result.Port,
-            result.RequestMode,
-            result.StatusCode,
-            result.ReasonPhrase,
-            result.Body,
-            result.Error);
         TraceUniversal88Apply(
             $"L-Connect HTTP action={type}; controller={DescribeControllerForTrace(devicePath)}; " +
             $"port={(result.Port?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}; mode={result.RequestMode}; " +
@@ -22996,49 +22984,6 @@ public partial class MainWindow : Window
             $"body={DescribeLConnectResponseForTrace(result.Body, type)}; " +
             $"error={(string.IsNullOrWhiteSpace(result.Error) ? "<none>" : result.Error)}");
         return result.IsHttpSuccess ? result.Body : "";
-    }
-
-    private void RecordLConnectRequestTrace(
-        string action,
-        string devicePath,
-        string requestBody,
-        int? port,
-        string requestMode,
-        int? statusCode,
-        string reasonPhrase,
-        string responseBody,
-        string error)
-    {
-        var line = string.Join(" | ", new[]
-        {
-            DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture),
-            $"action={action}",
-            $"controller={DescribeControllerForTrace(devicePath)}",
-            $"port={(port?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}",
-            $"mode={requestMode}",
-            $"status={(statusCode?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}",
-            $"reason={(string.IsNullOrWhiteSpace(reasonPhrase) ? "<none>" : reasonPhrase)}",
-            $"request={DescribeLConnectResponseForTrace(requestBody, action)}",
-            $"response={DescribeLConnectResponseForTrace(responseBody, action)}",
-            $"error={(string.IsNullOrWhiteSpace(error) ? "<none>" : error)}"
-        });
-
-        lock (_lConnectRequestTraceLock)
-        {
-            _lConnectRequestTrace.Enqueue(line);
-            while (_lConnectRequestTrace.Count > 240)
-            {
-                _lConnectRequestTrace.Dequeue();
-            }
-        }
-    }
-
-    private string GetLConnectRequestTraceText()
-    {
-        lock (_lConnectRequestTraceLock)
-        {
-            return string.Join(Environment.NewLine, _lConnectRequestTrace);
-        }
     }
 
     private static string DescribeLConnectResponseForTrace(string json, string action)

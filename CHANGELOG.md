@@ -5,7 +5,6 @@
 - Fixed 8.8" Universal Screen gallery/import/apply targeting by using the actual L-Connect template endpoint (`vid_1cbe&pid_a088`) and excluding the wireless transmitter endpoint (`vid_0416&pid_8040`) from template operations.
 - Removed the temporary Gallery install diagnostic result popup and automatic gallery diagnostic ZIP generation. Gallery install/apply results now stay in the card progress/status area and the editor status bar.
 - Made single-layer Apply wait for the L-Connect send/refresh result instead of firing it in the background, so editor-side Apply now reports the device-send state like Apply All.
-- Rebuilt the L-Connect HTTP Import Tracer package so tracing starts immediately and only waits for Enter when the user is finished.
 
 ## V 1.4
 
@@ -19,11 +18,9 @@
 - Added Ctrl multi-select support in the preview and added horizontal/vertical value matching alignment actions.
 - Reworked the right-side layer editor expanders, including separate Data and Text/Format sections, batch bold/size editing, and stable open/closed state behavior.
 - Added a Thanks tab to credit community members who helped test, translate, share themes, and improve the editor.
-- Added a log-delta L-Connect background tracing tool used to diagnose import/apply/background behavior without collecting huge video/template folders.
 
 ## V 1.3 Beta
 
-- Added detailed HTTP status, reason, response body, and network-error tracing for 8.8-inch L-Connect apply requests.
 - Kept the legacy 11021 L-Connect request path as the first apply attempt, then added service-port probing and official-compatible empty-body fallback requests when the legacy path returns no useful response.
 - Separated device-confirmed activation from unconfirmed local profile fallback.
 - Removed the external `System.ServiceProcess.ServiceController` dependency from the restart workflow.
@@ -33,5 +30,4 @@
 - Added parallel fallback probing when the cached L-Connect endpoint is no longer available.
 - Renamed the generic `supporter.exe` helper to `LianLiThemeEditor.TemplateWorker.exe` and added complete product/version metadata.
 - Removed direct `BinaryFormatter` usage from the template worker and delegated template serialization to the installed L-Connect ThemeEngine.
-- Disabled verbose template-worker argument logging by default; it can be enabled with `LIANLI_THEME_SUPPORTER_TRACE=1` for diagnostics.
 - Removed the unused `System.Management` dependency and DLL from the release package.
