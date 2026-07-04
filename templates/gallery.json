@@ -497,6 +497,16 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/blue-white-clock-c47e6d70.png",
       "packageUrl": "packages/blue-white-clock-c47e6d70.zip"
+    },
+    {
+      "id": "digital-and-analog-watch-dad4132f",
+      "name": "Digital_And_Analog_Watch",
+      "author": "Turzx",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/digital-and-analog-watch-dad4132f.png",
+      "packageUrl": "packages/digital-and-analog-watch-dad4132f.zip"
     }
   ]
 }
