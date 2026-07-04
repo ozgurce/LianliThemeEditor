@@ -133,11 +133,27 @@ public partial class MainWindow : Window
 
     private sealed class ConvertFixFontItem
     {
-        public string EntryName { get; init; } = "";
+        public string Source { get; init; } = "";
         public string ExtractedPath { get; init; } = "";
         public string FamilyName { get; init; } = "";
         public bool InstalledMachineWide { get; init; }
-        public string DisplayText => $"{(InstalledMachineWide ? "Installed" : "Missing")} - {FamilyName} ({Path.GetFileName(EntryName)})";
+        public bool HasPackagedFont => !string.IsNullOrWhiteSpace(ExtractedPath);
+        public string DisplayText =>
+            $"{(InstalledMachineWide ? "Installed" : "Missing")} - {FamilyName} [{Source}]" +
+            (HasPackagedFont ? "" : " - no packaged font file");
+    }
+
+    private sealed class ConvertFixTemplateInspection
+    {
+        public string PackagePath { get; init; } = "";
+        public string TemplatePath { get; init; } = "";
+        public string TemplateEntryName { get; init; } = "";
+        public string DeviceModel { get; init; } = "";
+        public ThemePackageManifest? Manifest { get; init; }
+        public IReadOnlyList<LayerRow> Layers { get; init; } = Array.Empty<LayerRow>();
+        public IReadOnlyDictionary<string, string> PackageEntries { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        public IReadOnlyDictionary<string, string> PackagedFonts { get; init; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        public string TempRoot { get; init; } = "";
     }
 
     private static bool NormalizeThemePackageManifest(
@@ -1505,11 +1521,33 @@ public partial class MainWindow : Window
                                 PreviewSurface.UpdateLayout();
                             },
                             System.Windows.Threading.DispatcherPriority.Render);
-                        await SaveAndApplyThemePreviewAsync(
-                            deviceModel,
-                            exportTemplatePath,
-                            exportTemplateId,
+                        var previewBytes = await RenderCurrentThemePreviewForExportAsync(
+                            cleanEditorOverlay: true,
                             forceBackgroundVisible: true);
+                        var lConnectExportPreviewPath = Path.Combine(
+                            Path.GetTempPath(),
+                            $"lconnect-export-preview-{Guid.NewGuid():N}.png");
+                        await File.WriteAllBytesAsync(lConnectExportPreviewPath, previewBytes);
+                        try
+                        {
+                            await SaveAndApplyThemePreviewAsync(
+                                deviceModel,
+                                exportTemplatePath,
+                                exportTemplateId,
+                                forceBackgroundVisible: true);
+                            await _supporter.UpdateThemePreviewAsync(
+                                deviceModel,
+                                exportTemplatePath,
+                                lConnectExportPreviewPath);
+                            await _supporter.UpdateAnimationPreviewBitmapsAsync(
+                                deviceModel,
+                                exportTemplatePath,
+                                lConnectExportPreviewPath);
+                        }
+                        finally
+                        {
+                            TryDeleteFile(lConnectExportPreviewPath);
+                        }
                     }
                     finally
                     {
@@ -13557,7 +13595,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ThemeTestRunButton_Click(object sender, RoutedEventArgs e)
+    private async void ThemeTestRunButton_Click(object sender, RoutedEventArgs e)
     {
         var path = ThemeTestPackagePathBox.Text;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
@@ -13568,7 +13606,7 @@ public partial class MainWindow : Window
 
         try
         {
-            ThemeTestResultText.Text = BuildConvertFixThemeTestReport(path);
+            ThemeTestResultText.Text = await BuildConvertFixThemeTestReportAsync(path);
             SetStatus("Theme test completed.");
         }
         catch (Exception ex)
@@ -13578,7 +13616,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void FontControlBrowseButton_Click(object sender, RoutedEventArgs e)
+    private async void FontControlBrowseButton_Click(object sender, RoutedEventArgs e)
     {
         var path = BrowseConvertFixPackage("Choose a theme package with fonts");
         if (string.IsNullOrWhiteSpace(path)) return;
@@ -13589,15 +13627,15 @@ public partial class MainWindow : Window
             ThemeTestPackagePathBox.Text = path;
         }
 
-        ScanConvertFixFonts(path);
+        await ScanConvertFixFontsAsync(path);
     }
 
-    private void FontControlScanButton_Click(object sender, RoutedEventArgs e)
+    private async void FontControlScanButton_Click(object sender, RoutedEventArgs e)
     {
-        ScanConvertFixFonts(FontControlPackagePathBox.Text);
+        await ScanConvertFixFontsAsync(FontControlPackagePathBox.Text);
     }
 
-    private void InstallFontSystemWideButton_Click(object sender, RoutedEventArgs e)
+    private async void InstallFontSystemWideButton_Click(object sender, RoutedEventArgs e)
     {
         var items = FontControlFontList.SelectedItems.Count > 0
             ? FontControlFontList.SelectedItems.Cast<ConvertFixFontItem>().ToList()
@@ -13615,6 +13653,12 @@ public partial class MainWindow : Window
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(item.ExtractedPath) || !File.Exists(item.ExtractedPath))
+                {
+                    failed.Add($"{item.FamilyName}: no packaged font file found");
+                    continue;
+                }
+
                 if (InstallFontSystemWideFromFile(item.ExtractedPath, item.FamilyName))
                 {
                     installed++;
@@ -13626,12 +13670,12 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                AppLogger.Error($"System-wide font install failed: {item.EntryName}", ex);
+                AppLogger.Error($"System-wide font install failed: {item.FamilyName}", ex);
                 failed.Add($"{item.FamilyName}: {ex.Message}");
             }
         }
 
-        ScanConvertFixFonts(FontControlPackagePathBox.Text);
+        await ScanConvertFixFontsAsync(FontControlPackagePathBox.Text);
         FontControlStatusText.Text = failed.Count == 0
             ? $"Font install completed. Installed/updated: {installed}, already present: {unchanged}. Restart L-Connect if it is open."
             : $"Font install completed with errors. Installed/updated: {installed}, already present: {unchanged}, failed: {failed.Count}. {string.Join(" | ", failed)}";
@@ -13648,55 +13692,62 @@ public partial class MainWindow : Window
         return dialog.ShowDialog(this) == true ? dialog.FileName : "";
     }
 
-    private string BuildConvertFixThemeTestReport(string packagePath)
+    private async Task<string> BuildConvertFixThemeTestReportAsync(string packagePath)
     {
-        if (Path.GetExtension(packagePath).Equals(".template", StringComparison.OrdinalIgnoreCase))
+        var inspection = await InspectConvertFixTemplateAsync(packagePath);
+        try
         {
-            var length = new FileInfo(packagePath).Length;
-            return string.Join(Environment.NewLine, new[]
+            var layers = inspection.Layers.Where(layer => !layer.IsEditorMetadata).ToList();
+            var backgroundLayer = layers.FirstOrDefault(layer =>
+                string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
+            var backgroundReference = FirstNonEmpty(
+                backgroundLayer?.Media ?? "",
+                backgroundLayer?.MediaPath ?? "",
+                inspection.Manifest?.BackgroundFile ?? "",
+                inspection.Manifest?.background ?? "");
+            var lines = new List<string>
             {
                 "Theme Test",
-                $"File: {packagePath}",
-                "Info: Direct .template file detected.",
-                $"Template size: {length:N0} bytes",
-                "Warning: Package-level manifest, background, preview, and font files cannot be checked from a standalone template."
-            });
+                $"File: {inspection.PackagePath}",
+                $"Template: {inspection.TemplateEntryName}",
+                $"Device: {FirstNonEmpty(inspection.DeviceModel, "(unknown)")}",
+                $"Template ID: {FirstNonEmpty(inspection.Manifest?.TemplateId ?? "", Path.GetFileNameWithoutExtension(inspection.TemplateEntryName))}",
+                $"Layer count: {layers.Count}",
+                $"Background defined as: {FirstNonEmpty(backgroundReference, "(none)")}",
+                $"Background in ZIP/package: {DescribeConvertFixPackageReference(inspection, backgroundReference)}",
+                $"Preview manifest entry: {DescribeConvertFixPackageReference(inspection, inspection.Manifest?.PreviewFile ?? "")}",
+                $"Layer fonts: {GetConvertFixLayerFontNames(layers).Count}",
+                ""
+            };
+
+            foreach (var font in BuildConvertFixFontItems(inspection))
+            {
+                lines.Add($"{(font.InstalledMachineWide ? "Info" : "Warning")}: {font.FamilyName} used by {font.Source}; system-wide install: {(font.InstalledMachineWide ? "yes" : "no")}; packaged font: {(font.HasPackagedFont ? "yes" : "no")}");
+            }
+
+            if (!Path.GetExtension(packagePath).Equals(".template", StringComparison.OrdinalIgnoreCase))
+            {
+                var validation = _themeValidator.Validate(
+                    packagePath,
+                    TemplateOptions.Select(option => option.Id),
+                    inspection.DeviceModel);
+                lines.Add("");
+                lines.Add("Package validation:");
+                foreach (var issue in validation.Issues)
+                {
+                    lines.Add($"{issue.Severity}: {issue.Message}");
+                }
+            }
+
+            return string.Join(Environment.NewLine, lines);
         }
-
-        var validation = _themeValidator.Validate(
-            packagePath,
-            TemplateOptions.Select(option => option.Id),
-            GetSelectedDeviceModel());
-        var lines = new List<string>
+        finally
         {
-            "Theme Test",
-            $"File: {packagePath}",
-            $"Result: {(validation.IsValid ? "Pass" : "Fail")}",
-            $"Device: {FirstNonEmpty(validation.DeviceModel, "(not declared)")}",
-            $"Template ID: {FirstNonEmpty(validation.TemplateId, "(not declared)")}",
-            $"Template file: {FirstNonEmpty(validation.TemplateFile, "(not declared)")}",
-            ""
-        };
-
-        foreach (var issue in validation.Issues)
-        {
-            lines.Add($"{issue.Severity}: {issue.Message}");
+            TryDeleteDirectory(inspection.TempRoot);
         }
-
-        using var archive = ZipFile.OpenRead(packagePath);
-        var manifest = ReadPackageManifest(archive);
-        lines.Add("");
-        lines.Add("Package assets:");
-        lines.Add($"Template entry: {DescribePackageEntry(archive, manifest?.TemplateFile)}");
-        lines.Add($"Background entry: {DescribePackageEntry(archive, manifest?.BackgroundFile)}");
-        lines.Add($"Preview entry: {DescribePackageEntry(archive, manifest?.PreviewFile)}");
-        lines.Add($"Font files: {archive.Entries.Count(entry => IsFontPackageEntry(entry))}");
-        lines.Add($"Media files: {archive.Entries.Count(entry => IsMediaPackageEntry(entry.FullName))}");
-
-        return string.Join(Environment.NewLine, lines);
     }
 
-    private void ScanConvertFixFonts(string packagePath)
+    private async Task ScanConvertFixFontsAsync(string packagePath)
     {
         FontControlFontList.ItemsSource = null;
         FontControlStatusText.Text = "No package selected.";
@@ -13708,11 +13759,12 @@ public partial class MainWindow : Window
 
         try
         {
-            var fonts = ExtractConvertFixFontItems(packagePath);
+            var inspection = await InspectConvertFixTemplateAsync(packagePath);
+            var fonts = BuildConvertFixFontItems(inspection);
             FontControlFontList.ItemsSource = fonts;
             FontControlStatusText.Text = fonts.Count == 0
-                ? "No font files found in the selected package."
-                : $"Found {fonts.Count} font file(s). Select specific fonts or install all by leaving the list unselected.";
+                ? "No font usage found in template layers."
+                : $"Found {fonts.Count} font family reference(s) in template layers. Select specific fonts or install all by leaving the list unselected.";
         }
         catch (Exception ex)
         {
@@ -13721,47 +13773,99 @@ public partial class MainWindow : Window
         }
     }
 
-    private static List<ConvertFixFontItem> ExtractConvertFixFontItems(string packagePath)
+    private async Task<ConvertFixTemplateInspection> InspectConvertFixTemplateAsync(string packagePath)
     {
-        var fontItems = new List<ConvertFixFontItem>();
         var tempRoot = Path.Combine(
             Path.GetTempPath(),
             "LianLiThemeEditor",
-            "ConvertFixFonts",
+            "ConvertFixInspection",
             Path.GetFileNameWithoutExtension(packagePath) + "-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempRoot);
+        var packageEntries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var packagedFonts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var templateEntryName = Path.GetFileName(packagePath);
+        var templatePath = packagePath;
+        ThemePackageManifest? manifest = null;
 
-        if (IsFontFilePath(packagePath))
+        if (!Path.GetExtension(packagePath).Equals(".template", StringComparison.OrdinalIgnoreCase))
         {
-            var target = Path.Combine(tempRoot, GetSafeFileName(Path.GetFileName(packagePath)));
-            File.Copy(packagePath, target, true);
-            var family = ReadFontFamilyName(target);
-            fontItems.Add(new ConvertFixFontItem
+            using var archive = ZipFile.OpenRead(packagePath);
+            manifest = ReadPackageManifest(archive);
+            foreach (var entry in archive.Entries.Where(entry => !string.IsNullOrWhiteSpace(entry.Name)))
             {
-                EntryName = Path.GetFileName(packagePath),
-                ExtractedPath = target,
-                FamilyName = family,
-                InstalledMachineWide = IsFontInstalledMachineWide(family, Path.GetFileName(target))
-            });
-            return fontItems;
+                packageEntries[entry.FullName.Replace('\\', '/')] = entry.FullName;
+            }
+
+            var templateEntry = !string.IsNullOrWhiteSpace(manifest?.TemplateFile)
+                ? TryGetPackageEntry(archive, manifest.TemplateFile)
+                : null;
+            templateEntry ??= archive.Entries.FirstOrDefault(entry =>
+                entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase));
+            if (templateEntry == null)
+            {
+                throw new InvalidDataException("No .template file was found in the selected package.");
+            }
+
+            templateEntryName = templateEntry.FullName;
+            templatePath = Path.Combine(tempRoot, GetSafeFileName(templateEntry.Name));
+            templateEntry.ExtractToFile(templatePath, true);
+
+            foreach (var fontEntry in archive.Entries.Where(IsFontPackageEntry))
+            {
+                var target = Path.Combine(tempRoot, "fonts", GetSafeFileName(fontEntry.Name));
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                fontEntry.ExtractToFile(target, true);
+                var family = ReadFontFamilyName(target);
+                if (!packagedFonts.ContainsKey(family))
+                {
+                    packagedFonts[family] = target;
+                }
+                var normalizedFamily = NormalizeFontLookupKey(family);
+                if (!string.IsNullOrWhiteSpace(normalizedFamily) && !packagedFonts.ContainsKey(normalizedFamily))
+                {
+                    packagedFonts[normalizedFamily] = target;
+                }
+                var fileName = Path.GetFileNameWithoutExtension(fontEntry.Name);
+                if (!packagedFonts.ContainsKey(fileName))
+                {
+                    packagedFonts[fileName] = target;
+                }
+                var normalizedFileName = NormalizeFontLookupKey(fileName);
+                if (!string.IsNullOrWhiteSpace(normalizedFileName) && !packagedFonts.ContainsKey(normalizedFileName))
+                {
+                    packagedFonts[normalizedFileName] = target;
+                }
+            }
         }
 
-        using var archive = ZipFile.OpenRead(packagePath);
-        foreach (var entry in archive.Entries.Where(IsFontPackageEntry))
+        var deviceModel = FirstNonEmpty(
+            manifest?.DeviceModel ?? "",
+            manifest?.deviceModel ?? "",
+            InferConvertFixDeviceModelFromPackage(packagePath, templateEntryName),
+            GetSelectedDeviceModel());
+        var result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, templatePath));
+        if (manifest == null)
         {
-            var target = Path.Combine(tempRoot, GetSafeFileName(entry.Name));
-            entry.ExtractToFile(target, true);
-            var family = ReadFontFamilyName(target);
-            fontItems.Add(new ConvertFixFontItem
+            manifest = new ThemePackageManifest
             {
-                EntryName = entry.FullName,
-                ExtractedPath = target,
-                FamilyName = family,
-                InstalledMachineWide = IsFontInstalledMachineWide(family, Path.GetFileName(target))
-            });
+                DeviceModel = deviceModel,
+                TemplateId = result.TemplateId,
+                TemplateFile = templateEntryName
+            };
         }
 
-        return fontItems;
+        return new ConvertFixTemplateInspection
+        {
+            PackagePath = packagePath,
+            TemplatePath = templatePath,
+            TemplateEntryName = templateEntryName,
+            DeviceModel = deviceModel,
+            Manifest = manifest,
+            Layers = result.Layers,
+            PackageEntries = packageEntries,
+            PackagedFonts = packagedFonts,
+            TempRoot = tempRoot
+        };
     }
 
     private static ThemePackageManifest? ReadPackageManifest(ZipArchive archive)
@@ -13791,6 +13895,139 @@ public partial class MainWindow : Window
 
         var entry = TryGetPackageEntry(archive, entryName);
         return entry == null ? $"missing ({entryName})" : $"ok ({entry.FullName}, {entry.Length:N0} bytes)";
+    }
+
+    private static List<ConvertFixFontItem> BuildConvertFixFontItems(ConvertFixTemplateInspection inspection)
+    {
+        return GetConvertFixLayerFontNames(inspection.Layers)
+            .Select(font =>
+            {
+                var sourcePath = ResolvePackagedFontPath(inspection.PackagedFonts, font.Name);
+                return new ConvertFixFontItem
+                {
+                    Source = font.Source,
+                    ExtractedPath = sourcePath,
+                    FamilyName = font.Name,
+                    InstalledMachineWide = IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath))
+                };
+            })
+            .OrderBy(item => item.InstalledMachineWide)
+            .ThenBy(item => item.FamilyName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static List<(string Name, string Source)> GetConvertFixLayerFontNames(IEnumerable<LayerRow> layers)
+    {
+        var fonts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var layer in layers.Where(layer => !layer.IsEditorMetadata))
+        {
+            foreach (var candidate in GetLayerFontCandidates(layer))
+            {
+                var font = ResolveCanonicalFontName(candidate);
+                if (string.IsNullOrWhiteSpace(font))
+                {
+                    continue;
+                }
+
+                var source = $"#{layer.Index} {FirstNonEmpty(layer.TypeDisplay, layer.Type)}";
+                if (fonts.TryGetValue(font, out var existing))
+                {
+                    if (!existing.Contains(source, StringComparison.OrdinalIgnoreCase))
+                    {
+                        fonts[font] = existing + ", " + source;
+                    }
+                }
+                else
+                {
+                    fonts[font] = source;
+                }
+            }
+        }
+
+        return fonts.Select(item => (item.Key, item.Value)).ToList();
+    }
+
+    private static IEnumerable<string> GetLayerFontCandidates(LayerRow layer)
+    {
+        if (!string.IsNullOrWhiteSpace(layer.Font))
+        {
+            yield return layer.Font;
+        }
+
+        if (!string.IsNullOrWhiteSpace(layer.SensorFontFamily))
+        {
+            yield return layer.SensorFontFamily;
+        }
+    }
+
+    private static string ResolvePackagedFontPath(IReadOnlyDictionary<string, string> packagedFonts, string fontName)
+    {
+        if (string.IsNullOrWhiteSpace(fontName))
+        {
+            return "";
+        }
+
+        return packagedFonts.TryGetValue(fontName, out var path) ||
+               packagedFonts.TryGetValue(NormalizeFontLookupKey(fontName), out path)
+            ? path
+            : "";
+    }
+
+    private static string DescribeConvertFixPackageReference(ConvertFixTemplateInspection inspection, string? reference)
+    {
+        if (string.IsNullOrWhiteSpace(reference))
+        {
+            return "not declared";
+        }
+
+        if (File.Exists(reference))
+        {
+            return $"external file exists ({reference})";
+        }
+
+        var normalized = reference.Replace('\\', '/').TrimStart('/');
+        if (inspection.PackageEntries.ContainsKey(normalized))
+        {
+            return $"ok ({normalized})";
+        }
+
+        var fileName = Path.GetFileName(normalized);
+        var match = inspection.PackageEntries.Keys.FirstOrDefault(entry =>
+            string.Equals(Path.GetFileName(entry), fileName, StringComparison.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(match)
+            ? $"missing ({reference})"
+            : $"ok ({match})";
+    }
+
+    private static string InferConvertFixDeviceModelFromPackage(string packagePath, string templateEntryName)
+    {
+        var text = $"{packagePath} {templateEntryName}";
+        if (text.Contains("8.8", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("universal", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("vertical", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("landscape", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("portrait", StringComparison.OrdinalIgnoreCase))
+        {
+            return UniversalScreenDeviceModel;
+        }
+
+        if (text.Contains("vm92", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("9.2", StringComparison.OrdinalIgnoreCase))
+        {
+            return Vm92DeviceModel;
+        }
+
+        if (text.Contains("lcd-c", StringComparison.OrdinalIgnoreCase))
+        {
+            return "hydroshift-ii-lcd-c";
+        }
+
+        if (text.Contains("lcd-s", StringComparison.OrdinalIgnoreCase))
+        {
+            return "hydroshift-ii-lcd-s";
+        }
+
+        return "";
     }
 
     private static bool IsFontPackageEntry(ZipArchiveEntry entry) =>
