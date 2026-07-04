@@ -143,6 +143,7 @@ public partial class MainWindow : Window
             InstalledMachineWide
                 ? "System-wide installed"
                 : "Missing system-wide";
+        public string SearchText => $"Search target: {FamilyName}";
         public Brush AccentBrush => InstalledMachineWide
             ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#62D6B5"))
             : HasPackagedFont
@@ -13812,16 +13813,6 @@ public partial class MainWindow : Window
                 },
                 new() { Label = "Fonts", Value = GetConvertFixLayerFontNames(layers).Count.ToString(CultureInfo.InvariantCulture) }
             };
-
-            foreach (var font in BuildConvertFixFontItems(inspection))
-            {
-                items.Add(new ConvertFixReportItem
-                {
-                    Label = "Font",
-                    Value = $"{font.FamilyName} used by {font.Source}; system-wide install: {(font.InstalledMachineWide ? "yes" : "no")}; packaged font: {(font.HasPackagedFont ? "yes" : "no")}",
-                    Severity = font.InstalledMachineWide ? "Info" : "Warning"
-                });
-            }
 
             if (!Path.GetExtension(packagePath).Equals(".template", StringComparison.OrdinalIgnoreCase))
             {

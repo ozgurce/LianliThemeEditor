@@ -4092,7 +4092,6 @@
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="Auto"/>
                                                                 <ColumnDefinition Width="*"/>
-                                                                <ColumnDefinition Width="78"/>
                                                             </Grid.ColumnDefinitions>
                                                             <CheckBox IsChecked="{Binding InstallSelected, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0"/>
                                                             <StackPanel Grid.Column="1">
@@ -4102,8 +4101,9 @@
                                                                     <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource BrTextTertiary}" Margin="8,0,0,0" FontSize="11"/>
                                                                 </StackPanel>
                                                                 <TextBlock Text="{Binding Source}" Foreground="{DynamicResource BrTextTertiary}" FontSize="10.5" TextWrapping="Wrap" Margin="15,3,0,0"/>
+                                                                <TextBlock Text="{Binding SearchText}" Foreground="{DynamicResource BrTextSecondary}" FontSize="10.5" Margin="15,6,0,0"/>
+                                                                <Button Content="Search on DaFont" Height="26" Width="122" Padding="0" Margin="15,6,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnGhost}" Click="FontSearchDafontButton_Click" CommandParameter="{Binding FamilyName}"/>
                                                             </StackPanel>
-                                                            <Button Grid.Column="2" Content="Dafont" Height="26" Width="68" Padding="0" Margin="10,0,0,0" VerticalAlignment="Top" Style="{DynamicResource BtnGhost}" Click="FontSearchDafontButton_Click" CommandParameter="{Binding FamilyName}"/>
                                                         </Grid>
                                                     </Border>
                                                 </DataTemplate>
