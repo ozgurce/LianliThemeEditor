@@ -12355,6 +12355,7 @@ public partial class MainWindow : Window
         }
 
         string backgroundTemp = "";
+        string packagePreviewTemp = "";
         var packageBackgroundBundle = new List<string>();
         var packageBackgroundZipEntries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         var packageBackgroundStage = "";
@@ -12410,6 +12411,22 @@ public partial class MainWindow : Window
                         preservedPackageBackgroundPath = preservedPath;
                     }
                 }
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(manifest.PreviewFile))
+        {
+            var previewEntry = TryGetPackageEntry(archive, manifest.PreviewFile);
+            if (previewEntry != null)
+            {
+                if (string.IsNullOrWhiteSpace(packageBackgroundStage))
+                {
+                    packageBackgroundStage = Path.Combine(Path.GetTempPath(), $"gallery_bg_{Guid.NewGuid():N}");
+                    Directory.CreateDirectory(packageBackgroundStage);
+                }
+
+                packagePreviewTemp = Path.Combine(packageBackgroundStage, Path.GetFileName(previewEntry.FullName));
+                ExtractPackageEntry(previewEntry, packagePreviewTemp);
             }
         }
 
@@ -12533,6 +12550,14 @@ public partial class MainWindow : Window
                         .Select(path => (Path: path, EntryName: Path.GetFileName(path))));
                 }
                 AddTemplateReferencedBackgroundAliases(destinationTemplate, mediaFiles);
+                if (!string.IsNullOrWhiteSpace(packagePreviewTemp) && File.Exists(packagePreviewTemp))
+                {
+                    var previewEntryName = GetSafeZipEntryPath(manifest.PreviewFile);
+                    mediaFiles.Add((packagePreviewTemp, previewEntryName));
+                    mediaFiles.Add((packagePreviewTemp, Path.GetFileName(previewEntryName)));
+                    mediaFiles.Add((packagePreviewTemp, $"preview/template_{importedId}.png"));
+                    mediaFiles.Add((packagePreviewTemp, $"template_{importedId}.png"));
+                }
 
                 importZip = CreateLConnectImportZipFromFiles(destinationTemplate, mediaFiles);
                 if (File.Exists(destinationTemplate))
@@ -12722,6 +12747,7 @@ public partial class MainWindow : Window
         {
             TryDeleteFileUnlessKept(tempBackground, importedBackgroundPath);
         }
+        TryDeleteFile(packagePreviewTemp);
         TryDeleteDirectory(packageBackgroundStage);
 
         return new TemplateOption
