@@ -21,7 +21,7 @@
     <Copyright>Copyright (c) Ozgur Yalcin 2026</Copyright>
     <ApplicationIcon>editor.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;tmp\**;release\**;cloudflare\**;bin\**;obj\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;outputs\**;tmp\**;release\**;cloudflare\**;tools\**;_project-archive\**;bin\**;obj\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -45,6 +45,8 @@
     <Compile Remove="tmp\**\*.cs" />
     <Compile Remove="artifacts\**\*.cs" />
     <Compile Remove="Tools\**\*.cs" />
+    <Compile Remove="tools\**\*.cs" />
+    <Compile Remove="_project-archive\**\*.cs" />
     <Compile Remove="tools\ThemeUploader\**\*.cs" />
     <Compile Remove="tools\ThemeReview\**\*.cs" />
     <Compile Remove="SupporterCs\**\*.cs" />
@@ -53,11 +55,15 @@
     <Compile Remove="PLUS\**\*.cs" />
     <Compile Remove="Tests\**\*.cs" />
     <Page Remove="Tools\**\*.xaml" />
+    <Page Remove="tools\**\*.xaml" />
+    <Page Remove="_project-archive\**\*.xaml" />
     <Page Remove="artifacts\**\*.xaml" />
     <Page Remove="tools\ThemeUploader\**\*.xaml" />
     <Page Remove="tools\ThemeReview\**\*.xaml" />
     <Page Remove="Backups\**\*.xaml" />
     <ApplicationDefinition Remove="Tools\**\App.xaml" />
+    <ApplicationDefinition Remove="tools\**\App.xaml" />
+    <ApplicationDefinition Remove="_project-archive\**\App.xaml" />
     <ApplicationDefinition Remove="Backups\**\App.xaml" />
   </ItemGroup>
 

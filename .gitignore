@@ -11,6 +11,7 @@ Backups/
 **/obj/
 **/artifacts/
 **/tmp/
+_project-archive/local-scratch-*/
 
 # Visual Studio / local IDE state
 .vs/
