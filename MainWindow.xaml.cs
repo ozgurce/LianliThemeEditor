@@ -1555,7 +1555,9 @@ public partial class MainWindow : Window
                                 PreviewSurface.UpdateLayout();
                             },
                             System.Windows.Threading.DispatcherPriority.Render);
-                        var previewBytes = RenderCurrentThemePreviewOverBackground(previewSource, cleanEditorOverlay: true);
+                        var previewBytes = IsImageFilePath(previewSource)
+                            ? RenderCurrentThemePreviewOverBackground(previewSource, cleanEditorOverlay: true)
+                            : RenderCurrentThemePreview(cleanEditorOverlay: true, forceBackgroundVisible: true);
                         var lConnectExportPreviewPath = Path.Combine(
                             Path.GetTempPath(),
                             $"lconnect-export-preview-{Guid.NewGuid():N}.png");
@@ -11881,6 +11883,11 @@ public partial class MainWindow : Window
         string backgroundImagePath,
         bool cleanEditorOverlay = false)
     {
+        if (!IsImageFilePath(backgroundImagePath))
+        {
+            return RenderCurrentThemePreview(cleanEditorOverlay, forceBackgroundVisible: true);
+        }
+
         object? selectedItem = null;
         try
         {
@@ -15017,6 +15024,12 @@ public partial class MainWindow : Window
 
     private static string FirstExistingPath(params string[] paths) =>
         paths.FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path)) ?? "";
+
+    private static bool IsImageFilePath(string path)
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        return extension is ".png" or ".jpg" or ".jpeg" or ".bmp";
+    }
 
     private void RefreshBackgroundPreviewAfterOrientationChange()
     {
