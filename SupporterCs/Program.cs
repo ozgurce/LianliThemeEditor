@@ -159,6 +159,12 @@ internal static class Program
                 return;
             }
 
+            if (_args.HasValue("UpdateAnimationPreviewBitmaps"))
+            {
+                UpdateAnimationPreviewBitmaps(theme, _args.Get("UpdateAnimationPreviewBitmaps"));
+                return;
+            }
+
             if (_args.Has("EnsureBackgroundLayer"))
             {
                 EnsureBackgroundLayer(theme, resetMedia: true);
@@ -535,6 +541,24 @@ internal static class Program
             File.Copy(sourcePath, target, true);
             TemplateSerializer.Save(theme, _templatePath);
             Console.WriteLine("PreviewUpdated: " + target);
+        }
+
+        private void UpdateAnimationPreviewBitmaps(object theme, string sourcePath)
+        {
+            if (!File.Exists(sourcePath)) throw new FileNotFoundException("Animation preview image not found: " + sourcePath);
+            var animation = Graphs(theme)
+                .Cast<object>()
+                .FirstOrDefault(graph => graph.GetType().Name.Equals("GraphAnimation", StringComparison.OrdinalIgnoreCase))
+                ?? throw new InvalidOperationException("GraphAnimation layer not found.");
+
+            using var source = new Bitmap(sourcePath);
+            foreach (var name in new[] { "bitmap", "O_bitmap", "S_bitmap" })
+            {
+                Reflection.TrySet(animation, name, new Bitmap(source));
+            }
+
+            TemplateSerializer.Save(theme, _templatePath);
+            Console.WriteLine("AnimationPreviewBitmapsUpdated: " + _templatePath);
         }
 
         private void NormalizeTemplateIdentity(object theme, string templateId)
