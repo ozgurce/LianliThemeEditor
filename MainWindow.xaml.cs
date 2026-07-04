@@ -1545,7 +1545,7 @@ public partial class MainWindow : Window
                                 PreviewSurface.UpdateLayout();
                             },
                             System.Windows.Threading.DispatcherPriority.Render);
-                        var previewBytes = await RenderCurrentThemePreviewForExportAsync(
+                        var previewBytes = RenderCurrentThemePreview(
                             cleanEditorOverlay: true,
                             forceBackgroundVisible: true);
                         var lConnectExportPreviewPath = Path.Combine(
@@ -1554,11 +1554,10 @@ public partial class MainWindow : Window
                         await File.WriteAllBytesAsync(lConnectExportPreviewPath, previewBytes);
                         try
                         {
-                            await SaveAndApplyThemePreviewAsync(
+                            await WriteThemePreviewFileAsync(
                                 deviceModel,
-                                exportTemplatePath,
                                 exportTemplateId,
-                                forceBackgroundVisible: true);
+                                lConnectExportPreviewPath);
                             await _supporter.UpdateThemePreviewAsync(
                                 deviceModel,
                                 exportTemplatePath,
@@ -11984,6 +11983,44 @@ public partial class MainWindow : Window
             throw new InvalidOperationException(
                 "The current theme preview could not be embedded into the template.",
                 ex);
+        }
+    }
+
+    private static async Task WriteThemePreviewFileAsync(
+        string deviceModel,
+        string templateId,
+        string previewPath,
+        IEnumerable<string>? previewAliases = null)
+    {
+        if (string.IsNullOrWhiteSpace(previewPath) || !File.Exists(previewPath))
+        {
+            return;
+        }
+
+        var previewDir = Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", deviceModel, "preview");
+        if (!Directory.Exists(previewDir))
+        {
+            return;
+        }
+
+        var previewBytes = await File.ReadAllBytesAsync(previewPath);
+        var previewIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            templateId
+        };
+        if (previewAliases != null)
+        {
+            foreach (var alias in previewAliases.Where(value => !string.IsNullOrWhiteSpace(value)))
+            {
+                previewIds.Add(alias);
+            }
+        }
+
+        foreach (var previewId in previewIds)
+        {
+            await File.WriteAllBytesAsync(
+                Path.Combine(previewDir, $"template_{previewId}.png"),
+                previewBytes);
         }
     }
 
