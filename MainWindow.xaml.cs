@@ -375,7 +375,7 @@ public partial class MainWindow : Window
     private readonly ThemePackageValidationService _themeValidator = new();
     private readonly DiagnosticService _diagnosticService = new();
     private readonly LConnectClientService _lConnectClient = new();
-    private string _universal88ApplyTraceId = "";
+    private string _universal88ApplyLogId = "";
     private int _universal88DeviceCount = 1;
     private readonly Dictionary<string, string> _deviceDisplayNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly GallerySubmissionService _gallerySubmissionService = new();
@@ -3279,7 +3279,7 @@ public partial class MainWindow : Window
                 convertStopwatch.Stop();
                 AppLogger.Info(
                     $"Background media prepared in {convertStopwatch.ElapsedMilliseconds}ms; " +
-                    $"source={DescribeFileForTrace(mediaPath)}; generated={DescribeFileForTrace(generatedBackgroundPath)}");
+                    $"source={DescribeFileForLog(mediaPath)}; generated={DescribeFileForLog(generatedBackgroundPath)}");
             }
             finally
             {
@@ -3367,7 +3367,7 @@ public partial class MainWindow : Window
             backgroundStopwatch.Stop();
             AppLogger.Info(
                 $"Background change finished in {backgroundStopwatch.ElapsedMilliseconds}ms; " +
-                $"accepted={accepted}; output={DescribeFileForTrace(backgroundForLConnect)}");
+                $"accepted={accepted}; output={DescribeFileForLog(backgroundForLConnect)}");
             SetBusy(false, GetLanguageText("status.backgroundChanged", "Background media changed."));
         }
         catch (Exception ex)
@@ -12684,8 +12684,8 @@ public partial class MainWindow : Window
 
                 AppLogger.Info(
                     $"L-Connect style {(packagePrefersLandscape ? "landscape" : "portrait")} default background prepared for {importedId}: " +
-                    $"{DescribeFileForTrace(importedBackgroundPath)}; " +
-                    $"templateDefault={DescribeFileForTrace(templateRuntimeBackgroundPath)}");
+                    $"{DescribeFileForLog(importedBackgroundPath)}; " +
+                    $"templateDefault={DescribeFileForLog(templateRuntimeBackgroundPath)}");
             }
         }
 
@@ -12873,7 +12873,7 @@ public partial class MainWindow : Window
                     importedBackgroundPath = lConnectVideoBackground;
                     AppLogger.Info(
                         $"L-Connect imported timestamp background replaced for {lConnectId}: " +
-                        $"{DescribeFileForTrace(importedBackgroundPath)}");
+                        $"{DescribeFileForLog(importedBackgroundPath)}");
                 }
             }
 
@@ -12886,7 +12886,7 @@ public partial class MainWindow : Window
                     importedBackgroundPath = installedTemplate.BackgroundPath;
                     AppLogger.Info(
                         $"L-Connect imported template default background selected for {lConnectId}: " +
-                        $"{DescribeFileForTrace(importedBackgroundPath)}");
+                        $"{DescribeFileForLog(importedBackgroundPath)}");
                 }
             }
             catch (Exception ex)
@@ -12915,7 +12915,7 @@ public partial class MainWindow : Window
         importedBackgroundPath = EnsureUniversal88PreviewBackgroundPath(deviceModel, importedBackgroundPath);
         AppLogger.Info(
             $"Experimental gallery background flow: template layer normalization skipped; " +
-            $"runtime background={DescribeFileForTrace(importedBackgroundPath)}.");
+            $"runtime background={DescribeFileForLog(importedBackgroundPath)}.");
 
         foreach (var item in DeviceCombo.Items.OfType<ComboBoxItem>())
         {
@@ -12978,7 +12978,7 @@ public partial class MainWindow : Window
             await _supporter.ApplyLayersAsync(deviceModel, templatePath, new[] { animationLayer });
             AppLogger.Info(
                 $"Runtime background patched into GraphAnimation layer: " +
-                $"{DescribeFileForTrace(runtimeBackgroundPath)} -> {templatePath}");
+                $"{DescribeFileForLog(runtimeBackgroundPath)} -> {templatePath}");
         }
         catch (Exception ex)
         {
@@ -13409,7 +13409,7 @@ public partial class MainWindow : Window
             {
                 AppLogger.Warning(
                     $"Imported L-Connect H264 background still has unexpected dimensions: " +
-                    $"{DescribeFileForTrace(runtimeBackgroundPath)}; size={h264Size.Width}x{h264Size.Height}");
+                    $"{DescribeFileForLog(runtimeBackgroundPath)}; size={h264Size.Width}x{h264Size.Height}");
             }
 
             return runtimeBackgroundPath;
@@ -21219,10 +21219,10 @@ public partial class MainWindow : Window
                     _lConnectClient.SendServiceRequestForJsonAsync(client, "SyncControllerList", "{}"))
                 .GetAwaiter()
                 .GetResult();
-            TraceUniversal88Apply(
+            LogUniversal88Apply(
                 $"L-Connect HTTP action=SyncControllerList; port={(result.Port?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}; " +
                 $"mode={result.RequestMode}; status={(result.StatusCode?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}; " +
-                $"body={DescribeLConnectResponseForTrace(result.Body, "SyncControllerList")}; " +
+                $"body={DescribeLConnectResponseForLog(result.Body, "SyncControllerList")}; " +
                 $"error={(string.IsNullOrWhiteSpace(result.Error) ? "<none>" : result.Error)}");
             if (result.IsHttpSuccess && !string.IsNullOrWhiteSpace(result.Body))
             {
@@ -21295,9 +21295,9 @@ public partial class MainWindow : Window
             {
                 var index = GetSelectedUniversal88InstanceIndex();
                 var selected = universalPaths[Math.Clamp(index, 1, universalPaths.Count) - 1];
-                TraceUniversal88Apply(
+                LogUniversal88Apply(
                     $"Selected 8.8 instance #{index}; " +
-                    $"controller={DescribeControllerForTrace(selected)}; available={universalPaths.Count}");
+                    $"controller={DescribeControllerForLog(selected)}; available={universalPaths.Count}");
                 return new List<string> { selected };
             }
         }
@@ -21505,9 +21505,9 @@ public partial class MainWindow : Window
         bool applyBackgroundOverride = false)
     {
         backgroundPath = EnsureUniversal88PreviewBackgroundPath(UniversalScreenDeviceModel, backgroundPath);
-        var previousTraceId = _universal88ApplyTraceId;
-        _universal88ApplyTraceId = Guid.NewGuid().ToString("N")[..8];
-        var traceId = _universal88ApplyTraceId;
+        var previousLogId = _universal88ApplyLogId;
+        _universal88ApplyLogId = Guid.NewGuid().ToString("N")[..8];
+        var logId = _universal88ApplyLogId;
         var stopwatch = Stopwatch.StartNew();
         // Read WPF state once on the UI thread. The profile work below runs on a
         // worker thread and must not touch UniversalOrientationCombo directly.
@@ -21522,11 +21522,11 @@ public partial class MainWindow : Window
             candidates.Add(templateId);
         }
 
-        TraceUniversal88Apply(
+        LogUniversal88Apply(
             $"BEGIN version={GetAppDisplayVersion()} built={BuildInfo.BuiltAt}; " +
             $"orientation={(preferLandscape ? "landscape" : "portrait")}; " +
-            $"templateId={templateId}; templateFile={DescribeFileForTrace(templatePath)}; " +
-            $"backgroundFile={DescribeFileForTrace(backgroundPath)}; candidates=[{string.Join(", ", candidates)}]");
+            $"templateId={templateId}; templateFile={DescribeFileForLog(templatePath)}; " +
+            $"backgroundFile={DescribeFileForLog(backgroundPath)}; candidates=[{string.Join(", ", candidates)}]");
 
         try
         {
@@ -21534,46 +21534,46 @@ public partial class MainWindow : Window
             {
                 try
                 {
-                    TraceUniversal88Apply("Preview update started.");
+                    LogUniversal88Apply("Preview update started.");
                     await SaveAndApplyThemePreviewAsync(
                         UniversalScreenDeviceModel,
                         templatePath,
                         templateId,
                         candidates.Concat(GetTemplatePreviewAliases(templateId)),
                         embedInTemplate: false);
-                    TraceUniversal88Apply("Preview update completed.");
+                    LogUniversal88Apply("Preview update completed.");
                 }
                 catch (Exception ex)
                 {
-                    TraceUniversal88Apply($"Preview update failed: {ex.GetType().Name}: {ex.Message}", warning: true);
+                    LogUniversal88Apply($"Preview update failed: {ex.GetType().Name}: {ex.Message}", warning: true);
                 }
             }
             else
             {
-                TraceUniversal88Apply("Preview update skipped by caller.");
+                LogUniversal88Apply("Preview update skipped by caller.");
             }
 
             try
             {
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
                 var devicePaths = GetLConnectDevicePaths();
-                TraceUniversal88Apply(
+                LogUniversal88Apply(
                     $"L-Connect controller discovery count={devicePaths.Count}; " +
-                    $"controllers=[{string.Join(", ", devicePaths.Select(DescribeControllerForTrace))}]");
+                    $"controllers=[{string.Join(", ", devicePaths.Select(DescribeControllerForLog))}]");
                 foreach (var path in devicePaths)
                 {
-                    TraceUniversal88Apply($"Controller begin: {DescribeControllerForTrace(path)}");
+                    LogUniversal88Apply($"Controller begin: {DescribeControllerForLog(path)}");
                     await SetUniversal88ScreenOrientationAsync(client, path, preferLandscape);
                     var liveCandidates = candidates
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList();
-                    TraceUniversal88Apply($"Apply order fast=[{string.Join(", ", liveCandidates)}]");
+                    LogUniversal88Apply($"Apply order fast=[{string.Join(", ", liveCandidates)}]");
 
                     async Task<bool> TryApplyCandidatesAsync(IReadOnlyList<string> orderedCandidates)
                     {
                         foreach (var candidateId in orderedCandidates)
                         {
-                            TraceUniversal88Apply($"Trying ApplyTemplate candidate={candidateId}");
+                            LogUniversal88Apply($"Trying ApplyTemplate candidate={candidateId}");
                             var prePatchProfile = await Task.Run(() =>
                                 TrySetUniversal88ActiveTemplateProfile(candidateId, preferLandscape));
                             var prePatchBackground = false;
@@ -21593,7 +21593,7 @@ public partial class MainWindow : Window
                                     TrySetUniversal88TemplateBackgroundProfile(candidateId, profileBackgroundPath));
                             }
 
-                            TraceUniversal88Apply(
+                            LogUniversal88Apply(
                                 $"Pre-apply profile patch candidate={candidateId}; " +
                                 $"profile={prePatchProfile}; background={prePatchBackground}");
 
@@ -21603,7 +21603,7 @@ public partial class MainWindow : Window
                                 "ApplyTemplate",
                                 JsonSerializer.Serialize(candidateId));
                             var selected = accepted && await WaitForSelectedTemplateAsync(client, path, candidateId);
-                            TraceUniversal88Apply($"Candidate result id={candidateId}; accepted={accepted}; selectedConfirmed={selected}");
+                            LogUniversal88Apply($"Candidate result id={candidateId}; accepted={accepted}; selectedConfirmed={selected}");
                             if (accepted)
                             {
                                 var profileSaved = await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
@@ -21622,7 +21622,7 @@ public partial class MainWindow : Window
                                     backgroundApplied = true;
                                 }
 
-                                TraceUniversal88Apply(
+                                LogUniversal88Apply(
                                     $"SUCCESS via L-Connect candidate={candidateId}; SaveProfile={profileSaved}; " +
                                     $"backgroundApplied={backgroundApplied}; profilePostPatchSkipped=false; forceRefreshSkipped=true; " +
                                     $"selected={selected}");
@@ -21640,7 +21640,7 @@ public partial class MainWindow : Window
 
                     await SendLConnectDeviceRequestAsync(client, path, "ReloadAssets", "{}");
                     var registeredIds = await GetLConnectTemplateIdsAsync(client, path);
-                    TraceUniversal88Apply(
+                    LogUniversal88Apply(
                         $"L-Connect templates count={registeredIds.Count}; ids=[{string.Join(", ", registeredIds)}]");
                     liveCandidates = ThemeInstallationService
                         .MatchRegisteredIds(templatePath, registeredIds)
@@ -21648,7 +21648,7 @@ public partial class MainWindow : Window
                         .Concat(candidates)
                         .Distinct(StringComparer.OrdinalIgnoreCase)
                         .ToList();
-                    TraceUniversal88Apply($"Apply order fallback=[{string.Join(", ", liveCandidates)}]");
+                    LogUniversal88Apply($"Apply order fallback=[{string.Join(", ", liveCandidates)}]");
 
                     if (await TryApplyCandidatesAsync(liveCandidates))
                     {
@@ -21658,15 +21658,15 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                TraceUniversal88Apply($"L-Connect API phase failed: {ex.GetType().Name}: {ex.Message}", warning: true);
+                LogUniversal88Apply($"L-Connect API phase failed: {ex.GetType().Name}: {ex.Message}", warning: true);
             }
 
-            TraceUniversal88Apply("L-Connect API did not confirm selection; starting local profile fallback.", warning: true);
+            LogUniversal88Apply("L-Connect API did not confirm selection; starting local profile fallback.", warning: true);
             foreach (var candidateId in candidates)
             {
                 var existsForDevice = TemplateExistsForDevice(UniversalScreenDeviceModel, candidateId);
                 var existsAsAlias = TemplateFileContainsAlias(templatePath, candidateId);
-                TraceUniversal88Apply(
+                LogUniversal88Apply(
                     $"Fallback candidate={candidateId}; fileExists={existsForDevice}; aliasInTemplate={existsAsAlias}");
                 if (!existsForDevice && !existsAsAlias)
                 {
@@ -21675,7 +21675,7 @@ public partial class MainWindow : Window
 
                 var patched = await Task.Run(() =>
                     TrySetUniversal88ActiveTemplateProfile(candidateId, preferLandscape));
-                TraceUniversal88Apply($"Fallback profile patch candidate={candidateId}; patched={patched}");
+                LogUniversal88Apply($"Fallback profile patch candidate={candidateId}; patched={patched}");
                 if (patched)
                 {
                     var backgroundPatched = false;
@@ -21696,7 +21696,7 @@ public partial class MainWindow : Window
                     }
 
                     await ReloadInstalledTemplatesInLConnectAsync();
-                    TraceUniversal88Apply(
+                    LogUniversal88Apply(
                         $"PROFILE_FALLBACK_WRITTEN candidate={candidateId}; backgroundPatched={backgroundPatched}; " +
                         "deviceConfirmed=false",
                         warning: true);
@@ -21705,30 +21705,30 @@ public partial class MainWindow : Window
             }
 
             await ReloadInstalledTemplatesInLConnectAsync();
-            TraceUniversal88Apply("FAILED: no L-Connect candidate was selected and local profile fallback did not apply.", warning: true);
+            LogUniversal88Apply("FAILED: no L-Connect candidate was selected and local profile fallback did not apply.", warning: true);
             return false;
         }
         finally
         {
             stopwatch.Stop();
-            TraceUniversal88Apply($"END elapsedMs={stopwatch.ElapsedMilliseconds}");
-            _universal88ApplyTraceId = previousTraceId;
+            LogUniversal88Apply($"END elapsedMs={stopwatch.ElapsedMilliseconds}");
+            _universal88ApplyLogId = previousLogId;
         }
     }
 
-    private void TraceUniversal88Apply(string message, bool warning = false)
+    private void LogUniversal88Apply(string message, bool warning = false)
     {
-        if (string.IsNullOrWhiteSpace(_universal88ApplyTraceId))
+        if (string.IsNullOrWhiteSpace(_universal88ApplyLogId))
         {
             return;
         }
 
-        var line = $"[8.8 APPLY {_universal88ApplyTraceId}] {message}";
+        var line = $"[8.8 APPLY {_universal88ApplyLogId}] {message}";
         if (warning) AppLogger.Warning(line);
         else AppLogger.Info(line);
     }
 
-    private static string DescribeFileForTrace(string path)
+    private static string DescribeFileForLog(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return "<none>";
         if (!File.Exists(path)) return $"{Path.GetFileName(path)} (missing)";
@@ -21743,7 +21743,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private static string DescribeControllerForTrace(string path)
+    private static string DescribeControllerForLog(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return "<empty>";
         var normalized = NormalizeControllerPathForCompare(path);
@@ -21893,7 +21893,7 @@ public partial class MainWindow : Window
             }
 
             var selectedId = await GetLConnectSelectedTemplateIdAsync(client, devicePath);
-            TraceUniversal88Apply(
+            LogUniversal88Apply(
                 $"Selection poll attempt={attempt + 1}/{attempts}; expected={expectedTemplateId}; " +
                 $"observed={(string.IsNullOrWhiteSpace(selectedId) ? "<empty>" : selectedId)}");
             if (string.Equals(selectedId, expectedTemplateId, StringComparison.OrdinalIgnoreCase))
@@ -22215,7 +22215,7 @@ public partial class MainWindow : Window
             accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "Apply2DTemplate", candidateJson);
             accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
             accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyScreenContent", "{}");
-            TraceUniversal88TempPreviewFiles(deviceModel);
+            LogUniversal88TempPreviewFiles(deviceModel);
         }
         catch (Exception ex)
         {
@@ -22225,7 +22225,7 @@ public partial class MainWindow : Window
         return accepted;
     }
 
-    private void TraceUniversal88TempPreviewFiles(string deviceModel)
+    private void LogUniversal88TempPreviewFiles(string deviceModel)
     {
         if (!string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
@@ -22239,7 +22239,7 @@ public partial class MainWindow : Window
                      Path.Combine(tempDir, "8.8s.h264")
                  })
         {
-            TraceUniversal88Apply($"L-Connect live preview temp file: {DescribeFileForTrace(path)}");
+            LogUniversal88Apply($"L-Connect live preview temp file: {DescribeFileForLog(path)}");
         }
     }
 
@@ -22284,8 +22284,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            TraceUniversal88Apply(
-                $"Post-import cache refresh failed for {DescribeControllerForTrace(devicePath)}: {ex.Message}",
+            LogUniversal88Apply(
+                $"Post-import cache refresh failed for {DescribeControllerForLog(devicePath)}: {ex.Message}",
                 warning: true);
         }
     }
@@ -22426,7 +22426,7 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
         {
-            TraceUniversal88Apply("Background update skipped because no readable background file was available.");
+            LogUniversal88Apply("Background update skipped because no readable background file was available.");
             return;
         }
 
@@ -22445,10 +22445,10 @@ public partial class MainWindow : Window
             TryGetUniversal88TemplateBackgroundProfile(targetTemplateId, out var existingBackgroundPath) &&
             string.Equals(existingBackgroundPath, profileBackgroundPath, StringComparison.OrdinalIgnoreCase))
         {
-            TraceUniversal88Apply(
+            LogUniversal88Apply(
                 $"Background profile already points to requested file; ChangeTemplateBackground will still be sent " +
                 $"candidate={targetTemplateId}; file=" +
-                $"{DescribeFileForTrace(profileBackgroundPath)}");
+                $"{DescribeFileForLog(profileBackgroundPath)}");
         }
 
         var accepted = await SendLConnectDeviceRequestAsync(
@@ -22463,21 +22463,21 @@ public partial class MainWindow : Window
                 Path = lConnectBackgroundPath
             }));
         await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
-        TraceUniversal88Apply(
+        LogUniversal88Apply(
             $"Background request candidate={targetTemplateId}; accepted={accepted}; " +
-            $"file={DescribeFileForTrace(lConnectBackgroundPath)}; source={DescribeFileForTrace(backgroundPath)}");
+            $"file={DescribeFileForLog(lConnectBackgroundPath)}; source={DescribeFileForLog(backgroundPath)}");
 
         if (accepted)
         {
-            TraceUniversal88Apply(
+            LogUniversal88Apply(
                 $"Background profile path candidate={targetTemplateId}; " +
-                $"file={DescribeFileForTrace(profileBackgroundPath)}");
+                $"file={DescribeFileForLog(profileBackgroundPath)}");
             var profilePatched = await Task.Run(() =>
                 string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
                     ? TrySetUniversal88TemplateBackgroundProfile(targetTemplateId, profileBackgroundPath) ||
                       TrySetTemplateBackgroundProfileWithRetry(targetTemplateId, profileBackgroundPath, deviceModel)
                     : TrySetTemplateBackgroundProfileWithRetry(targetTemplateId, profileBackgroundPath, deviceModel));
-            TraceUniversal88Apply($"Background local profile patch={profilePatched}");
+            LogUniversal88Apply($"Background local profile patch={profilePatched}");
         }
     }
 
@@ -22963,9 +22963,9 @@ public partial class MainWindow : Window
     {
         var json = await SendLConnectDeviceRequestForJsonAsync(client, devicePath, type, body);
         var successful = IsSuccessfulLConnectResponse(json, requireDataSuccess);
-        TraceUniversal88Apply(
-            $"L-Connect action={type}; controller={DescribeControllerForTrace(devicePath)}; " +
-            $"success={successful}; response={DescribeLConnectResponseForTrace(json, type)}");
+        LogUniversal88Apply(
+            $"L-Connect action={type}; controller={DescribeControllerForLog(devicePath)}; " +
+            $"success={successful}; response={DescribeLConnectResponseForLog(json, type)}");
         return successful;
     }
 
@@ -22976,17 +22976,17 @@ public partial class MainWindow : Window
         string body)
     {
         var result = await _lConnectClient.SendDeviceRequestForJsonAsync(client, devicePath, type, body);
-        TraceUniversal88Apply(
-            $"L-Connect HTTP action={type}; controller={DescribeControllerForTrace(devicePath)}; " +
+        LogUniversal88Apply(
+            $"L-Connect HTTP action={type}; controller={DescribeControllerForLog(devicePath)}; " +
             $"port={(result.Port?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}; mode={result.RequestMode}; " +
             $"status={(result.StatusCode?.ToString(CultureInfo.InvariantCulture) ?? "<none>")}; " +
             $"reason={(string.IsNullOrWhiteSpace(result.ReasonPhrase) ? "<none>" : result.ReasonPhrase)}; " +
-            $"body={DescribeLConnectResponseForTrace(result.Body, type)}; " +
+            $"body={DescribeLConnectResponseForLog(result.Body, type)}; " +
             $"error={(string.IsNullOrWhiteSpace(result.Error) ? "<none>" : result.Error)}");
         return result.IsHttpSuccess ? result.Body : "";
     }
 
-    private static string DescribeLConnectResponseForTrace(string json, string action)
+    private static string DescribeLConnectResponseForLog(string json, string action)
     {
         if (string.IsNullOrWhiteSpace(json)) return "<empty>";
         if (action.Equals("GetTemplates", StringComparison.OrdinalIgnoreCase))
@@ -23474,7 +23474,7 @@ public partial class MainWindow : Window
         return "";
     }
 
-    private static string DescribeProfilePathForTrace(string path)
+    private static string DescribeProfilePathForLog(string path)
     {
         return string.IsNullOrWhiteSpace(path) ? "<unknown>" : Path.GetFileName(path);
     }
@@ -24090,7 +24090,7 @@ public partial class MainWindow : Window
             AppLogger.Info(
                 $"Fast L-Connect refresh completed in {stopwatch.ElapsedMilliseconds} ms. " +
                 $"device={deviceModel}; template={templateId}; universal=true; accepted={universalAccepted}; " +
-                $"background={DescribeFileForTrace(universalBackgroundPath)}");
+                $"background={DescribeFileForLog(universalBackgroundPath)}");
             return universalAccepted;
         }
 
@@ -24206,7 +24206,7 @@ public partial class MainWindow : Window
             devicePath,
             "SetScreenOrientation",
             JsonSerializer.Serialize(isLandscape));
-        TraceUniversal88Apply(
+        LogUniversal88Apply(
             $"Screen orientation request orientation={(isLandscape ? "landscape" : "portrait")}; accepted={accepted}");
         return accepted;
     }
