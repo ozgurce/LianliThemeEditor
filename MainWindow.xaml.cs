@@ -229,6 +229,11 @@ public partial class MainWindow : Window
         public string Signature { get; set; } = "";
     }
 
+    private static readonly string[] ExperimentalDataSources =
+    {
+        "FPS_TARGET_APP_NAME"
+    };
+
     private static readonly string[] DataSources =
     {
         "CPUTEMP", "CPUTEMP_F", "CPUCLOCK", "CPUCLOCK_G", "CPULOAD", "CPUFAN",
@@ -239,7 +244,8 @@ public partial class MainWindow : Window
         "HDDTEMP", "HDDTEMP_F", "HDDUSED", "DRVLOAD", "PUMP", "WATERPUMP",
         "WATERTEMPC", "WATERTEMPF",
         "UPSPEED", "DOWNDSPEED", "FPS_AVG",
-        "TIME", "DATE", "DAY", "APM", "StaticText"
+        "TIME", "DATE", "DAY", "APM", "StaticText",
+        "FPS_TARGET_APP_NAME"
     };
 
     private enum StatusBarDataSourceStatus
@@ -5154,7 +5160,7 @@ public partial class MainWindow : Window
 
     private static string NormalizeDataSourceKey(string dataSource)
     {
-        var key = (dataSource ?? "").Trim().ToUpperInvariant();
+        var key = StripExperimentalMarker(dataSource ?? "").ToUpperInvariant();
         return key switch
         {
             "CPUPOWER" => "CPUPWR",
@@ -6870,9 +6876,10 @@ public partial class MainWindow : Window
         var source = layer.DataSource ?? "";
         var isDynamicSource = !string.IsNullOrWhiteSpace(source) &&
                               !source.Equals("StaticText", StringComparison.OrdinalIgnoreCase);
+        var previewOverrideKey = GetPreviewOverrideKey(layer);
 
         if (isDynamicSource &&
-            _previewSampleOverrides.TryGetValue(source, out var selectedPreviewValue))
+            _previewSampleOverrides.TryGetValue(previewOverrideKey, out var selectedPreviewValue))
         {
             return selectedPreviewValue;
         }
@@ -6903,7 +6910,7 @@ public partial class MainWindow : Window
 
         if (isDynamicSource)
         {
-            if (_previewSampleOverrides.TryGetValue(source, out var previewValue))
+            if (_previewSampleOverrides.TryGetValue(previewOverrideKey, out var previewValue))
             {
                 return previewValue;
             }
@@ -6911,6 +6918,14 @@ public partial class MainWindow : Window
         }
 
         return string.IsNullOrEmpty(text) ? source : text;
+    }
+
+    private string GetPreviewOverrideKey(LayerRow layer)
+    {
+        var templateKey = string.IsNullOrWhiteSpace(_currentTemplatePath)
+            ? _currentTemplateId
+            : _currentTemplatePath;
+        return $"{templateKey}|{layer.Index}";
     }
 
     private static bool IsDynamicDataLayer(LayerRow layer)
@@ -7962,6 +7977,7 @@ public partial class MainWindow : Window
     private static readonly (string Code, string Label)[] DateFormats =
     {
         ("Y-M-D", "Year-Month-Day"),
+        ("Y", "Year"),
         ("M", "Month"),
         ("D", "Day")
     };
@@ -7993,7 +8009,7 @@ public partial class MainWindow : Window
     private static string SampleValueFor(string dataSource, string formatText = "")
     {
         if (string.IsNullOrWhiteSpace(dataSource)) return "";
-        var key = dataSource.ToUpperInvariant();
+        var key = NormalizeDataSourceKey(dataSource);
         var fmt = formatText ?? "";
 
         if (TryGetLiveSensorValue(key, fmt, out var liveValue))
@@ -8043,6 +8059,7 @@ public partial class MainWindow : Window
             case "UPSPEED": return "8.5";
             case "DOWNDSPEED": return "45.2";
             case "FPS_AVG": return "120";
+            case "FPS_TARGET_APP_NAME": return "Game.exe";
             case "GPUMODEL": return "GPU";
             case "TIME":
                 var currentTime = DateTime.Now;
@@ -8122,8 +8139,19 @@ public partial class MainWindow : Window
 
     private static string NormalizeDriveSelector(string selector)
     {
-        var match = Regex.Match(selector ?? "", @"[A-Za-z]");
-        return match.Success ? match.Value.ToUpperInvariant() : "C";
+        var value = (selector ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "C";
+        }
+
+        if (Regex.IsMatch(value, @"^#?\d+-\d+$") || Regex.IsMatch(value, @"^\d+$"))
+        {
+            return value;
+        }
+
+        var match = Regex.Match(value, @"[A-Za-z]");
+        return match.Success ? match.Value.ToUpperInvariant() : value;
     }
 
     private static void RefreshLiveSensorCache()
@@ -8555,6 +8583,13 @@ public partial class MainWindow : Window
         if (!double.TryParse(layer.Y, NumberStyles.Float, CultureInfo.InvariantCulture, out var y)) y = 0;
         if (!double.TryParse(layer.Size, NumberStyles.Float, CultureInfo.InvariantCulture, out var size)) size = 20;
 
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            var empty = BitmapSource.Create(1, 1, 96, 96, PixelFormats.Pbgra32, null, new byte[] { 0, 0, 0, 0 }, 4);
+            empty.Freeze();
+            return new TextLayerRenderResult(empty, new Rect(ToPreview(x), ToPreview(y), 1, 1));
+        }
+
         var fontName = GetEffectiveLayerFont(layer.Font);
         var bold = IsBoldFont(layer);
         var color = NormalizeColorText(layer.Color);
@@ -8639,19 +8674,6 @@ public partial class MainWindow : Window
                     new System.Drawing.PointF((float)localAnchorX, padding),
                     format);
             }
-        }
-
-        var ink = FindBitmapInkBounds(bitmap);
-        if (ink.Width <= 0 || ink.Height <= 0)
-        {
-            var empty = BitmapSource.Create(1, 1, 96, 96, PixelFormats.Pbgra32, null, new byte[] { 0, 0, 0, 0 }, 4);
-            empty.Freeze();
-            var result = new TextLayerRenderResult(empty, new Rect(ToPreview(x), ToPreview(y), 1, 1));
-            if (!_isDraggingPreview && !_isResizingPreview)
-            {
-                _gdiTextLayerCache[cacheKey] = result;
-            }
-            return result;
         }
 
         var source = ToBitmapSource(bitmap);
@@ -11712,6 +11734,8 @@ public partial class MainWindow : Window
         bool forceBackgroundVisible = false)
     {
         object? selectedItem = null;
+        var previousMediaOpacity = BackgroundMedia.Opacity;
+        var previousImageOpacity = BackgroundImage.Opacity;
         try
         {
             if (cleanEditorOverlay)
@@ -11748,11 +11772,61 @@ public partial class MainWindow : Window
         }
         finally
         {
+            if (forceBackgroundVisible)
+            {
+                BackgroundMedia.Opacity = previousMediaOpacity;
+                BackgroundImage.Opacity = previousImageOpacity;
+            }
+
             if (cleanEditorOverlay)
             {
                 LayerGrid.SelectedItem = selectedItem;
                 DrawPreview();
             }
+        }
+    }
+
+    private async Task<byte[]> RenderCurrentThemePreviewForExportAsync(
+        bool cleanEditorOverlay = false,
+        bool forceBackgroundVisible = false)
+    {
+        var animationMedia = Layers
+            .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))
+            ?.Media ?? "";
+        var backgroundPath = ResolveBackgroundPath(_currentBackgroundPath, animationMedia);
+        var extension = Path.GetExtension(backgroundPath).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(backgroundPath) ||
+            !File.Exists(backgroundPath) ||
+            extension is not (".mp4" or ".h264" or ".gif"))
+        {
+            return RenderCurrentThemePreview(cleanEditorOverlay, forceBackgroundVisible);
+        }
+
+        var previewFramePath = await CreateDeterministicBackgroundPreviewAsync(backgroundPath);
+        if (string.IsNullOrWhiteSpace(previewFramePath) || !File.Exists(previewFramePath))
+        {
+            await WaitForBackgroundPreviewReadyAsync();
+            return RenderCurrentThemePreview(cleanEditorOverlay, forceBackgroundVisible);
+        }
+
+        try
+        {
+            LoadBackgroundPreview(previewFramePath, Path.GetFileName(previewFramePath));
+            DrawPreview();
+            await Dispatcher.InvokeAsync(
+                () =>
+                {
+                    DrawPreview();
+                    PreviewSurface.UpdateLayout();
+                },
+                System.Windows.Threading.DispatcherPriority.Render);
+            return RenderCurrentThemePreview(cleanEditorOverlay, forceBackgroundVisible: true);
+        }
+        finally
+        {
+            TryDeleteFile(previewFramePath);
+            LoadBackgroundPreview(backgroundPath, string.IsNullOrWhiteSpace(animationMedia) ? Path.GetFileName(backgroundPath) : animationMedia);
+            RequestPreviewDraw();
         }
     }
 
@@ -11766,7 +11840,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var previewBytes = RenderCurrentThemePreview(
+            var previewBytes = await RenderCurrentThemePreviewForExportAsync(
                 cleanEditorOverlay: true,
                 forceBackgroundVisible: forceBackgroundVisible);
             if (previewBytes == null || previewBytes.Length == 0) return;
@@ -13059,11 +13133,27 @@ public partial class MainWindow : Window
         var h264Source = bundle.FirstOrDefault(path =>
             Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase));
         var temporaryH264Path = "";
+        var temporaryMp4Path = "";
 
         try
         {
             if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
             {
+                var runtimeMp4Source = mp4Source;
+                if (!preferLandscape)
+                {
+                    temporaryMp4Path = Path.Combine(
+                        Path.GetTempPath(),
+                        $"lconnect_import_background_{Guid.NewGuid():N}.mp4");
+                    runtimeMp4Source = await ConvertExportBackgroundAsync(
+                        deviceModel,
+                        mp4Source,
+                        templateId,
+                        ".mp4",
+                        temporaryMp4Path,
+                        preferLandscape: false);
+                }
+
                 temporaryH264Path = Path.Combine(
                     Path.GetTempPath(),
                     $"lconnect_import_background_{Guid.NewGuid():N}.h264");
@@ -13075,12 +13165,29 @@ public partial class MainWindow : Window
                     temporaryH264Path,
                     preferLandscape);
                 CopyFileWithRetry(temporaryH264Path, runtimeBackgroundPath);
-                CopyFileWithRetry(mp4Source, runtimeMp4Path);
+                CopyFileWithRetry(runtimeMp4Source, runtimeMp4Path);
             }
             else if (!string.IsNullOrWhiteSpace(h264Source) && File.Exists(h264Source))
             {
                 CopyFileWithRetry(h264Source, runtimeBackgroundPath);
-                TryCreateUniversal88PreviewBackgroundSibling(runtimeBackgroundPath, runtimeMp4Path);
+                if (preferLandscape)
+                {
+                    TryCreateUniversal88PreviewBackgroundSibling(runtimeBackgroundPath, runtimeMp4Path);
+                }
+                else
+                {
+                    temporaryMp4Path = Path.Combine(
+                        Path.GetTempPath(),
+                        $"lconnect_import_background_{Guid.NewGuid():N}.mp4");
+                    await ConvertExportBackgroundAsync(
+                        deviceModel,
+                        runtimeBackgroundPath,
+                        templateId,
+                        ".mp4",
+                        temporaryMp4Path,
+                        preferLandscape: false);
+                    CopyFileWithRetry(temporaryMp4Path, runtimeMp4Path);
+                }
             }
             else
             {
@@ -13107,6 +13214,7 @@ public partial class MainWindow : Window
         finally
         {
             TryDeleteFile(temporaryH264Path);
+            TryDeleteFile(temporaryMp4Path);
         }
     }
 
@@ -13599,8 +13707,7 @@ public partial class MainWindow : Window
         if (item.Preview == null && !item.IsPreviewLoading)
         {
             item.IsPreviewLoading = true;
-            item.Preview = await LoadGalleryPreviewAsync(item.PreviewUrl)
-                           ?? await LoadGalleryPreviewAsync(item.PackageUrl);
+            item.Preview = await LoadGalleryThemePreviewAsync(item);
             item.IsPreviewLoading = false;
         }
 
@@ -14601,10 +14708,7 @@ public partial class MainWindow : Window
                 await semaphore.WaitAsync();
                 try
                 {
-                    var previewSource = !string.IsNullOrWhiteSpace(theme.PreviewUrl)
-                        ? theme.PreviewUrl
-                        : theme.PackageUrl;
-                    var preview = await LoadGalleryPreviewCachedAsync(previewSource);
+                    var preview = await LoadGalleryThemePreviewCachedAsync(theme);
                     await Dispatcher.InvokeAsync(() =>
                     {
                         theme.Preview = preview;
@@ -15135,7 +15239,7 @@ public partial class MainWindow : Window
                 return null;
             }
 
-            var uri = new Uri(previewUrl);
+            var uri = AddCacheBuster(new Uri(previewUrl));
             var bytes = await SharedHttpClient.GetByteArrayAsync(uri);
 
             if (LooksLikeZipPackage(previewUrl, bytes))
@@ -15200,6 +15304,25 @@ public partial class MainWindow : Window
         return task;
     }
 
+    private async Task<ImageSource?> LoadGalleryThemePreviewAsync(GalleryThemeItem item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.PackageUrl))
+        {
+            var packagePreview = await LoadGalleryPreviewCachedAsync(item.PackageUrl);
+            if (packagePreview != null)
+            {
+                return packagePreview;
+            }
+        }
+
+        return !string.IsNullOrWhiteSpace(item.PreviewUrl)
+            ? await LoadGalleryPreviewCachedAsync(item.PreviewUrl)
+            : null;
+    }
+
+    private Task<ImageSource?> LoadGalleryThemePreviewCachedAsync(GalleryThemeItem item) =>
+        LoadGalleryThemePreviewAsync(item);
+
     private async Task<ImageSource?> LoadGalleryPackagePreviewAsync(byte[] packageBytes)
     {
         try
@@ -15207,19 +15330,13 @@ public partial class MainWindow : Window
             using var stream = new MemoryStream(packageBytes);
             using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
             var manifest = GetGalleryPackageManifest(archive);
-            var entry = !string.IsNullOrWhiteSpace(manifest?.PreviewFile)
-                ? TryGetPackageEntry(archive, manifest.PreviewFile)
-                : null;
-
-            if (entry == null)
+            var templateEntry = !string.IsNullOrWhiteSpace(manifest?.TemplateFile)
+                ? TryGetPackageEntry(archive, manifest.TemplateFile)
+                : archive.Entries.FirstOrDefault(entry =>
+                    entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase));
+            if (templateEntry != null)
             {
-                var templateEntry = !string.IsNullOrWhiteSpace(manifest?.TemplateFile)
-                    ? TryGetPackageEntry(archive, manifest.TemplateFile)
-                    : archive.Entries.FirstOrDefault(entry =>
-                        entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase));
-                var embeddedPreview = templateEntry == null
-                    ? Array.Empty<byte>()
-                    : await ExtractTemplateThemePicPreviewBytesAsync(
+                var embeddedPreview = await ExtractTemplateThemePicPreviewBytesAsync(
                         ReadZipEntryBytes(templateEntry),
                         templateEntry.Name,
                         manifest?.DeviceModel ?? "");
@@ -15233,6 +15350,10 @@ public partial class MainWindow : Window
                     return LoadBitmapImage(embeddedPreview);
                 }
             }
+
+            var entry = !string.IsNullOrWhiteSpace(manifest?.PreviewFile)
+                ? TryGetPackageEntry(archive, manifest.PreviewFile)
+                : null;
 
             entry ??= archive.Entries
                 .Where(entry => !string.IsNullOrWhiteSpace(entry.Name) && IsGalleryPreviewCandidateEntry(entry.Name))
@@ -15858,7 +15979,9 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(tempPreviewPath) || !File.Exists(tempPreviewPath))
             {
                 generatedPreviewPath = Path.Combine(Path.GetTempPath(), $"theme_export_preview_{Guid.NewGuid():N}.png");
-                await File.WriteAllBytesAsync(generatedPreviewPath, RenderCurrentThemePreview(cleanEditorOverlay: true));
+                await File.WriteAllBytesAsync(
+                    generatedPreviewPath,
+                    await RenderCurrentThemePreviewForExportAsync(cleanEditorOverlay: true));
                 tempPreviewPath = generatedPreviewPath;
             }
 
@@ -16360,6 +16483,11 @@ public partial class MainWindow : Window
             {
                 startInfo.ArgumentList.Add("-loop");
                 startInfo.ArgumentList.Add("1");
+            }
+            if (extension == ".h264")
+            {
+                startInfo.ArgumentList.Add("-f");
+                startInfo.ArgumentList.Add("h264");
             }
             startInfo.ArgumentList.Add("-i");
             startInfo.ArgumentList.Add(sourcePath);
@@ -18503,14 +18631,26 @@ public partial class MainWindow : Window
 
     private static string GetComboText(ComboBox combo)
     {
-        if (combo.IsEditable && !string.IsNullOrWhiteSpace(combo.Text))
-        {
-            return combo.Text.Trim();
-        }
-
         if (combo.SelectedItem is ComboBoxItem item) return item.Tag?.ToString() ?? item.Content?.ToString() ?? "";
         if (combo.SelectedItem is GraphStyleOption graphStyle) return graphStyle.Code;
-        return combo.SelectedItem?.ToString() ?? combo.Text ?? "";
+        if (combo.IsEditable && !string.IsNullOrWhiteSpace(combo.Text))
+        {
+            return StripExperimentalMarker(combo.Text.Trim());
+        }
+
+        return StripExperimentalMarker(combo.SelectedItem?.ToString() ?? combo.Text ?? "");
+    }
+
+    private static string StripExperimentalMarker(string value)
+    {
+        var text = (value ?? "").Trim();
+        return text.StartsWith("#", StringComparison.Ordinal) ? text[1..].Trim() : text;
+    }
+
+    private static bool IsExperimentalDataSource(string dataSource)
+    {
+        return ExperimentalDataSources.Any(source =>
+            string.Equals(source, dataSource, StringComparison.OrdinalIgnoreCase));
     }
 
     private void AddFontComboItem(ComboBox combo, string fontName)
@@ -18638,6 +18778,7 @@ public partial class MainWindow : Window
             "DOWNDSPEED" => "Download Speed",
             "DRVLOAD" => "Drive Usage",
             "FPS_AVG" => "Average FPS",
+            "FPS_TARGET_APP_NAME" => "FPS Target App Name",
             "GPUCLOCK" => "GPU Clock MHz",
             "GPUCLOCK_G" => "GPU Clock GHz",
             "GPUFAN" => "GPU Fan",
@@ -18678,6 +18819,13 @@ public partial class MainWindow : Window
         return GetLanguageText($"dataSources.{key}", fallback);
     }
 
+    private string GetDataSourceComboDisplayName(string dataSource)
+    {
+        return IsExperimentalDataSource(dataSource)
+            ? $"#{dataSource}"
+            : GetDataSourceDisplayName(dataSource);
+    }
+
     private void RefreshDataSourceItems()
     {
         var wasLoading = _isLoading;
@@ -18686,9 +18834,9 @@ public partial class MainWindow : Window
         var addSelection = GetComboValue(AddDataCombo);
         DataCombo.Items.Clear();
         AddDataCombo.Items.Clear();
-        foreach (var data in DataSources.OrderBy(GetDataSourceDisplayName, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var data in DataSources.OrderBy(GetDataSourceComboDisplayName, StringComparer.CurrentCultureIgnoreCase))
         {
-            var display = GetDataSourceDisplayName(data);
+            var display = GetDataSourceComboDisplayName(data);
             DataCombo.Items.Add(new ComboBoxItem { Content = display, Tag = data });
             AddDataCombo.Items.Add(new ComboBoxItem { Content = display, Tag = data });
         }
@@ -19188,6 +19336,7 @@ public partial class MainWindow : Window
         {
             layer.Format = format;
             layer.PreviewValueEdited = false;
+            _previewSampleOverrides.Remove(GetPreviewOverrideKey(layer));
             if (!string.Equals(layer.DataSource, "StaticText", StringComparison.OrdinalIgnoreCase))
             {
                 layer.Text = SampleValueFor(layer.DataSource, format);
@@ -19223,7 +19372,7 @@ public partial class MainWindow : Window
             RefreshLayerDataSourceDisplay(layer);
             layer.ForceText = false;
             layer.PreviewValueEdited = false;
-            _previewSampleOverrides.Remove(data);
+            _previewSampleOverrides.Remove(GetPreviewOverrideKey(layer));
             SetTextCheck.IsChecked = string.Equals(data, "StaticText", StringComparison.OrdinalIgnoreCase);
             if (!string.Equals(data, "StaticText", StringComparison.OrdinalIgnoreCase))
             {
@@ -19319,7 +19468,7 @@ public partial class MainWindow : Window
         var addType = (AddLayerTypeCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString() ?? "";
         var statusBarMode = string.Equals(addType, "StatusBar", StringComparison.OrdinalIgnoreCase);
         AddDataCombo.Items.Clear();
-        foreach (var data in DataSources.OrderBy(GetDataSourceDisplayName, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var data in DataSources.OrderBy(GetDataSourceComboDisplayName, StringComparer.CurrentCultureIgnoreCase))
         {
             var item = CreateDataSourceComboItem(data, statusBarMode);
             if (item is not null)
@@ -19337,7 +19486,7 @@ public partial class MainWindow : Window
     private void PopulateDataSourceCombo(ComboBox combo, string selection, bool statusBarMode = false)
     {
         combo.Items.Clear();
-        foreach (var data in DataSources.OrderBy(GetDataSourceDisplayName, StringComparer.CurrentCultureIgnoreCase))
+        foreach (var data in DataSources.OrderBy(GetDataSourceComboDisplayName, StringComparer.CurrentCultureIgnoreCase))
         {
             var item = CreateDataSourceComboItem(data, statusBarMode);
             if (item is not null)
@@ -19354,7 +19503,7 @@ public partial class MainWindow : Window
 
     private ComboBoxItem? CreateDataSourceComboItem(string dataSource, bool statusBarMode)
     {
-        var display = GetDataSourceDisplayName(dataSource);
+        var display = GetDataSourceComboDisplayName(dataSource);
         var item = new ComboBoxItem { Content = display, Tag = dataSource };
         if (!statusBarMode)
         {
@@ -19503,7 +19652,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var source = dataSource.ToUpperInvariant();
+        var source = NormalizeDataSourceKey(dataSource);
         if (source == "TIME")
         {
             combo.Visibility = Visibility.Visible;
@@ -19525,6 +19674,10 @@ public partial class MainWindow : Window
             combo.Visibility = Visibility.Visible;
             AddFormatOption(combo, "Weekday", "Day_en");
             SelectFormatOption(combo, box?.Text);
+        }
+        else if (source is "HDDTEMP" or "HDDUSED")
+        {
+            combo.Visibility = box == null ? Visibility.Visible : Visibility.Collapsed;
         }
         else if (source is "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER")
         {
@@ -19565,18 +19718,20 @@ public partial class MainWindow : Window
 
     private static bool SupportsFormat(string dataSource)
     {
-        var source = (dataSource ?? "").ToUpperInvariant();
+        var source = NormalizeDataSourceKey(dataSource);
         return source is "TIME" or "DATE" or "DAY" or
+               "HDDTEMP" or "HDDUSED" or
                "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER";
     }
 
     private static string DefaultFormatForDataSource(string dataSource)
     {
-        return (dataSource ?? "").ToUpperInvariant() switch
+        return NormalizeDataSourceKey(dataSource) switch
         {
             "TIME" => "h:m",
             "DATE" => "Y-M-D",
             "DAY" => "Day_en",
+            "HDDTEMP" or "HDDUSED" => "",
             "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" => "0.0",
             _ => ""
         };
@@ -23965,7 +24120,7 @@ public partial class MainWindow : Window
             {
                 layer.PreviewValueEdited = true;
                 layer.Text = normalizedText;
-                _previewSampleOverrides[source] = normalizedText;
+                _previewSampleOverrides[GetPreviewOverrideKey(layer)] = normalizedText;
             }
         }
         OnInputChanged();
@@ -24634,7 +24789,9 @@ public partial class MainWindow : Window
             SetBusy(true, GetLanguageText("gallery.preparing", "Preparing theme package..."));
             var snapshot = CreateThemeExportSnapshot(GetSelectedDeviceModel());
             await ExportThemePackageAsync(packagePath, snapshot);
-            await File.WriteAllBytesAsync(previewPath, RenderCurrentThemePreview(cleanEditorOverlay: true));
+            await File.WriteAllBytesAsync(
+                previewPath,
+                await RenderCurrentThemePreviewForExportAsync(cleanEditorOverlay: true));
             SetBusy(false, "");
             await SubmitThemePackageAsync(packagePath, _currentTemplateId, GetSelectedDeviceModel(), previewPath);
         }
@@ -25017,13 +25174,36 @@ public partial class MainWindow : Window
                     var extension = Path.GetExtension(sourcePath);
                     if (extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase))
                     {
-                        File.Copy(sourcePath, mp4Path, true);
-                        h264Path = await ConvertExportBackgroundAsync(manifest.DeviceModel, mp4Path, manifest.TemplateId, ".h264", h264Path, preferLandscape);
+                        var normalizedMp4Path = Path.Combine(tempRoot, safeBase + "-normalized.mp4");
+                        try
+                        {
+                            await ConvertExportBackgroundAsync(
+                                manifest.DeviceModel,
+                                sourcePath,
+                                manifest.TemplateId,
+                                ".mp4",
+                                normalizedMp4Path,
+                                preferLandscape);
+                            File.Copy(normalizedMp4Path, mp4Path, true);
+                        }
+                        finally
+                        {
+                            TryDeleteFile(normalizedMp4Path);
+                        }
+
+                        h264Path = await ConvertExportBackgroundAsync(manifest.DeviceModel, sourcePath, manifest.TemplateId, ".h264", h264Path, preferLandscape);
                     }
                     else if (extension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
                     {
                         File.Copy(sourcePath, h264Path, true);
-                        if (!TryCreateUniversal88PreviewBackgroundSibling(h264Path, mp4Path) || !File.Exists(mp4Path))
+                        if (preferLandscape)
+                        {
+                            if (!TryCreateUniversal88PreviewBackgroundSibling(h264Path, mp4Path) || !File.Exists(mp4Path))
+                            {
+                                mp4Path = await ConvertExportBackgroundAsync(manifest.DeviceModel, h264Path, manifest.TemplateId, ".mp4", mp4Path, preferLandscape);
+                            }
+                        }
+                        else
                         {
                             mp4Path = await ConvertExportBackgroundAsync(manifest.DeviceModel, h264Path, manifest.TemplateId, ".mp4", mp4Path, preferLandscape);
                         }
@@ -25226,14 +25406,6 @@ public partial class MainWindow : Window
         {
             using var archive = ZipFile.OpenRead(packagePath);
             var manifest = GetGalleryPackageManifest(archive);
-            var manifestPreviewEntry = !string.IsNullOrWhiteSpace(manifest?.PreviewFile)
-                ? TryGetPackageEntry(archive, manifest.PreviewFile)
-                : null;
-            if (manifestPreviewEntry != null)
-            {
-                return WriteSubmissionPreview(ReadZipEntryBytes(manifestPreviewEntry));
-            }
-
             var templateEntry = !string.IsNullOrWhiteSpace(manifest?.TemplateFile)
                 ? TryGetPackageEntry(archive, manifest.TemplateFile)
                 : archive.Entries.FirstOrDefault(entry =>
@@ -25248,6 +25420,14 @@ public partial class MainWindow : Window
                 {
                     return themePicPreview;
                 }
+            }
+
+            var manifestPreviewEntry = !string.IsNullOrWhiteSpace(manifest?.PreviewFile)
+                ? TryGetPackageEntry(archive, manifest.PreviewFile)
+                : null;
+            if (manifestPreviewEntry != null)
+            {
+                return WriteSubmissionPreview(ReadZipEntryBytes(manifestPreviewEntry));
             }
 
             var imageEntry = archive.Entries
