@@ -140,7 +140,7 @@ internal static class Program
                 return;
             }
 
-            if (!_args.Has("NoBackup"))
+            if (_args.Has("CreateEditBackup"))
             {
                 var backupBase = _templatePath + ".bak-edit-" + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff");
                 var backup = backupBase;
