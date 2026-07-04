@@ -487,6 +487,16 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/analogromannumerals-029cfb8a.png",
       "packageUrl": "packages/analogromannumerals-029cfb8a.zip"
+    },
+    {
+      "id": "blue-white-clock-c47e6d70",
+      "name": "Blue\u0026White_Clock",
+      "author": "Turzx",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/blue-white-clock-c47e6d70.png",
+      "packageUrl": "packages/blue-white-clock-c47e6d70.zip"
     }
   ]
 }
