@@ -7,10 +7,10 @@
     <AssemblyName>LianLiThemeEditor.TemplateWorker</AssemblyName>
     <RootNamespace>ThemeEditorSupporter</RootNamespace>
     <ApplicationIcon>..\editor.ico</ApplicationIcon>
-    <Version>1.4.0</Version>
-    <AssemblyVersion>1.4.0.0</AssemblyVersion>
-    <FileVersion>1.4.0.0</FileVersion>
-    <InformationalVersion>V 1.4</InformationalVersion>
+    <Version>2.0.1</Version>
+    <AssemblyVersion>2.0.1.0</AssemblyVersion>
+    <FileVersion>2.0.1.0</FileVersion>
+    <InformationalVersion>V 2.0.1</InformationalVersion>
     <Title>Lian Li LCD Template Editor - Template Worker</Title>
     <AssemblyTitle>Lian Li LCD Template Editor - Template Worker</AssemblyTitle>
     <Product>Lian Li LCD Template Editor</Product>

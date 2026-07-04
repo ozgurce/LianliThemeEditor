@@ -8,11 +8,11 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>LianLiThemeEditor</AssemblyName>
     <RootNamespace>ThemeEditorCSharp</RootNamespace>
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
-    <InformationalVersion>V 2.0</InformationalVersion>
-    <Title>Lian Li LCD Template Editor V 2.0</Title>
+    <Version>2.0.1</Version>
+    <AssemblyVersion>2.0.1.0</AssemblyVersion>
+    <FileVersion>2.0.1.0</FileVersion>
+    <InformationalVersion>V 2.0.1</InformationalVersion>
+    <Title>Lian Li LCD Template Editor V 2.0.1</Title>
     <Product>Lian Li LCD Template Editor</Product>
     <Authors>Ozgur Yalcin</Authors>
     <ApplicationIcon>editor.ico</ApplicationIcon>
