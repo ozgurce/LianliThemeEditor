@@ -467,6 +467,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/colored-cards-4bbd9d8c.png",
       "packageUrl": "packages/colored-cards-4bbd9d8c.lltheme"
+    },
+    {
+      "id": "greenclock-1b5f0b54",
+      "name": "GreenClock",
+      "author": "Turzx",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/greenclock-1b5f0b54.png",
+      "packageUrl": "packages/greenclock-1b5f0b54.zip"
     }
   ]
 }
