@@ -142,17 +142,13 @@ public partial class MainWindow : Window
         public string StatusText =>
             InstalledMachineWide
                 ? "System-wide installed"
-                : HasPackagedFont
-                    ? "Missing, packaged font found"
-                    : "Missing, no packaged font";
+                : "Missing system-wide";
         public Brush AccentBrush => InstalledMachineWide
             ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#62D6B5"))
             : HasPackagedFont
                 ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F0B84B"))
                 : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E05A67"));
-        public string DisplayText =>
-            $"{(InstalledMachineWide ? "Installed" : "Missing")} - {FamilyName} [{Source}]" +
-            (HasPackagedFont ? "" : " - no packaged font file");
+        public string DisplayText => $"{(InstalledMachineWide ? "Installed" : "Missing")} - {FamilyName} [{Source}]";
     }
 
     private sealed class ConvertFixReportItem
@@ -13672,11 +13668,16 @@ public partial class MainWindow : Window
     {
         var allItems = FontControlFontList.Items.Cast<ConvertFixFontItem>().ToList();
         var items = allItems.Where(item => item.InstallSelected).ToList();
+        if (items.Count == 0 && FontControlFontList.SelectedItem is ConvertFixFontItem selectedItem)
+        {
+            items.Add(selectedItem);
+        }
+
         if (items.Count == 0)
         {
             FontControlStatusText.Text = allItems.Count == 0
                 ? "No font usage found in template layers."
-                : "Select one or more fonts to install.";
+                : "Select one or more fonts first, then choose the downloaded .ttf/.otf file.";
             return;
         }
 
@@ -13687,13 +13688,37 @@ public partial class MainWindow : Window
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(item.ExtractedPath) || !File.Exists(item.ExtractedPath))
+                var dialog = new OpenFileDialog
                 {
-                    failed.Add($"{item.FamilyName}: no packaged font file found");
+                    Title = $"Choose font file for {item.FamilyName}",
+                    Filter = "Font files (*.ttf;*.otf)|*.ttf;*.otf|TrueType fonts (*.ttf)|*.ttf|OpenType fonts (*.otf)|*.otf|All files (*.*)|*.*"
+                };
+                if (dialog.ShowDialog(this) != true)
+                {
+                    failed.Add($"{item.FamilyName}: font file was not selected");
                     continue;
                 }
 
-                if (InstallFontSystemWideFromFile(item.ExtractedPath, item.FamilyName))
+                var selectedFamily = ReadFontFamilyName(dialog.FileName);
+                var installName = string.IsNullOrWhiteSpace(selectedFamily)
+                    ? item.FamilyName
+                    : selectedFamily;
+                if (!FontNamesLookRelated(item.FamilyName, installName))
+                {
+                    var result = MessageBox.Show(
+                        this,
+                        $"Selected font looks like \"{installName}\", but the template uses \"{item.FamilyName}\".\n\nInstall it anyway?",
+                        "Install font system wide",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+                    if (result != MessageBoxResult.Yes)
+                    {
+                        failed.Add($"{item.FamilyName}: selected file was skipped");
+                        continue;
+                    }
+                }
+
+                if (InstallFontSystemWideFromFile(dialog.FileName, installName))
                 {
                     installed++;
                 }
@@ -13713,6 +13738,17 @@ public partial class MainWindow : Window
         FontControlStatusText.Text = failed.Count == 0
             ? $"Font install completed. Installed/updated: {installed}, already present: {unchanged}. Restart L-Connect if it is open."
             : $"Font install completed with errors. Installed/updated: {installed}, already present: {unchanged}, failed: {failed.Count}. {string.Join(" | ", failed)}";
+    }
+
+    private static bool FontNamesLookRelated(string expectedName, string actualName)
+    {
+        var expected = NormalizeFontLookupKey(expectedName);
+        var actual = NormalizeFontLookupKey(actualName);
+        return string.IsNullOrWhiteSpace(expected) ||
+               string.IsNullOrWhiteSpace(actual) ||
+               expected.Equals(actual, StringComparison.OrdinalIgnoreCase) ||
+               expected.Contains(actual, StringComparison.OrdinalIgnoreCase) ||
+               actual.Contains(expected, StringComparison.OrdinalIgnoreCase);
     }
 
     private void FontSearchDafontButton_Click(object sender, RoutedEventArgs e)
@@ -13829,7 +13865,7 @@ public partial class MainWindow : Window
             FontControlFontList.ItemsSource = fonts;
             FontControlStatusText.Text = fonts.Count == 0
                 ? "No font usage found in template layers."
-                : $"Found {fonts.Count} font family reference(s) in template layers. Select fonts with the checkboxes, or use Dafont to search missing families.";
+                : $"Found {fonts.Count} font family reference(s) in template layers. Use Dafont to find missing fonts, then select the font and choose the downloaded .ttf/.otf file.";
         }
         catch (Exception ex)
         {
@@ -13971,11 +14007,10 @@ public partial class MainWindow : Window
                 return new ConvertFixFontItem
                 {
                     Source = font.Source,
-                    ExtractedPath = sourcePath,
+                    ExtractedPath = "",
                     FamilyName = font.Name,
                     InstalledMachineWide = IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath)),
-                    InstallSelected = !IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath)) &&
-                                      !string.IsNullOrWhiteSpace(sourcePath)
+                    InstallSelected = !IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath))
                 };
             })
             .OrderBy(item => item.InstalledMachineWide)
