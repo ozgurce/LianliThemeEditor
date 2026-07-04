@@ -12310,6 +12310,11 @@ public partial class MainWindow : Window
         }
 
         var templateEntry = GetSafePackageEntry(archive, manifest.TemplateFile);
+        var packagedPreviewTemp = await ExtractPackagePreviewForInstallAsync(
+            archive,
+            manifest,
+            templateEntry,
+            deviceModel);
         var templateRoot = GetTemplateRoot(deviceModel);
         var imageRoot = Path.Combine(Path.GetDirectoryName(templateRoot)!, "image");
         Directory.CreateDirectory(templateRoot);
@@ -12708,6 +12713,13 @@ public partial class MainWindow : Window
             $"Experimental gallery background flow: template layer normalization skipped; " +
             $"runtime background={DescribeFileForTrace(importedBackgroundPath)}.");
 
+        await ApplyPackagedPreviewToInstalledThemeAsync(
+            deviceModel,
+            installedTemplatePath,
+            importedId,
+            lConnectId,
+            packagedPreviewTemp);
+
         foreach (var item in DeviceCombo.Items.OfType<ComboBoxItem>())
         {
             if (string.Equals(item.Tag?.ToString(), deviceModel, StringComparison.OrdinalIgnoreCase))
@@ -12723,6 +12735,7 @@ public partial class MainWindow : Window
             TryDeleteFileUnlessKept(tempBackground, importedBackgroundPath);
         }
         TryDeleteDirectory(packageBackgroundStage);
+        TryDeleteFile(packagedPreviewTemp);
 
         return new TemplateOption
         {
@@ -12733,6 +12746,110 @@ public partial class MainWindow : Window
             UniversalOrientation = manifest.UniversalOrientation,
             LConnectVisible = lConnectImportVisible
         };
+    }
+
+    private async Task<string> ExtractPackagePreviewForInstallAsync(
+        ZipArchive archive,
+        ThemePackageManifest manifest,
+        ZipArchiveEntry templateEntry,
+        string deviceModel)
+    {
+        byte[] previewBytes = Array.Empty<byte>();
+        if (!string.IsNullOrWhiteSpace(manifest.PreviewFile))
+        {
+            var previewEntry = TryGetPackageEntry(archive, manifest.PreviewFile);
+            if (previewEntry != null)
+            {
+                previewBytes = ReadZipEntryBytes(previewEntry);
+            }
+        }
+
+        if (previewBytes.Length == 0)
+        {
+            var templateBytes = ReadZipEntryBytes(templateEntry);
+            previewBytes = await ExtractTemplateThemePicPreviewBytesAsync(
+                templateBytes,
+                templateEntry.Name,
+                deviceModel);
+            if (previewBytes.Length == 0)
+            {
+                previewBytes = ExtractLargestEmbeddedPng(templateBytes);
+            }
+        }
+
+        if (previewBytes.Length == 0)
+        {
+            return "";
+        }
+
+        var output = Path.Combine(Path.GetTempPath(), $"gallery-install-preview-{Guid.NewGuid():N}.png");
+        await File.WriteAllBytesAsync(output, previewBytes);
+        return output;
+    }
+
+    private async Task ApplyPackagedPreviewToInstalledThemeAsync(
+        string deviceModel,
+        string installedTemplatePath,
+        string importedId,
+        string lConnectId,
+        string previewPath)
+    {
+        if (string.IsNullOrWhiteSpace(previewPath) ||
+            !File.Exists(previewPath) ||
+            string.IsNullOrWhiteSpace(installedTemplatePath) ||
+            !File.Exists(installedTemplatePath))
+        {
+            return;
+        }
+
+        try
+        {
+            await _supporter.UpdateThemePreviewAsync(deviceModel, installedTemplatePath, previewPath);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(
+                $"Installed template embedded preview could not be updated: " +
+                $"{Path.GetFileName(installedTemplatePath)}; {ex.GetType().Name}: {ex.Message}");
+        }
+
+        var previewDir = Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", deviceModel, "preview");
+        if (!Directory.Exists(previewDir))
+        {
+            return;
+        }
+
+        var previewIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var value in new[]
+                 {
+                     importedId,
+                     lConnectId,
+                     Path.GetFileNameWithoutExtension(installedTemplatePath)
+                 })
+        {
+            foreach (var alias in GetTemplatePreviewAliases(value))
+            {
+                if (!string.IsNullOrWhiteSpace(alias))
+                {
+                    previewIds.Add(alias);
+                }
+            }
+        }
+
+        foreach (var previewId in previewIds)
+        {
+            try
+            {
+                var destination = Path.Combine(previewDir, $"template_{previewId}.png");
+                File.Copy(previewPath, destination, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(
+                    $"Installed theme preview alias could not be written: " +
+                    $"{previewId}; {ex.GetType().Name}: {ex.Message}");
+            }
+        }
     }
 
     private async Task PatchInstalledTemplateRuntimeBackgroundAsync(
@@ -15750,13 +15867,6 @@ public partial class MainWindow : Window
         string destinationPath,
         Action<double> reportProgress)
     {
-        if (_galleryPackageBytesCache.TryGetValue(source, out var cachedBytes) && cachedBytes.Length > 0)
-        {
-            await File.WriteAllBytesAsync(destinationPath, cachedBytes);
-            reportProgress(100);
-            return;
-        }
-
         await DownloadGalleryPackageAsync(source, destinationPath, reportProgress);
     }
 
