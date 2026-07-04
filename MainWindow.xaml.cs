@@ -131,6 +131,15 @@ public partial class MainWindow : Window
         public List<string> ImagePaths { get; init; } = new();
     }
 
+    private sealed class ConvertFixFontItem
+    {
+        public string EntryName { get; init; } = "";
+        public string ExtractedPath { get; init; } = "";
+        public string FamilyName { get; init; } = "";
+        public bool InstalledMachineWide { get; init; }
+        public string DisplayText => $"{(InstalledMachineWide ? "Installed" : "Missing")} - {FamilyName} ({Path.GetFileName(EntryName)})";
+    }
+
     private static bool NormalizeThemePackageManifest(
         ThemePackageManifest manifest,
         string fallbackDeviceModel = "",
@@ -9433,6 +9442,16 @@ public partial class MainWindow : Window
             return false;
         }
 
+        return InstallFontSystemWideFromFile(sourcePath, fontName);
+    }
+
+    private static bool InstallFontSystemWideFromFile(string sourcePath, string fontName)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+        {
+            return false;
+        }
+
         var changed = CopyLConnectRuntimeFont(sourcePath);
 
         var windowsFonts = Environment.GetFolderPath(Environment.SpecialFolder.Fonts);
@@ -13525,6 +13544,324 @@ public partial class MainWindow : Window
         $"Background: {_currentBackgroundPath}", $"Layers: {Layers.Count}",
         $"Dirty layers: {_dirtyLayers.Count}", $"OS: {Environment.OSVersion}", $".NET: {Environment.Version}"
     });
+
+    private void ThemeTestBrowseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = BrowseConvertFixPackage("Choose a theme package to test");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        ThemeTestPackagePathBox.Text = path;
+        if (string.IsNullOrWhiteSpace(FontControlPackagePathBox.Text))
+        {
+            FontControlPackagePathBox.Text = path;
+        }
+    }
+
+    private void ThemeTestRunButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = ThemeTestPackagePathBox.Text;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            ThemeTestResultText.Text = "Select a theme package first.";
+            return;
+        }
+
+        try
+        {
+            ThemeTestResultText.Text = BuildConvertFixThemeTestReport(path);
+            SetStatus("Theme test completed.");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Convert & Fix theme test failed.", ex);
+            ThemeTestResultText.Text = $"Error: {ex.Message}";
+        }
+    }
+
+    private void FontControlBrowseButton_Click(object sender, RoutedEventArgs e)
+    {
+        var path = BrowseConvertFixPackage("Choose a theme package with fonts");
+        if (string.IsNullOrWhiteSpace(path)) return;
+
+        FontControlPackagePathBox.Text = path;
+        if (string.IsNullOrWhiteSpace(ThemeTestPackagePathBox.Text))
+        {
+            ThemeTestPackagePathBox.Text = path;
+        }
+
+        ScanConvertFixFonts(path);
+    }
+
+    private void FontControlScanButton_Click(object sender, RoutedEventArgs e)
+    {
+        ScanConvertFixFonts(FontControlPackagePathBox.Text);
+    }
+
+    private void InstallFontSystemWideButton_Click(object sender, RoutedEventArgs e)
+    {
+        var items = FontControlFontList.SelectedItems.Count > 0
+            ? FontControlFontList.SelectedItems.Cast<ConvertFixFontItem>().ToList()
+            : FontControlFontList.Items.Cast<ConvertFixFontItem>().ToList();
+        if (items.Count == 0)
+        {
+            FontControlStatusText.Text = "No font files found in the selected package.";
+            return;
+        }
+
+        var installed = 0;
+        var unchanged = 0;
+        var failed = new List<string>();
+        foreach (var item in items)
+        {
+            try
+            {
+                if (InstallFontSystemWideFromFile(item.ExtractedPath, item.FamilyName))
+                {
+                    installed++;
+                }
+                else
+                {
+                    unchanged++;
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error($"System-wide font install failed: {item.EntryName}", ex);
+                failed.Add($"{item.FamilyName}: {ex.Message}");
+            }
+        }
+
+        ScanConvertFixFonts(FontControlPackagePathBox.Text);
+        FontControlStatusText.Text = failed.Count == 0
+            ? $"Font install completed. Installed/updated: {installed}, already present: {unchanged}. Restart L-Connect if it is open."
+            : $"Font install completed with errors. Installed/updated: {installed}, already present: {unchanged}, failed: {failed.Count}. {string.Join(" | ", failed)}";
+    }
+
+    private string BrowseConvertFixPackage(string title)
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = title,
+            Filter = "Theme packages (*.lltheme;*.zip;*.template)|*.lltheme;*.zip;*.template|Lian Li packages (*.lltheme;*.zip)|*.lltheme;*.zip|Templates (*.template)|*.template|All files (*.*)|*.*"
+        };
+
+        return dialog.ShowDialog(this) == true ? dialog.FileName : "";
+    }
+
+    private string BuildConvertFixThemeTestReport(string packagePath)
+    {
+        if (Path.GetExtension(packagePath).Equals(".template", StringComparison.OrdinalIgnoreCase))
+        {
+            var length = new FileInfo(packagePath).Length;
+            return string.Join(Environment.NewLine, new[]
+            {
+                "Theme Test",
+                $"File: {packagePath}",
+                "Info: Direct .template file detected.",
+                $"Template size: {length:N0} bytes",
+                "Warning: Package-level manifest, background, preview, and font files cannot be checked from a standalone template."
+            });
+        }
+
+        var validation = _themeValidator.Validate(
+            packagePath,
+            TemplateOptions.Select(option => option.Id),
+            GetSelectedDeviceModel());
+        var lines = new List<string>
+        {
+            "Theme Test",
+            $"File: {packagePath}",
+            $"Result: {(validation.IsValid ? "Pass" : "Fail")}",
+            $"Device: {FirstNonEmpty(validation.DeviceModel, "(not declared)")}",
+            $"Template ID: {FirstNonEmpty(validation.TemplateId, "(not declared)")}",
+            $"Template file: {FirstNonEmpty(validation.TemplateFile, "(not declared)")}",
+            ""
+        };
+
+        foreach (var issue in validation.Issues)
+        {
+            lines.Add($"{issue.Severity}: {issue.Message}");
+        }
+
+        using var archive = ZipFile.OpenRead(packagePath);
+        var manifest = ReadPackageManifest(archive);
+        lines.Add("");
+        lines.Add("Package assets:");
+        lines.Add($"Template entry: {DescribePackageEntry(archive, manifest?.TemplateFile)}");
+        lines.Add($"Background entry: {DescribePackageEntry(archive, manifest?.BackgroundFile)}");
+        lines.Add($"Preview entry: {DescribePackageEntry(archive, manifest?.PreviewFile)}");
+        lines.Add($"Font files: {archive.Entries.Count(entry => IsFontPackageEntry(entry))}");
+        lines.Add($"Media files: {archive.Entries.Count(entry => IsMediaPackageEntry(entry.FullName))}");
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private void ScanConvertFixFonts(string packagePath)
+    {
+        FontControlFontList.ItemsSource = null;
+        FontControlStatusText.Text = "No package selected.";
+
+        if (string.IsNullOrWhiteSpace(packagePath) || !File.Exists(packagePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var fonts = ExtractConvertFixFontItems(packagePath);
+            FontControlFontList.ItemsSource = fonts;
+            FontControlStatusText.Text = fonts.Count == 0
+                ? "No font files found in the selected package."
+                : $"Found {fonts.Count} font file(s). Select specific fonts or install all by leaving the list unselected.";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Convert & Fix font scan failed.", ex);
+            FontControlStatusText.Text = $"Font scan failed: {ex.Message}";
+        }
+    }
+
+    private static List<ConvertFixFontItem> ExtractConvertFixFontItems(string packagePath)
+    {
+        var fontItems = new List<ConvertFixFontItem>();
+        var tempRoot = Path.Combine(
+            Path.GetTempPath(),
+            "LianLiThemeEditor",
+            "ConvertFixFonts",
+            Path.GetFileNameWithoutExtension(packagePath) + "-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+
+        if (IsFontFilePath(packagePath))
+        {
+            var target = Path.Combine(tempRoot, GetSafeFileName(Path.GetFileName(packagePath)));
+            File.Copy(packagePath, target, true);
+            var family = ReadFontFamilyName(target);
+            fontItems.Add(new ConvertFixFontItem
+            {
+                EntryName = Path.GetFileName(packagePath),
+                ExtractedPath = target,
+                FamilyName = family,
+                InstalledMachineWide = IsFontInstalledMachineWide(family, Path.GetFileName(target))
+            });
+            return fontItems;
+        }
+
+        using var archive = ZipFile.OpenRead(packagePath);
+        foreach (var entry in archive.Entries.Where(IsFontPackageEntry))
+        {
+            var target = Path.Combine(tempRoot, GetSafeFileName(entry.Name));
+            entry.ExtractToFile(target, true);
+            var family = ReadFontFamilyName(target);
+            fontItems.Add(new ConvertFixFontItem
+            {
+                EntryName = entry.FullName,
+                ExtractedPath = target,
+                FamilyName = family,
+                InstalledMachineWide = IsFontInstalledMachineWide(family, Path.GetFileName(target))
+            });
+        }
+
+        return fontItems;
+    }
+
+    private static ThemePackageManifest? ReadPackageManifest(ZipArchive archive)
+    {
+        var manifestEntry = archive.GetEntry("manifest.json");
+        if (manifestEntry == null)
+        {
+            return null;
+        }
+
+        using var reader = new StreamReader(manifestEntry.Open(), System.Text.Encoding.UTF8);
+        var manifest = JsonSerializer.Deserialize<ThemePackageManifest>(reader.ReadToEnd());
+        if (manifest != null)
+        {
+            NormalizeThemePackageManifest(manifest);
+        }
+
+        return manifest;
+    }
+
+    private static string DescribePackageEntry(ZipArchive archive, string? entryName)
+    {
+        if (string.IsNullOrWhiteSpace(entryName))
+        {
+            return "not declared";
+        }
+
+        var entry = TryGetPackageEntry(archive, entryName);
+        return entry == null ? $"missing ({entryName})" : $"ok ({entry.FullName}, {entry.Length:N0} bytes)";
+    }
+
+    private static bool IsFontPackageEntry(ZipArchiveEntry entry) =>
+        !string.IsNullOrWhiteSpace(entry.Name) && IsFontFilePath(entry.Name);
+
+    private static bool IsFontFilePath(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".otf", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsMediaPackageEntry(string path)
+    {
+        var extension = Path.GetExtension(path);
+        return extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".h264", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".webp", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ReadFontFamilyName(string fontPath)
+    {
+        try
+        {
+            var typeface = new GlyphTypeface(new Uri(fontPath, UriKind.Absolute));
+            return typeface.Win32FamilyNames.TryGetValue(CultureInfo.GetCultureInfo("en-us"), out var englishName)
+                ? englishName
+                : typeface.Win32FamilyNames.Values.FirstOrDefault()
+                  ?? Path.GetFileNameWithoutExtension(fontPath);
+        }
+        catch
+        {
+            return Path.GetFileNameWithoutExtension(fontPath);
+        }
+    }
+
+    private static bool IsFontInstalledMachineWide(string fontName, string fileName)
+    {
+        foreach (var view in GetRegistryViews())
+        {
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                using var fontsKey = baseKey.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts");
+                if (fontsKey == null)
+                {
+                    continue;
+                }
+
+                foreach (var name in fontsKey.GetValueNames())
+                {
+                    var value = fontsKey.GetValue(name)?.ToString() ?? "";
+                    if (FontRegistryNameMatches(name, fontName) ||
+                        value.Equals(fileName, StringComparison.OrdinalIgnoreCase) ||
+                        Path.GetFileName(value).Equals(fileName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return false;
+    }
 
     private bool ShowThemeValidation(ThemeValidationResult validation)
     {
