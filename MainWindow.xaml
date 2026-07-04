@@ -4057,24 +4057,10 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Grid.Row="1" Style="{DynamicResource Card}" Padding="16" CornerRadius="0,0,6,6">
+                    <Border Grid.Row="1" Style="{DynamicResource Card}" Padding="16" CornerRadius="0,0,3,3">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <UniformGrid Columns="2">
-                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="5" Padding="14" Margin="0,0,12,12">
-                                    <StackPanel>
-                                        <TextBlock Text="Lian li to turzx" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Converts L-Connect/Lian Li theme packages into the Turzx-ready structure. This area will handle template mapping, media normalization, and target package naming."
-                                                   Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="5" Padding="14" Margin="0,0,12,12">
-                                    <StackPanel>
-                                        <TextBlock Text="Turzx to lian li" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Prepares Turzx-origin themes for L-Connect compatible import/export. This will rebuild package metadata, media references, and Lian Li naming rules."
-                                                   Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
-                                    </StackPanel>
-                                </Border>
-                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="5" Padding="14" Margin="0,0,12,12">
+                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
                                     <StackPanel>
                                         <TextBlock Text="Font Control" FontSize="14" FontWeight="SemiBold"/>
                                         <TextBlock Text="L-Connect does not show fonts that are not installed for all users in Theme Engine. If an installed theme uses one of those fonts, the theme may not render correctly. If a shared theme includes font files, you can install them for all users from here."
@@ -4091,11 +4077,42 @@
                                             <Button x:Name="FontControlScanButton" Content="Scan fonts" Height="30" Padding="12,0" Style="{DynamicResource BtnGhost}" Click="FontControlScanButton_Click"/>
                                             <Button x:Name="InstallFontSystemWideButton" Content="Install font system wide" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnPrimary}" Click="InstallFontSystemWideButton_Click"/>
                                         </StackPanel>
-                                        <ListBox x:Name="FontControlFontList" MinHeight="120" MaxHeight="190" Margin="0,10,0,0" SelectionMode="Extended" DisplayMemberPath="DisplayText"/>
+                                        <ListBox x:Name="FontControlFontList" MinHeight="160" MaxHeight="240" Margin="0,10,0,0" SelectionMode="Single" Background="#1808142A" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0"/>
+                                                    <Setter Property="Margin" Value="0"/>
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="#243C5F86" BorderThickness="0,0,0,1" Padding="10,8" Background="#12000000">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <CheckBox IsChecked="{Binding InstallSelected, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                            <StackPanel Grid.Column="1">
+                                                                <StackPanel Orientation="Horizontal">
+                                                                    <Border Width="8" Height="8" CornerRadius="1" Background="{Binding AccentBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                    <TextBlock Text="{Binding FamilyName}" FontWeight="SemiBold" FontSize="12.5"/>
+                                                                    <TextBlock Text="{Binding StatusText}" Foreground="{DynamicResource BrTextTertiary}" Margin="8,0,0,0" FontSize="11"/>
+                                                                </StackPanel>
+                                                                <TextBlock Text="{Binding Source}" Foreground="{DynamicResource BrTextTertiary}" FontSize="10.5" TextWrapping="Wrap" Margin="15,3,0,0"/>
+                                                            </StackPanel>
+                                                            <Button Grid.Column="2" Content="Dafont" Height="26" Padding="10,0" Margin="10,0,0,0" Style="{DynamicResource BtnGhost}" Click="FontSearchDafontButton_Click" CommandParameter="{Binding FamilyName}"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
                                         <TextBlock x:Name="FontControlStatusText" Text="No package selected." Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}" FontSize="11"/>
                                     </StackPanel>
                                 </Border>
-                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="5" Padding="14" Margin="0,0,12,12">
+                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
                                     <StackPanel>
                                         <TextBlock Text="Theme Test" FontSize="14" FontWeight="SemiBold"/>
                                         <TextBlock Text="A validation workspace for checking template structure, required assets, background orientation, package references, and common L-Connect compatibility problems before sharing."
@@ -4109,7 +4126,39 @@
                                             <Button Grid.Column="1" Content="Browse" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="ThemeTestBrowseButton_Click"/>
                                         </Grid>
                                         <Button x:Name="ThemeTestRunButton" Content="Run theme test" Height="30" Padding="12,0" Margin="0,10,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnPrimary}" Click="ThemeTestRunButton_Click"/>
-                                        <TextBox x:Name="ThemeTestResultText" MinHeight="180" MaxHeight="260" Margin="0,10,0,0" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"/>
+                                        <ListBox x:Name="ThemeTestResultList" MinHeight="210" MaxHeight="300" Margin="0,10,0,0" Background="#1808142A" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1">
+                                            <ListBox.ItemContainerStyle>
+                                                <Style TargetType="ListBoxItem">
+                                                    <Setter Property="Padding" Value="0"/>
+                                                    <Setter Property="Margin" Value="0"/>
+                                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                                </Style>
+                                            </ListBox.ItemContainerStyle>
+                                            <ListBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="#243C5F86" BorderThickness="0,0,0,1" Padding="10,8">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="94"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                                                                <Border Width="8" Height="8" CornerRadius="1" Background="{Binding AccentBrush}" VerticalAlignment="Center" Margin="0,0,7,0"/>
+                                                                <TextBlock Text="{Binding Label}" Foreground="{DynamicResource BrTextTertiary}" FontSize="11" FontWeight="SemiBold"/>
+                                                            </StackPanel>
+                                                            <TextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" FontSize="12" FontWeight="{Binding Weight}"/>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ListBox.ItemTemplate>
+                                        </ListBox>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
+                                    <StackPanel>
+                                        <TextBlock Text="Convert" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock Text="Convert themes from Turzx to Lian Li or from Lian Li to Turzx. This area will handle template mapping, media normalization, package metadata, and target naming."
+                                                   Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>

@@ -137,10 +137,37 @@ public partial class MainWindow : Window
         public string ExtractedPath { get; init; } = "";
         public string FamilyName { get; init; } = "";
         public bool InstalledMachineWide { get; init; }
+        public bool InstallSelected { get; set; }
         public bool HasPackagedFont => !string.IsNullOrWhiteSpace(ExtractedPath);
+        public string StatusText =>
+            InstalledMachineWide
+                ? "System-wide installed"
+                : HasPackagedFont
+                    ? "Missing, packaged font found"
+                    : "Missing, no packaged font";
+        public Brush AccentBrush => InstalledMachineWide
+            ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#62D6B5"))
+            : HasPackagedFont
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F0B84B"))
+                : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E05A67"));
         public string DisplayText =>
             $"{(InstalledMachineWide ? "Installed" : "Missing")} - {FamilyName} [{Source}]" +
             (HasPackagedFont ? "" : " - no packaged font file");
+    }
+
+    private sealed class ConvertFixReportItem
+    {
+        public string Label { get; init; } = "";
+        public string Value { get; init; } = "";
+        public string Severity { get; init; } = "Info";
+        public FontWeight Weight => string.Equals(Severity, "Header", StringComparison.OrdinalIgnoreCase)
+            ? FontWeights.SemiBold
+            : FontWeights.Normal;
+        public Brush AccentBrush => Severity.Equals("Error", StringComparison.OrdinalIgnoreCase)
+            ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E05A67"))
+            : Severity.Equals("Warning", StringComparison.OrdinalIgnoreCase)
+                ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F0B84B"))
+                : new SolidColorBrush((Color)ColorConverter.ConvertFromString("#62D6B5"));
     }
 
     private sealed class ConvertFixTemplateInspection
@@ -13600,19 +13627,25 @@ public partial class MainWindow : Window
         var path = ThemeTestPackagePathBox.Text;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
-            ThemeTestResultText.Text = "Select a theme package first.";
+            ThemeTestResultList.ItemsSource = new List<ConvertFixReportItem>
+            {
+                new() { Label = "Input", Value = "Select a theme package first.", Severity = "Warning" }
+            };
             return;
         }
 
         try
         {
-            ThemeTestResultText.Text = await BuildConvertFixThemeTestReportAsync(path);
+            ThemeTestResultList.ItemsSource = await BuildConvertFixThemeTestReportAsync(path);
             SetStatus("Theme test completed.");
         }
         catch (Exception ex)
         {
             AppLogger.Error("Convert & Fix theme test failed.", ex);
-            ThemeTestResultText.Text = $"Error: {ex.Message}";
+            ThemeTestResultList.ItemsSource = new List<ConvertFixReportItem>
+            {
+                new() { Label = "Error", Value = ex.Message, Severity = "Error" }
+            };
         }
     }
 
@@ -13637,12 +13670,13 @@ public partial class MainWindow : Window
 
     private async void InstallFontSystemWideButton_Click(object sender, RoutedEventArgs e)
     {
-        var items = FontControlFontList.SelectedItems.Count > 0
-            ? FontControlFontList.SelectedItems.Cast<ConvertFixFontItem>().ToList()
-            : FontControlFontList.Items.Cast<ConvertFixFontItem>().ToList();
+        var allItems = FontControlFontList.Items.Cast<ConvertFixFontItem>().ToList();
+        var items = allItems.Where(item => item.InstallSelected).ToList();
         if (items.Count == 0)
         {
-            FontControlStatusText.Text = "No font files found in the selected package.";
+            FontControlStatusText.Text = allItems.Count == 0
+                ? "No font usage found in template layers."
+                : "Select one or more fonts to install.";
             return;
         }
 
@@ -13681,6 +13715,17 @@ public partial class MainWindow : Window
             : $"Font install completed with errors. Installed/updated: {installed}, already present: {unchanged}, failed: {failed.Count}. {string.Join(" | ", failed)}";
     }
 
+    private void FontSearchDafontButton_Click(object sender, RoutedEventArgs e)
+    {
+        var fontName = (sender as Button)?.CommandParameter?.ToString();
+        if (string.IsNullOrWhiteSpace(fontName))
+        {
+            return;
+        }
+
+        OpenExternalUrl("https://www.dafont.com/search.php?q=" + Uri.EscapeDataString(fontName));
+    }
+
     private string BrowseConvertFixPackage(string title)
     {
         var dialog = new OpenFileDialog
@@ -13692,7 +13737,7 @@ public partial class MainWindow : Window
         return dialog.ShowDialog(this) == true ? dialog.FileName : "";
     }
 
-    private async Task<string> BuildConvertFixThemeTestReportAsync(string packagePath)
+    private async Task<List<ConvertFixReportItem>> BuildConvertFixThemeTestReportAsync(string packagePath)
     {
         var inspection = await InspectConvertFixTemplateAsync(packagePath);
         try
@@ -13705,24 +13750,41 @@ public partial class MainWindow : Window
                 backgroundLayer?.MediaPath ?? "",
                 inspection.Manifest?.BackgroundFile ?? "",
                 inspection.Manifest?.background ?? "");
-            var lines = new List<string>
+            var items = new List<ConvertFixReportItem>
             {
-                "Theme Test",
-                $"File: {inspection.PackagePath}",
-                $"Template: {inspection.TemplateEntryName}",
-                $"Device: {FirstNonEmpty(inspection.DeviceModel, "(unknown)")}",
-                $"Template ID: {FirstNonEmpty(inspection.Manifest?.TemplateId ?? "", Path.GetFileNameWithoutExtension(inspection.TemplateEntryName))}",
-                $"Layer count: {layers.Count}",
-                $"Background defined as: {FirstNonEmpty(backgroundReference, "(none)")}",
-                $"Background in ZIP/package: {DescribeConvertFixPackageReference(inspection, backgroundReference)}",
-                $"Preview manifest entry: {DescribeConvertFixPackageReference(inspection, inspection.Manifest?.PreviewFile ?? "")}",
-                $"Layer fonts: {GetConvertFixLayerFontNames(layers).Count}",
-                ""
+                new() { Label = "File", Value = inspection.PackagePath, Severity = "Header" },
+                new() { Label = "Template", Value = inspection.TemplateEntryName, Severity = "Header" },
+                new() { Label = "Device", Value = FirstNonEmpty(inspection.DeviceModel, "(unknown)") },
+                new() { Label = "Template ID", Value = FirstNonEmpty(inspection.Manifest?.TemplateId ?? "", Path.GetFileNameWithoutExtension(inspection.TemplateEntryName)) },
+                new() { Label = "Layers", Value = layers.Count.ToString(CultureInfo.InvariantCulture) },
+                new() { Label = "Background", Value = FirstNonEmpty(backgroundReference, "(none)") },
+                new()
+                {
+                    Label = "Asset",
+                    Value = DescribeConvertFixPackageReference(inspection, backgroundReference),
+                    Severity = DescribeConvertFixPackageReference(inspection, backgroundReference).StartsWith("missing", StringComparison.OrdinalIgnoreCase)
+                        ? "Warning"
+                        : "Info"
+                },
+                new()
+                {
+                    Label = "Preview",
+                    Value = DescribeConvertFixPackageReference(inspection, inspection.Manifest?.PreviewFile ?? ""),
+                    Severity = DescribeConvertFixPackageReference(inspection, inspection.Manifest?.PreviewFile ?? "").StartsWith("missing", StringComparison.OrdinalIgnoreCase)
+                        ? "Warning"
+                        : "Info"
+                },
+                new() { Label = "Fonts", Value = GetConvertFixLayerFontNames(layers).Count.ToString(CultureInfo.InvariantCulture) }
             };
 
             foreach (var font in BuildConvertFixFontItems(inspection))
             {
-                lines.Add($"{(font.InstalledMachineWide ? "Info" : "Warning")}: {font.FamilyName} used by {font.Source}; system-wide install: {(font.InstalledMachineWide ? "yes" : "no")}; packaged font: {(font.HasPackagedFont ? "yes" : "no")}");
+                items.Add(new ConvertFixReportItem
+                {
+                    Label = "Font",
+                    Value = $"{font.FamilyName} used by {font.Source}; system-wide install: {(font.InstalledMachineWide ? "yes" : "no")}; packaged font: {(font.HasPackagedFont ? "yes" : "no")}",
+                    Severity = font.InstalledMachineWide ? "Info" : "Warning"
+                });
             }
 
             if (!Path.GetExtension(packagePath).Equals(".template", StringComparison.OrdinalIgnoreCase))
@@ -13731,15 +13793,18 @@ public partial class MainWindow : Window
                     packagePath,
                     TemplateOptions.Select(option => option.Id),
                     inspection.DeviceModel);
-                lines.Add("");
-                lines.Add("Package validation:");
                 foreach (var issue in validation.Issues)
                 {
-                    lines.Add($"{issue.Severity}: {issue.Message}");
+                    items.Add(new ConvertFixReportItem
+                    {
+                        Label = issue.Severity,
+                        Value = issue.Message,
+                        Severity = issue.Severity
+                    });
                 }
             }
 
-            return string.Join(Environment.NewLine, lines);
+            return items;
         }
         finally
         {
@@ -13764,7 +13829,7 @@ public partial class MainWindow : Window
             FontControlFontList.ItemsSource = fonts;
             FontControlStatusText.Text = fonts.Count == 0
                 ? "No font usage found in template layers."
-                : $"Found {fonts.Count} font family reference(s) in template layers. Select specific fonts or install all by leaving the list unselected.";
+                : $"Found {fonts.Count} font family reference(s) in template layers. Select fonts with the checkboxes, or use Dafont to search missing families.";
         }
         catch (Exception ex)
         {
@@ -13908,7 +13973,9 @@ public partial class MainWindow : Window
                     Source = font.Source,
                     ExtractedPath = sourcePath,
                     FamilyName = font.Name,
-                    InstalledMachineWide = IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath))
+                    InstalledMachineWide = IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath)),
+                    InstallSelected = !IsFontInstalledMachineWide(font.Name, Path.GetFileName(sourcePath)) &&
+                                      !string.IsNullOrWhiteSpace(sourcePath)
                 };
             })
             .OrderBy(item => item.InstalledMachineWide)
