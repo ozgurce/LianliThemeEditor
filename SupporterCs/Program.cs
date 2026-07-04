@@ -116,6 +116,12 @@ internal static class Program
                 return;
             }
 
+            if (_args.Has("ExtractBitmaps"))
+            {
+                ExtractBitmaps(theme);
+                return;
+            }
+
             if (_args.Has("RenderGraphPreview"))
             {
                 RenderGraphPreview(theme);
@@ -303,7 +309,90 @@ internal static class Program
             }
         }
 
+        private void ExtractBitmaps(object theme)
+        {
+            var outputRoot = _args.Get(
+                "OutputRoot",
+                Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "template-bitmaps"));
+            Directory.CreateDirectory(outputRoot);
+
+            var rows = new List<Dictionary<string, object?>>();
+            foreach (var item in EnumerateTemplateBitmaps(theme))
+            {
+                var fileName = $"{SafeBitmapFilePart(Path.GetFileNameWithoutExtension(_templatePath))}__{item.Index:000}__{SafeBitmapFilePart(item.TypeName)}__{SafeBitmapFilePart(item.PropertyName)}__{item.Bitmap.Width}x{item.Bitmap.Height}.png";
+                var outputPath = Path.Combine(outputRoot, fileName);
+                using var copy = new Bitmap(item.Bitmap);
+                copy.Save(outputPath, ImageFormat.Png);
+
+                var row = CreateBitmapInspectRow(
+                    item.Source,
+                    item.TypeName,
+                    item.Index,
+                    item.PropertyName,
+                    item.Bitmap);
+                row["Path"] = outputPath;
+                rows.Add(row);
+                Console.WriteLine("BitmapExtracted: " + outputPath);
+            }
+
+            File.WriteAllText(
+                Path.Combine(outputRoot, "bitmaps.json"),
+                Json.Serialize(rows),
+                Encoding.UTF8);
+        }
+
+        private static string SafeBitmapFilePart(string value)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var safe = new string((value ?? "").Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
+            return safe.Length <= 120
+                ? safe
+                : safe.Substring(0, 120) + "-" + Math.Abs(safe.GetHashCode()).ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static IEnumerable<TemplateBitmap> EnumerateTemplateBitmaps(object theme)
+        {
+            foreach (var item in EnumerateObjectBitmaps(theme, "Theme", -1))
+            {
+                yield return item;
+            }
+
+            foreach (var graph in Graphs(theme).Cast<object>().Select((Graph, Index) => new { Graph, Index }))
+            {
+                foreach (var item in EnumerateObjectBitmaps(graph.Graph, graph.Graph.GetType().Name, graph.Index))
+                {
+                    yield return item;
+                }
+            }
+        }
+
+        private readonly struct TemplateBitmap
+        {
+            public TemplateBitmap(object source, string typeName, int index, string propertyName, Bitmap bitmap)
+            {
+                Source = source;
+                TypeName = typeName;
+                Index = index;
+                PropertyName = propertyName;
+                Bitmap = bitmap;
+            }
+
+            public object Source { get; }
+            public string TypeName { get; }
+            public int Index { get; }
+            public string PropertyName { get; }
+            public Bitmap Bitmap { get; }
+        }
+
         private static IEnumerable<Dictionary<string, object?>> InspectObjectBitmaps(object source, string typeName, int index)
+        {
+            foreach (var item in EnumerateObjectBitmaps(source, typeName, index))
+            {
+                yield return CreateBitmapInspectRow(source, typeName, index, item.PropertyName, item.Bitmap);
+            }
+        }
+
+        private static IEnumerable<TemplateBitmap> EnumerateObjectBitmaps(object source, string typeName, int index)
         {
             const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
             foreach (var property in source.GetType().GetProperties(flags))
@@ -320,7 +409,7 @@ internal static class Program
                     continue;
                 }
 
-                yield return CreateBitmapInspectRow(source, typeName, index, property.Name, bitmap);
+                yield return new TemplateBitmap(source, typeName, index, property.Name, bitmap);
             }
 
             foreach (var field in source.GetType().GetFields(flags))
@@ -332,7 +421,7 @@ internal static class Program
                     continue;
                 }
 
-                yield return CreateBitmapInspectRow(source, typeName, index, field.Name, bitmap);
+                yield return new TemplateBitmap(source, typeName, index, field.Name, bitmap);
             }
         }
 
