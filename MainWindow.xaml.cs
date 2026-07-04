@@ -1532,9 +1532,19 @@ public partial class MainWindow : Window
                     var exportPreviewFrame = await CreateLConnectExportPreviewFrameAsync(
                         exportPreviewBackground,
                         exportBackground);
+                    var previewSource = "";
                     try
                     {
-                        var previewSource = exportPreviewFrame;
+                        previewSource = FirstExistingPath(
+                            exportPreviewFrame,
+                            _generatedBackgroundPreviewFramePath,
+                            exportPreviewBackground,
+                            exportBackground,
+                            _currentBackgroundPath);
+                        if (string.IsNullOrWhiteSpace(previewSource))
+                        {
+                            throw new InvalidOperationException("The export preview background could not be resolved.");
+                        }
                         LoadBackgroundPreview(previewSource, Path.GetFileName(previewSource));
                         DrawPreview();
                         await WaitForBackgroundPreviewReadyAsync();
@@ -1572,7 +1582,10 @@ public partial class MainWindow : Window
                     }
                     finally
                     {
-                        TryDeleteFile(exportPreviewFrame);
+                        if (!string.Equals(exportPreviewFrame, previewSource, StringComparison.OrdinalIgnoreCase))
+                        {
+                            TryDeleteFile(exportPreviewFrame);
+                        }
                     }
                     var exportTemplate = await Task.Run(() => _supporter.LoadTemplatePathAsync(
                         deviceModel, exportTemplatePath));
@@ -15002,6 +15015,9 @@ public partial class MainWindow : Window
     private static string FirstNonEmpty(params string[] values) =>
         values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "";
 
+    private static string FirstExistingPath(params string[] paths) =>
+        paths.FirstOrDefault(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path)) ?? "";
+
     private void RefreshBackgroundPreviewAfterOrientationChange()
     {
         if (!IsWideScreenDeviceSelected())
@@ -17488,8 +17504,7 @@ public partial class MainWindow : Window
             return imageCandidate;
         }
 
-        throw new InvalidOperationException(
-            "The export preview background frame could not be generated. The package was not exported with a black preview.");
+        return "";
     }
 
     private static async Task<bool> TryExtractBackgroundPreviewFrameAsync(
