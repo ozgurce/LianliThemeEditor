@@ -1529,12 +1529,12 @@ public partial class MainWindow : Window
                 var editorBackgroundPath = _currentBackgroundPath;
                 try
                 {
-                    var exportPreviewFrame = await CreateDeterministicBackgroundPreviewAsync(exportPreviewBackground);
+                    var exportPreviewFrame = await CreateLConnectExportPreviewFrameAsync(
+                        exportPreviewBackground,
+                        exportBackground);
                     try
                     {
-                        var previewSource = string.IsNullOrWhiteSpace(exportPreviewFrame)
-                            ? exportPreviewBackground
-                            : exportPreviewFrame;
+                        var previewSource = exportPreviewFrame;
                         LoadBackgroundPreview(previewSource, Path.GetFileName(previewSource));
                         DrawPreview();
                         await WaitForBackgroundPreviewReadyAsync();
@@ -1545,10 +1545,7 @@ public partial class MainWindow : Window
                                 PreviewSurface.UpdateLayout();
                             },
                             System.Windows.Threading.DispatcherPriority.Render);
-                        var previewBytes = File.Exists(previewSource) &&
-                                           Path.GetExtension(previewSource).Equals(".png", StringComparison.OrdinalIgnoreCase)
-                            ? RenderCurrentThemePreviewOverBackground(previewSource, cleanEditorOverlay: true)
-                            : RenderCurrentThemePreview(cleanEditorOverlay: true, forceBackgroundVisible: true);
+                        var previewBytes = RenderCurrentThemePreviewOverBackground(previewSource, cleanEditorOverlay: true);
                         var lConnectExportPreviewPath = Path.Combine(
                             Path.GetTempPath(),
                             $"lconnect-export-preview-{Guid.NewGuid():N}.png");
@@ -17452,6 +17449,49 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task<string> CreateLConnectExportPreviewFrameAsync(
+        string previewBackgroundPath,
+        string runtimeBackgroundPath)
+    {
+        var candidates = new[]
+            {
+                previewBackgroundPath,
+                runtimeBackgroundPath
+            }
+            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var candidate in candidates)
+        {
+            var frame = await CreateDeterministicBackgroundPreviewAsync(candidate);
+            if (string.IsNullOrWhiteSpace(frame) || !File.Exists(frame))
+            {
+                continue;
+            }
+
+            if (GetPreviewFrameScore(frame) >= 18)
+            {
+                return frame;
+            }
+
+            TryDeleteFile(frame);
+        }
+
+        var imageCandidate = candidates.FirstOrDefault(path =>
+            Path.GetExtension(path).Equals(".png", StringComparison.OrdinalIgnoreCase) ||
+            Path.GetExtension(path).Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+            Path.GetExtension(path).Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
+            Path.GetExtension(path).Equals(".bmp", StringComparison.OrdinalIgnoreCase));
+        if (!string.IsNullOrWhiteSpace(imageCandidate))
+        {
+            return imageCandidate;
+        }
+
+        throw new InvalidOperationException(
+            "The export preview background frame could not be generated. The package was not exported with a black preview.");
+    }
+
     private static async Task<bool> TryExtractBackgroundPreviewFrameAsync(
         string ffmpegPath,
         string sourcePath,
@@ -17499,7 +17539,7 @@ public partial class MainWindow : Window
             sourceHeight > 0 &&
             sourceLandscape != targetLandscape)
         {
-            filters.Add("transpose=1");
+            filters.Add(targetLandscape ? "transpose=2" : "transpose=1");
         }
         filters.Add($"scale={width}:{height}:force_original_aspect_ratio=increase:flags=lanczos");
         filters.Add($"crop={width}:{height}");
