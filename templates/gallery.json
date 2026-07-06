@@ -677,6 +677,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/gs-theme-blood-and-black-02e79ebf.png",
       "packageUrl": "packages/gs-theme-blood-and-black-02e79ebf.zip"
+    },
+    {
+      "id": "spaceship-dashboard-vertical-v2-f4833921",
+      "name": "Spaceship Dashboard Vertical V2",
+      "author": "Galrim",
+      "description": "Includes FPS",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/spaceship-dashboard-vertical-v2-f4833921.png",
+      "packageUrl": "packages/spaceship-dashboard-vertical-v2-f4833921.zip"
     }
   ]
 }
