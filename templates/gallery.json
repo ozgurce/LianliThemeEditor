@@ -697,6 +697,26 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/neon-v-8cce03eb.png",
       "packageUrl": "packages/neon-v-8cce03eb.zip"
+    },
+    {
+      "id": "aida64-ripoff-lc-version-20260414-082338-20260706-235628-7130f9ae",
+      "name": "Aida64_ripoff_LC_version_20260414_082338_20260706_235628",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/aida64-ripoff-lc-version-20260414-082338-20260706-235628-7130f9ae.png",
+      "packageUrl": "packages/aida64-ripoff-lc-version-20260414-082338-20260706-235628-7130f9ae.zip"
+    },
+    {
+      "id": "deadpool-20260520-195419-20260706-235724-60c0f921",
+      "name": "Deadpool_20260520_195419_20260706_235724",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/deadpool-20260520-195419-20260706-235724-60c0f921.png",
+      "packageUrl": "packages/deadpool-20260520-195419-20260706-235724-60c0f921.zip"
     }
   ]
 }
