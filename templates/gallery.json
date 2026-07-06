@@ -687,6 +687,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/spaceship-dashboard-vertical-v2-f4833921.png",
       "packageUrl": "packages/spaceship-dashboard-vertical-v2-f4833921.zip"
+    },
+    {
+      "id": "neon-v-8cce03eb",
+      "name": "Neon V",
+      "author": "Galrim",
+      "description": "Includes FPS",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/neon-v-8cce03eb.png",
+      "packageUrl": "packages/neon-v-8cce03eb.zip"
     }
   ]
 }
