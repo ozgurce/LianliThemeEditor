@@ -627,6 +627,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/aida-one-dial-fda4762f.png",
       "packageUrl": "packages/aida-one-dial-fda4762f.zip"
+    },
+    {
+      "id": "brickwall-bar-cene-vertical-d58d55fb",
+      "name": "Brickwall bar cene vertical",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/brickwall-bar-cene-vertical-d58d55fb.png",
+      "packageUrl": "packages/brickwall-bar-cene-vertical-d58d55fb.zip"
     }
   ]
 }
