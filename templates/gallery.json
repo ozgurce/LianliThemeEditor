@@ -637,6 +637,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/brickwall-bar-cene-vertical-d58d55fb.png",
       "packageUrl": "packages/brickwall-bar-cene-vertical-d58d55fb.zip"
+    },
+    {
+      "id": "comprehensive-blue-panel-5eb78314",
+      "name": "Comprehensive blue panel",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/comprehensive-blue-panel-5eb78314.png",
+      "packageUrl": "packages/comprehensive-blue-panel-5eb78314.zip"
     }
   ]
 }
