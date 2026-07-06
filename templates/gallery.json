@@ -527,6 +527,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/valorantlc-6d555be5.png",
       "packageUrl": "packages/valorantlc-6d555be5.zip"
+    },
+    {
+      "id": "spaceship-dashboard-horisontal-248061a5",
+      "name": "Spaceship Dashboard Horisontal",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/spaceship-dashboard-horisontal-248061a5.png",
+      "packageUrl": "packages/spaceship-dashboard-horisontal-248061a5.zip"
     }
   ]
 }
