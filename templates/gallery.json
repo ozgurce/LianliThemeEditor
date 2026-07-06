@@ -727,6 +727,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/brushed-gauges-rog-red-20260510-234132-20260706-235818-26621144.png",
       "packageUrl": "packages/brushed-gauges-rog-red-20260510-234132-20260706-235818-26621144.zip"
+    },
+    {
+      "id": "btfv1-20260429-151135-20260706-235849-c912b96a",
+      "name": "BTFV1_20260429_151135_20260706_235849",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/btfv1-20260429-151135-20260706-235849-c912b96a.png",
+      "packageUrl": "packages/btfv1-20260429-151135-20260706-235849-c912b96a.zip"
     }
   ]
 }
