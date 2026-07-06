@@ -627,6 +627,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/blue-dials-lc-2c98ea30.png",
       "packageUrl": "packages/blue-dials-lc-2c98ea30.zip"
+    },
+    {
+      "id": "aida-one-dial-fda4762f",
+      "name": "Aida One Dial",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/aida-one-dial-fda4762f.png",
+      "packageUrl": "packages/aida-one-dial-fda4762f.zip"
     }
   ]
 }
