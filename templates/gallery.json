@@ -627,6 +627,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/aida-one-dial-fda4762f.png",
       "packageUrl": "packages/aida-one-dial-fda4762f.zip"
+    },
+    {
+      "id": "brick-wall-bar-scene-vertical-20260526-082914-20260706-123113-311d2585",
+      "name": "Brick_wall_bar_scene_vertical_20260526_082914_20260706_123113",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/brick-wall-bar-scene-vertical-20260526-082914-20260706-123113-311d2585.png",
+      "packageUrl": "packages/brick-wall-bar-scene-vertical-20260526-082914-20260706-123113-311d2585.zip"
     }
   ]
 }
