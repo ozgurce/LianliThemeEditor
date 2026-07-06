@@ -607,6 +607,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/brickwall-bar-scene-97f0cf8c.png",
       "packageUrl": "packages/brickwall-bar-scene-97f0cf8c.zip"
+    },
+    {
+      "id": "brickwall-bar-scene-vertical-28660b6a",
+      "name": "Brickwall Bar Scene Vertical",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/brickwall-bar-scene-vertical-28660b6a.png",
+      "packageUrl": "packages/brickwall-bar-scene-vertical-28660b6a.zip"
     }
   ]
 }
