@@ -547,6 +547,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/rog-strix-a36a2a69.png",
       "packageUrl": "packages/rog-strix-a36a2a69.zip"
+    },
+    {
+      "id": "predator-a04bc2bc",
+      "name": "Predator",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/predator-a04bc2bc.png",
+      "packageUrl": "packages/predator-a04bc2bc.zip"
     }
   ]
 }
