@@ -537,6 +537,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/spaceship-dashboard-horisontal-248061a5.png",
       "packageUrl": "packages/spaceship-dashboard-horisontal-248061a5.zip"
+    },
+    {
+      "id": "rog-strix-a36a2a69",
+      "name": "Rog Strix",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/rog-strix-a36a2a69.png",
+      "packageUrl": "packages/rog-strix-a36a2a69.zip"
     }
   ]
 }
