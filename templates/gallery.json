@@ -647,6 +647,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/comprehensive-blue-panel-5eb78314.png",
       "packageUrl": "packages/comprehensive-blue-panel-5eb78314.zip"
+    },
+    {
+      "id": "gs-theme-silver-and-white-ead20d6a",
+      "name": "Gs Theme Silver and white",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gs-theme-silver-and-white-ead20d6a.png",
+      "packageUrl": "packages/gs-theme-silver-and-white-ead20d6a.zip"
     }
   ]
 }
