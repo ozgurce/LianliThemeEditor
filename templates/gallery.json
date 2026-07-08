@@ -737,6 +737,16 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/neon-blue-and-purple-6493865f.png",
       "packageUrl": "packages/neon-blue-and-purple-6493865f.zip"
+    },
+    {
+      "id": "simpleblack-b29d68a2",
+      "name": "SimpleBlack",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/simpleblack-b29d68a2.png",
+      "packageUrl": "packages/simpleblack-b29d68a2.zip"
     }
   ]
 }
