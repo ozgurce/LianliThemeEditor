@@ -727,6 +727,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/simpleblack-big-bff06511.png",
       "packageUrl": "packages/simpleblack-big-bff06511.zip"
+    },
+    {
+      "id": "neon-blue-and-purple-6493865f",
+      "name": "Neon Blue And Purple",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/neon-blue-and-purple-6493865f.png",
+      "packageUrl": "packages/neon-blue-and-purple-6493865f.zip"
     }
   ]
 }
