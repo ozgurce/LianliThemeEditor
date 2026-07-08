@@ -717,6 +717,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/btfv1-20260429-151135-20260706-235849-c912b96a.png",
       "packageUrl": "packages/btfv1-20260429-151135-20260706-235849-c912b96a.zip"
+    },
+    {
+      "id": "simpleblack-big-bff06511",
+      "name": "SimpleBlack_big",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/simpleblack-big-bff06511.png",
+      "packageUrl": "packages/simpleblack-big-bff06511.zip"
     }
   ]
 }
