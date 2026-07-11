@@ -767,6 +767,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/cyberpunk2077-darkpink-4a27389c.png",
       "packageUrl": "packages/cyberpunk2077-darkpink-4a27389c.zip"
+    },
+    {
+      "id": "simple-future-not-purple-20260323-191744-f3d60144",
+      "name": "Simple Future Not-Purple_20260323_191744",
+      "author": "asd",
+      "description": "asd",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/simple-future-not-purple-20260323-191744-f3d60144.png",
+      "packageUrl": "packages/simple-future-not-purple-20260323-191744-f3d60144.lltheme"
     }
   ]
 }
