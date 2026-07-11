@@ -40,6 +40,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     public string Orientation { get; set; } = "";
     public string PackageUrl { get; set; } = "";
     public string PreviewUrl { get; set; } = "";
+    public DateTime GallerySortTimeUtc { get; set; } = DateTime.MinValue;
     public ImageSource? Preview
     {
         get => _preview;

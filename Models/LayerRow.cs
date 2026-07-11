@@ -161,6 +161,8 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string UseGradient { get; set; } = "";
     public string GradientColor { get; set; } = "";
     public string ZoomRate { get; set; } = "";
+
+    // Graph & Image Properties
     public string Rotate { get; set; } = "";
     public string ClockCenterX { get; set; } = "";
     public string ClockCenterY { get; set; } = "";
@@ -176,6 +178,7 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string AlignmentName { get; set; } = "";
     public string FontInterval { get; set; } = "";
     public string FontOrgSize { get; set; } = "";
+    public string FontWidth { get; set; } = "";
     public string LineHeight { get; set; } = "";
     public string Direction { get; set; } = "";
     public string LineWidth { get; set; } = "";

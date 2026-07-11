@@ -1,6 +1,4 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
 
 namespace ThemeEditorCSharp;
 
@@ -14,14 +12,11 @@ public partial class App : Application
         DispatcherUnhandledException += (_, args) =>
         {
             Services.AppLogger.Error("Unhandled UI exception.", args.Exception);
-            try
+
+            if (IsCriticalException(args.Exception))
             {
-                System.IO.File.AppendAllText(
-                    System.IO.Path.Combine(AppContext.BaseDirectory, "unhandled_error.log"),
-                    $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}]{Environment.NewLine}{args.Exception}{Environment.NewLine}{Environment.NewLine}");
-            }
-            catch
-            {
+                args.Handled = false;
+                return;
             }
 
             MessageBox.Show(GetReadableExceptionMessage(args.Exception), "Unexpected error", MessageBoxButton.OK, MessageBoxImage.Error);
@@ -42,5 +37,17 @@ public partial class App : Application
 
         return current.Message;
     }
+
+    private static bool IsCriticalException(Exception exception)
+    {
+        var current = exception;
+        while (current is System.Reflection.TargetInvocationException && current.InnerException != null)
+        {
+            current = current.InnerException;
+        }
+
+        return current is OutOfMemoryException or StackOverflowException or AccessViolationException;
+    }
 }
+
 

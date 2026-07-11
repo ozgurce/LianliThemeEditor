@@ -424,6 +424,13 @@
             </Setter>
         </Style>
 
+        <ControlTemplate x:Key="ComboBoxTextBoxTemplate" TargetType="{x:Type TextBox}">
+            <ScrollViewer x:Name="PART_ContentHost"
+                          Focusable="False"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Hidden"/>
+        </ControlTemplate>
+
         <Style TargetType="ComboBox">
             <Setter Property="Height" Value="36"/>
             <Setter Property="FontSize" Value="13"/>
@@ -433,66 +440,133 @@
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="10,0"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="VirtualizingPanel.IsVirtualizing" Value="True"/>
+            <Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling"/>
+            <Setter Property="ItemsPanel">
+                <Setter.Value>
+                    <ItemsPanelTemplate>
+                        <VirtualizingStackPanel/>
+                    </ItemsPanelTemplate>
+                </Setter.Value>
+            </Setter>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ComboBox">
-                        <Grid>
-                            <ToggleButton Focusable="False"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press">
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid SnapsToDevicePixels="True">
+                            <ToggleButton x:Name="ToggleButton"
+                                          Background="{TemplateBinding Background}"
+                                          BorderBrush="{TemplateBinding BorderBrush}"
+                                          BorderThickness="{TemplateBinding BorderThickness}"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                                 <ToggleButton.Template>
-                                    <ControlTemplate TargetType="ToggleButton">
-                                        <Border Background="{DynamicResource BrField}"
-                                                BorderBrush="{DynamicResource BrBorder}"
-                                                BorderThickness="1"
-                                                CornerRadius="5">
-                                            <Path Fill="{DynamicResource BrTextTertiary}"
-                                                  HorizontalAlignment="Right"
-                                                  VerticalAlignment="Center"
-                                                  Margin="0,0,12,0"
-                                                  Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                                        <Border x:Name="Chrome"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="5"
+                                                SnapsToDevicePixels="True">
+                                            <Grid>
+                                                <Path x:Name="Arrow"
+                                                      Width="8"
+                                                      Height="5"
+                                                      Margin="0,0,11,0"
+                                                      HorizontalAlignment="Right"
+                                                      VerticalAlignment="Center"
+                                                      Fill="{DynamicResource BrTextTertiary}"
+                                                      Data="M 0 0 L 4 5 L 8 0 Z"/>
+                                            </Grid>
                                         </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource BrAccentHover}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource BrAccent}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Chrome" Property="Opacity" Value="0.55"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
-                            <ContentPresenter x:Name="SelectionContent"
-                                              Margin="10,0,32,0"
+
+                            <ContentPresenter x:Name="ContentSite"
+                                              Margin="10,0,30,0"
+                                              HorizontalAlignment="Left"
                                               VerticalAlignment="Center"
-                                              HorizontalAlignment="Stretch"
-                                              IsHitTestVisible="False"
                                               Content="{TemplateBinding SelectionBoxItem}"
                                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"/>
-                            <TextBlock x:Name="EditableTextDisplay"
-                                       Margin="10,0,32,0"
-                                       VerticalAlignment="Center"
-                                       Foreground="{DynamicResource BrTextPrimary}"
-                                       Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}}"
-                                       TextTrimming="CharacterEllipsis"
-                                       IsHitTestVisible="False"
-                                       Visibility="Collapsed"/>
-                            <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   Placement="Bottom"
+                                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
+                                              IsHitTestVisible="False"
+                                              RecognizesAccessKey="True"/>
+
+                            <TextBox x:Name="PART_EditableTextBox"
+                                     Margin="10,0,30,0"
+                                     HorizontalAlignment="Stretch"
+                                     VerticalAlignment="Center"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Foreground="{TemplateBinding Foreground}"
+                                     Focusable="True"
+                                     IsReadOnly="{TemplateBinding IsReadOnly}"
+                                     Template="{StaticResource ComboBoxTextBoxTemplate}"
+                                     Visibility="Hidden"
+                                     Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+                            <Popup x:Name="PART_Popup"
                                    AllowsTransparency="True"
-                                   Focusable="False">
-                                <Border Background="{DynamicResource BrSurface2}"
-                                        BorderBrush="{DynamicResource BrBorderSoft}"
-                                        BorderThickness="1"
-                                        CornerRadius="5"
-                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorderSoft}" BorderThickness="1">
-                                        <ScrollViewer MaxHeight="260" Padding="4">
-                                            <StackPanel IsItemsHost="True"/>
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Fade">
+                                <Grid MinWidth="{TemplateBinding ActualWidth}"
+                                      MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                    <Border Background="{DynamicResource BrSelectionField}"
+                                            BorderBrush="{DynamicResource BrBorderSoft}"
+                                            BorderThickness="1"
+                                            CornerRadius="5"
+                                            SnapsToDevicePixels="True">
+                                        <ScrollViewer Margin="0"
+                                                      Padding="4"
+                                                      CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                                      HorizontalScrollBarVisibility="Disabled"
+                                                      VerticalScrollBarVisibility="Auto">
+                                            <ItemsPresenter/>
                                         </ScrollViewer>
                                     </Border>
-                                </Border>
+                                </Grid>
                             </Popup>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEditable" Value="True">
-                                <Setter TargetName="SelectionContent" Property="Visibility" Value="Collapsed"/>
-                                <Setter TargetName="EditableTextDisplay" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="ContentSite" Property="Visibility" Value="Hidden"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsEditable" Value="True"/>
+                                    <Condition Property="IsReadOnly" Value="True"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PART_EditableTextBox" Property="Focusable" Value="False"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="IsHitTestVisible" Value="False"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="IsTabStop" Value="False"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="SelectionBrush" Value="Transparent"/>
+                                <Setter TargetName="PART_EditableTextBox" Property="CaretBrush" Value="Transparent"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="ToggleButton" Property="BorderBrush" Value="{DynamicResource BrAccent}"/>
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="False">
+                                <Setter TargetName="PART_Popup" Property="MinHeight" Value="32"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -505,18 +579,29 @@
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Padding" Value="10,7"/>
             <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="ComboBoxItem">
-                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="4">
-                            <ContentPresenter Margin="{TemplateBinding Padding}"/>
+                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource BrHover}"/>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BrHover}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrTextPrimary}"/>
                             </Trigger>
                             <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource BrAccent}"/>
+                                <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource BrSelectedLayer}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrTextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -541,15 +626,44 @@
                         <Grid>
                             <ToggleButton Focusable="False"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                          ClickMode="Press"
-                                          Background="Transparent"
-                                          BorderThickness="0"/>
+                                          ClickMode="Press">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="TemplateHeader"
+                                                Background="{DynamicResource BrField}"
+                                                BorderBrush="{DynamicResource BrBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="5">
+                                            <Grid>
+                                                <TextBlock Margin="10,0,30,0"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource BrTextPrimary}"
+                                                           Text="{Binding SelectedItem.Id, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Path HorizontalAlignment="Right"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,11,0"
+                                                      Fill="{DynamicResource BrTextTertiary}"
+                                                      Data="M 0 0 L 4 4 L 8 0 Z"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="TemplateHeader" Property="BorderBrush" Value="{DynamicResource BrAccentHover}"/>
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="TemplateHeader" Property="BorderBrush" Value="{DynamicResource BrAccent}"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
                             <Popup IsOpen="{TemplateBinding IsDropDownOpen}"
                                    Placement="Bottom"
                                    AllowsTransparency="True"
                                    Focusable="False"
                                    PopupAnimation="Fade">
-                                <Border Background="#F20A1D3B"
+                                <Border Background="{DynamicResource BrSelectionField}"
                                         BorderBrush="{DynamicResource BrBorderSoft}"
                                         BorderThickness="1"
                                          CornerRadius="5"
@@ -1420,8 +1534,8 @@
         </Style>
 
         <Style x:Key="ScrollBarThumb" TargetType="Thumb">
-            <Setter Property="MinWidth" Value="18"/>
-            <Setter Property="MinHeight" Value="18"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="MinHeight" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Thumb">
@@ -2861,6 +2975,19 @@
                                                 </Button>
                                             </Grid>
                                         </StackPanel>
+                                        <StackPanel x:Name="CaseFanPanel" Visibility="Collapsed" Margin="0,0,0,8">
+                                            <Label x:Name="CaseFanLabel" Content="CASE FAN"/>
+                                            <ComboBox x:Name="CaseFanCombo" SelectionChanged="CaseFanCombo_SelectionChanged">
+                                                <ComboBoxItem Content="1" Tag="1"/>
+                                                <ComboBoxItem Content="2" Tag="2"/>
+                                                <ComboBoxItem Content="3" Tag="3"/>
+                                                <ComboBoxItem Content="4" Tag="4"/>
+                                                <ComboBoxItem Content="5" Tag="5"/>
+                                                <ComboBoxItem Content="6" Tag="6"/>
+                                                <ComboBoxItem Content="7" Tag="7"/>
+                                                <ComboBoxItem Content="8" Tag="8"/>
+                                            </ComboBox>
+                                        </StackPanel>
                                         <StackPanel><Label x:Name="FormatLabel" Content="FORMAT" Visibility="Collapsed"/><Grid x:Name="FormatPanel" Visibility="Collapsed" Margin="0,0,0,8"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="FormatBox"/><ComboBox x:Name="FormatCombo" Grid.Column="1" Width="100" Margin="4,0,0,0" SelectionChanged="FormatCombo_SelectionChanged" Visibility="Collapsed"/></Grid></StackPanel>
                                     </StackPanel>
                                 </Border>
@@ -3261,11 +3388,7 @@
                                             <Button Content="+" Style="{DynamicResource BtnNudge}" Click="AddSizePlus_Click"/>
                                         </StackPanel>
                                     </StackPanel>
-                                    <StackPanel Width="220" Margin="0,0,0,10">
-                                        <Label Content="SHADOW" Margin="0,0,0,6"/>
-                                        <CheckBox x:Name="AddWithShadowCheck" Content="Add shadow"
-                                                  Checked="AddWithShadowCheck_Changed" Unchecked="AddWithShadowCheck_Changed"/>
-                                    </StackPanel>
+                                    
                                 </WrapPanel>
                             </Border>
 
@@ -3300,6 +3423,19 @@
                                         <Label x:Name="AddFormatLabel" Content="FORMAT" Margin="0,0,0,6"/>
                                         <ComboBox x:Name="AddFormatCombo" IsEditable="True"/>
                                     </StackPanel>
+                                    <StackPanel x:Name="AddCaseFanPanel" Width="140" Margin="0,0,24,10" Visibility="Collapsed">
+                                        <Label x:Name="AddCaseFanLabel" Content="CASE FAN" Margin="0,0,0,6"/>
+                                        <ComboBox x:Name="AddCaseFanCombo" SelectionChanged="AddCaseFanCombo_SelectionChanged">
+                                            <ComboBoxItem Content="1" Tag="1"/>
+                                            <ComboBoxItem Content="2" Tag="2"/>
+                                            <ComboBoxItem Content="3" Tag="3"/>
+                                            <ComboBoxItem Content="4" Tag="4"/>
+                                            <ComboBoxItem Content="5" Tag="5"/>
+                                            <ComboBoxItem Content="6" Tag="6"/>
+                                            <ComboBoxItem Content="7" Tag="7"/>
+                                            <ComboBoxItem Content="8" Tag="8"/>
+                                        </ComboBox>
+                                    </StackPanel>
                                     <StackPanel x:Name="AddColorPanel" Width="220" Margin="0,0,24,10">
                                         <Label x:Name="AddColorLabel" Content="COLOR" Margin="0,0,0,6"/>
                                         <Grid>
@@ -3320,60 +3456,7 @@
                         </StackPanel>
                     </Expander>
 
-                    <Expander x:Name="AddShadowExpander" Grid.Row="4" IsExpanded="False" Visibility="Collapsed">
-                        <Expander.Header>
-                            <TextBlock x:Name="ShadowHeaderText" Text="Drop Shadow" FontSize="15" FontWeight="SemiBold"/>
-                        </Expander.Header>
-                        <Border Background="Transparent" BorderThickness="0" Padding="0">
-                                                                                <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="10"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="36"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            
-                            <TextBlock x:Name="ShadowTitleText" Grid.Row="0" Grid.Column="0" Text="Shadow options" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <CheckBox x:Name="PairCheck" Content="Pair shadow" Margin="0,0,10,0" IsChecked="False"/>
-                                <CheckBox x:Name="SyncShadowColorCheck" Content="Sync color" IsChecked="True"/>
-                            </StackPanel>
-                            
-                            <Label x:Name="ShadowXLabel" Grid.Row="2" Grid.Column="0" Content="OFFSET X"/>
-                            <Grid Grid.Row="2" Grid.Column="1">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/><ColumnDefinition Width="30"/></Grid.ColumnDefinitions>
-                                <Button Content="-" Style="{DynamicResource CompactStepLeft}" Click="ShadowXMinus_Click"/>
-                                <TextBox x:Name="ShadowXBox" Grid.Column="1" TextAlignment="Center" Text="4" Style="{DynamicResource CompactNumberBox}"/>
-                                <Button Grid.Column="2" Content="+" Style="{DynamicResource CompactStepRight}" Click="ShadowXPlus_Click"/>
-                            </Grid>
-                            
-                            <Label x:Name="ShadowYLabel" Grid.Row="3" Grid.Column="0" Content="OFFSET Y"/>
-                            <Grid Grid.Row="3" Grid.Column="1">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="*"/><ColumnDefinition Width="30"/></Grid.ColumnDefinitions>
-                                <Button Content="-" Style="{DynamicResource CompactStepLeft}" Click="ShadowYMinus_Click"/>
-                                <TextBox x:Name="ShadowYBox" Grid.Column="1" TextAlignment="Center" Text="4" Style="{DynamicResource CompactNumberBox}"/>
-                                <Button Grid.Column="2" Content="+" Style="{DynamicResource CompactStepRight}" Click="ShadowYPlus_Click"/>
-                            </Grid>
-                            
-                            <Label x:Name="ShadowColorLabel" Grid.Row="4" Grid.Column="0" Content="COLOR"/>
-                            <Grid Grid.Row="4" Grid.Column="1">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions>
-                                <TextBox x:Name="ShadowColorBox" Grid.Column="0" Text="#66000000"/>
-                                <Button x:Name="ShadowColorPickButton" Style="{DynamicResource ColorPickerButtonFixed}" Grid.Column="1" Margin="4,0,2,0" Click="ShadowColorPickButton_Click" ToolTip="Pick Shadow Color"/>
-                            </Grid>
-                            
-                            <TextBlock x:Name="ShadowAutoAddHint" Grid.Row="5" Grid.ColumnSpan="2" Margin="0,4,0,0"
-                                       Text="Added with layer." Foreground="{DynamicResource BrTextTertiary}"
-                                       TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Right"/>
-                            </Grid>
-                        </Border>
-                    </Expander>
+                    
 
                 </Grid>
                 </ScrollViewer>
@@ -3645,17 +3728,25 @@
                                         <ComboBoxItem Content="Highest rated" Tag="rating"/>
                                         <ComboBoxItem Content="Most votes" Tag="votes"/>
                                         <ComboBoxItem Content="Name A-Z" Tag="name"/>
+                                        <ComboBoxItem Content="Newest" Tag="newest"/>
                                     </ComboBox>
                                 </StackPanel>
                             </Border>
-                            <TextBlock x:Name="GalleryEmptyText"
-                                       Grid.Column="1"
-                                       Text="Loading gallery..."
-                                       Foreground="{DynamicResource BrTextTertiary}"
-                                       HorizontalAlignment="Center"
-                                       VerticalAlignment="Center"/>
-                            <ScrollViewer x:Name="GalleryScrollViewer" Grid.Column="1" VerticalScrollBarVisibility="Auto" ScrollChanged="GalleryScrollViewer_ScrollChanged">
-                                <ItemsControl x:Name="GalleryItemsControl">
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock x:Name="GalleryEmptyText"
+                                           Grid.Row="0"
+                                           Text="Loading gallery..."
+                                           Foreground="{DynamicResource BrTextTertiary}"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           IsHitTestVisible="False"
+                                           Panel.ZIndex="2"/>
+                                <ScrollViewer x:Name="GalleryScrollViewer" Grid.Row="0" VerticalScrollBarVisibility="Auto" ScrollChanged="GalleryScrollViewer_ScrollChanged">
+                                    <ItemsControl x:Name="GalleryItemsControl">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <WrapPanel/>
@@ -3797,8 +3888,51 @@
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </ScrollViewer>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                                <Border x:Name="GalleryPaginationPanel"
+                                        Grid.Row="1"
+                                        Background="{DynamicResource BrSurface2}"
+                                        BorderBrush="{DynamicResource BrBorder}"
+                                        BorderThickness="1"
+                                        CornerRadius="5"
+                                        Padding="10"
+                                        Margin="0,6,0,0">
+                                    <Grid>
+                                        <TextBlock x:Name="GalleryPageSummaryText"
+                                                   Text="Showing 0 themes"
+                                                   Foreground="{DynamicResource BrTextTertiary}"
+                                                   VerticalAlignment="Center"/>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                            <Button x:Name="GalleryPreviousPageButton"
+                                                    Content="Previous"
+                                                    Style="{DynamicResource BtnGhost}"
+                                                    Height="30"
+                                                    MinWidth="86"
+                                                    Padding="12,0"
+                                                    Click="GalleryPreviousPageButton_Click"/>
+                                            <ComboBox x:Name="GalleryPageCombo"
+                                                      Width="92"
+                                                      Height="30"
+                                                      Margin="12,0,6,0"
+                                                      SelectionChanged="GalleryPageCombo_SelectionChanged"/>
+                                            <TextBlock x:Name="GalleryPageTotalText"
+                                                       Text="/ 1"
+                                                       Foreground="{DynamicResource BrTextSecondary}"
+                                                       FontWeight="SemiBold"
+                                                       Margin="0,0,12,0"
+                                                       VerticalAlignment="Center"/>
+                                            <Button x:Name="GalleryNextPageButton"
+                                                    Content="Next"
+                                                    Style="{DynamicResource BtnGhost}"
+                                                    Height="30"
+                                                    MinWidth="86"
+                                                    Padding="12,0"
+                                                    Click="GalleryNextPageButton_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Grid>
                         </Grid>
                     </Border>
                 </Grid>
@@ -4015,12 +4149,22 @@
                                                                     CommandParameter="{Binding}"/>
                                                             <Button Grid.Column="2"
                                                                     Content="{Binding DeleteText}"
-                                                                    Style="{DynamicResource BtnDanger}"
                                                                     Height="32"
                                                                     HorizontalAlignment="Stretch"
                                                                     IsEnabled="{Binding CanDelete}"
                                                                     Click="LocalThemeDeleteButton_Click"
-                                                                    CommandParameter="{Binding}"/>
+                                                                    CommandParameter="{Binding}">
+                                                                <Button.Style>
+                                                                    <Style TargetType="Button" BasedOn="{StaticResource BtnDanger}">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding CanDelete}" Value="False">
+                                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Button.Style>
+                                                            </Button>
                                                         </Grid>
                                                     </Border>
                                                 </Grid>
@@ -4062,8 +4206,8 @@
                             <UniformGrid Columns="2">
                                 <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
                                     <StackPanel>
-                                        <TextBlock Text="Font Control" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="L-Connect does not show fonts that are not installed for all users in Theme Engine. If an installed theme uses one of those fonts, the theme may not render correctly. If a shared theme includes font files, you can install them for all users from here."
+                                        <TextBlock x:Name="FontControlTitleText" Text="Font Control" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="FontControlDescText" Text="L-Connect does not show fonts that are not installed for all users in Theme Engine. If an installed theme uses one of those fonts, the theme may not render correctly. If a shared theme includes font files, you can install them for all users from here."
                                                    Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
                                         <Grid Margin="0,12,0,0">
                                             <Grid.ColumnDefinitions>
@@ -4071,7 +4215,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBox x:Name="FontControlPackagePathBox" Height="30" IsReadOnly="True" VerticalContentAlignment="Center"/>
-                                            <Button Grid.Column="1" Content="Browse" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="FontControlBrowseButton_Click"/>
+                                            <Button x:Name="FontControlBrowsePackageButton" Grid.Column="1" Content="Browse" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="FontControlBrowseButton_Click"/>
                                         </Grid>
                                         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                                             <Button x:Name="FontControlScanButton" Content="Scan fonts" Height="30" Padding="12,0" Style="{DynamicResource BtnGhost}" Click="FontControlScanButton_Click"/>
@@ -4102,7 +4246,7 @@
                                                                 </StackPanel>
                                                                 <TextBlock Text="{Binding Source}" Foreground="{DynamicResource BrTextTertiary}" FontSize="10.5" TextWrapping="Wrap" Margin="15,3,0,0"/>
                                                                 <TextBlock Text="{Binding SearchText}" Foreground="{DynamicResource BrTextSecondary}" FontSize="10.5" Margin="15,6,0,0"/>
-                                                                <Button Content="Search on DaFont" Height="26" Width="122" Padding="0" Margin="15,6,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnGhost}" Click="FontSearchDafontButton_Click" CommandParameter="{Binding FamilyName}"/>
+                                                                <Button Content="{Binding SearchDafontButtonText}" Height="26" Width="122" Padding="0" Margin="15,6,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnGhost}" Click="FontSearchDafontButton_Click" CommandParameter="{Binding FamilyName}"/>
                                                             </StackPanel>
                                                         </Grid>
                                                     </Border>
@@ -4114,8 +4258,8 @@
                                 </Border>
                                 <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
                                     <StackPanel>
-                                        <TextBlock Text="Theme Test" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="A validation workspace for checking template structure, required assets, background orientation, package references, and common L-Connect compatibility problems before sharing."
+                                        <TextBlock x:Name="ThemeTestTitleText" Text="Theme Test" FontSize="14" FontWeight="SemiBold"/>
+                                        <TextBlock x:Name="ThemeTestDescText" Text="A validation workspace for checking template structure, required assets, background orientation, package references, and common L-Connect compatibility problems before sharing."
                                                    Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
                                         <Grid Margin="0,12,0,0">
                                             <Grid.ColumnDefinitions>
@@ -4123,7 +4267,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
                                             <TextBox x:Name="ThemeTestPackagePathBox" Height="30" IsReadOnly="True" VerticalContentAlignment="Center"/>
-                                            <Button Grid.Column="1" Content="Browse" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="ThemeTestBrowseButton_Click"/>
+                                            <Button x:Name="ThemeTestBrowsePackageButton" Grid.Column="1" Content="Browse" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="ThemeTestBrowseButton_Click"/>
                                         </Grid>
                                         <Button x:Name="ThemeTestRunButton" Content="Run theme test" Height="30" Padding="12,0" Margin="0,10,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnPrimary}" Click="ThemeTestRunButton_Click"/>
                                         <ListBox x:Name="ThemeTestResultList" MinHeight="210" MaxHeight="300" Margin="0,10,0,0" Background="#1808142A" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1">
@@ -4156,9 +4300,46 @@
                                 </Border>
                                 <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
                                     <StackPanel>
-                                        <TextBlock Text="Convert" FontSize="14" FontWeight="SemiBold"/>
-                                        <TextBlock Text="Convert themes from Turzx to Lian Li or from Lian Li to Turzx. This area will handle template mapping, media normalization, package metadata, and target naming."
-                                                   Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
+                                            <TextBlock x:Name="ConvertFixTurzxToLianLiTitleText" Text="Turzx to Lian Li" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ConvertFixTurzxToLianLiDescText"
+                                                       Text="Choose a .turtheme and its background media. The converter rewrites the template through L-Connect ThemeEngine and exports an L-Connect import ZIP."
+                                                       Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
+                                            <Grid Margin="0,12,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TurzxToLianLiThemePathBox" Height="30" IsReadOnly="True" VerticalContentAlignment="Center"/>
+                                                <Button x:Name="TurzxToLianLiBrowseThemeButton" Grid.Column="1" Content="Theme" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="TurzxToLianLiBrowseThemeButton_Click"/>
+                                            </Grid>
+                                            <Grid Margin="0,8,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="TurzxToLianLiBackgroundPathBox" Height="30" IsReadOnly="True" VerticalContentAlignment="Center"/>
+                                                <Button x:Name="TurzxToLianLiBrowseBackgroundButton" Grid.Column="1" Content="Background" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="TurzxToLianLiBrowseBackgroundButton_Click"/>
+                                            </Grid>
+                                            <Button x:Name="TurzxToLianLiConvertButton" Content="Export L-Connect ZIP" Height="30" Padding="12,0" Margin="0,10,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnPrimary}" Click="TurzxToLianLiConvertButton_Click"/>
+                                            <TextBlock x:Name="TurzxToLianLiStatusText" Text="No Turzx theme selected." Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}" FontSize="11"/>
+                                    </StackPanel>
+                                </Border>
+                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
+                                    <StackPanel>
+                                            <TextBlock x:Name="ConvertFixLianLiToTurzxTitleText" Text="Lian Li to Turzx" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="ConvertFixLianLiToTurzxDescText"
+                                                       Text="Choose a Lian Li package, ZIP, or template. The converter writes a real Turzx .turtheme stream instead of renaming the Lian Li template."
+                                                       Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextSecondary}" FontSize="11.5"/>
+                                            <Grid Margin="0,12,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBox x:Name="LianLiToTurzxSourcePathBox" Height="30" IsReadOnly="True" VerticalContentAlignment="Center"/>
+                                                <Button x:Name="LianLiToTurzxBrowseSourceButton" Grid.Column="1" Content="Source" Height="30" Padding="12,0" Margin="8,0,0,0" Style="{DynamicResource BtnGhost}" Click="LianLiToTurzxBrowseSourceButton_Click"/>
+                                            </Grid>
+                                            <Button x:Name="LianLiToTurzxConvertButton" Content="Export Turzx theme" Height="30" Padding="12,0" Margin="0,10,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnPrimary}" Click="LianLiToTurzxConvertButton_Click"/>
+                                            <TextBlock x:Name="LianLiToTurzxStatusText" Text="No Lian Li source selected." Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}" FontSize="11"/>
                                     </StackPanel>
                                 </Border>
                             </UniformGrid>
@@ -4327,8 +4508,8 @@
                                                     <StackPanel>
                                                         <TextBlock x:Name="SettingsLanguageThemeTitleText" Text="Language &amp; theme" FontSize="14" FontWeight="SemiBold"/>
                                                         <TextBlock x:Name="SettingsLanguageThemeDescText" Text="These choices also update the footer controls." Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/>
-                                                        <ComboBox x:Name="SettingsLanguageCombo" SelectedValuePath="Tag" SelectionChanged="SettingsLanguageCombo_SelectionChanged"><ComboBoxItem Content="" Tag="en"/><ComboBoxItem Content="" Tag="tr"/><ComboBoxItem Content="" Tag="ru"/><ComboBoxItem Content="" Tag="zh"/><ComboBoxItem Content="" Tag="de"/><ComboBoxItem Content="" Tag="ko"/></ComboBox>
-                                                        <ComboBox x:Name="SettingsThemeCombo" Margin="0,10,0,0" SelectionChanged="SettingsThemeCombo_SelectionChanged"><ComboBoxItem Content="Dark" Tag="dark"/><ComboBoxItem Content="Light" Tag="light"/></ComboBox>
+                                                        <ComboBox x:Name="SettingsLanguageCombo" SelectedValuePath="Tag" SelectionChanged="SettingsLanguageCombo_SelectionChanged"><ComboBoxItem Content="English" Tag="en"/><ComboBoxItem Content="Türkçe" Tag="tr"/><ComboBoxItem Content="Русский" Tag="ru"/><ComboBoxItem Content="中文" Tag="zh"/><ComboBoxItem Content="Deutsch" Tag="de"/><ComboBoxItem Content="한국어" Tag="ko"/><ComboBoxItem Content="Français" Tag="fr"/></ComboBox>
+                                                        <ComboBox x:Name="SettingsThemeCombo" Margin="0,10,0,0" SelectedValuePath="Tag" SelectionChanged="SettingsThemeCombo_SelectionChanged"><ComboBoxItem Content="Dark" Tag="dark"/><ComboBoxItem Content="Light" Tag="light"/></ComboBox>
                                                     </StackPanel>
                                                 </Border>
                                                 <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
@@ -4856,12 +5037,13 @@
                 
                 <ComboBox x:Name="LanguageCombo" Grid.Column="5" Height="28" VerticalAlignment="Center"
                           SelectedValuePath="Tag" SelectionChanged="LanguageCombo_SelectionChanged">
-                    <ComboBoxItem Content="" Tag="en"/>
-                    <ComboBoxItem Content="" Tag="tr"/>
-                    <ComboBoxItem Content="" Tag="ru"/>
-                    <ComboBoxItem Content="" Tag="zh"/>
-                    <ComboBoxItem Content="" Tag="de"/>
-                    <ComboBoxItem Content="" Tag="ko"/>
+                    <ComboBoxItem Content="English" Tag="en"/>
+                    <ComboBoxItem Content="Türkçe" Tag="tr"/>
+                    <ComboBoxItem Content="Русский" Tag="ru"/>
+                    <ComboBoxItem Content="中文" Tag="zh"/>
+                    <ComboBoxItem Content="Deutsch" Tag="de"/>
+                    <ComboBoxItem Content="한국어" Tag="ko"/>
+                <ComboBoxItem Content="Français" Tag="fr"/>
                 </ComboBox>
 
                 

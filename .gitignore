@@ -1,70 +1,33 @@
 # Build output
 bin/
+bin_build/
 obj/
-dist/
-publish/
+obj_build/
 release/
 artifacts/
+outputs/
 tmp/
-Backups/
-**/bin/
-**/obj/
-**/artifacts/
-**/tmp/
-_project-archive/local-scratch-*/
+tmp_*/
 
-# Visual Studio / local IDE state
-.vs/
-.vscode/
-.idea/
+# User/local state
+Backups/
+_project-archive/
 *.user
 *.suo
-*.userosscache
-*.sln.docstates
+*.rsuser
+.vs/
+.idea/
+.vscode/
 
-# Local tooling and temporary diagnostics
-.agents/
-.codex/
-.tools/
-Tests/
-UsbDeviceEmulator/
-tools/
-8.8-APPLY-TEST-INSTRUCTIONS-TR.txt
-Launch-LatestThemeEditor.ps1
+# Logs and diagnostics
 *.log
-startup_error.log
-unhandled_error.log
-parse.ps1
-temp_profile.json
-supporter.ps1
-supporter.exe
-supporter.exe.config
-*.exe
-*.pdb
-active_layers*.json
-sensor_test_layers.json
-themeengine_inventory.txt
-themeengine_types.json
+*.binlog
 
-# OS noise
-Thumbs.db
-Desktop.ini
-.DS_Store
-
-# Packages / generated archives
+# Generated packages
 *.zip
 *.nupkg
 
-# Gallery assets are intentionally versioned.
-!templates/
-!templates/**
-
-# JavaScript / Cloudflare local state
-node_modules/
-cloudflare/**/node_modules/
-cloudflare/**/.wrangler/
-cloudflare/**/wrangler.toml
-!cloudflare/**/wrangler.toml.example
-
-# Proprietary or reverse-engineering scratch files
-PLUS/
+# OS/editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store

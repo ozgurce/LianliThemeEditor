@@ -17,7 +17,7 @@ public sealed class GallerySubmission
     public string PreviewPath { get; init; } = "";
 }
 
-public sealed class GallerySubmissionService
+public sealed class GallerySubmissionService : IGallerySubmissionService
 {
     private const string ApiUrl = "https://lianli-theme-gallery.ozgurce.workers.dev";
     private static readonly HttpClient Client = CreateClient();
@@ -71,13 +71,22 @@ public sealed class GallerySubmissionService
     {
         var stream = File.OpenRead(path);
         var content = new StreamContent(stream);
-        content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        content.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+        try
         {
-            Name = Quote(name),
-            FileName = Quote(Path.GetFileName(path))
-        };
-        form.Add(content);
+            content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            content.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = Quote(name),
+                FileName = Quote(Path.GetFileName(path))
+            };
+            form.Add(content);
+        }
+        catch
+        {
+            content.Dispose();
+            stream.Dispose();
+            throw;
+        }
     }
 
     private static string Quote(string value) => "\"" + (value ?? "").Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"";

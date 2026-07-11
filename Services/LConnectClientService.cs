@@ -16,10 +16,11 @@ public sealed record LConnectHttpResult(
     public bool IsHttpSuccess => StatusCode is >= 200 and <= 299;
 }
 
-public sealed class LConnectClientService
+public sealed class LConnectClientService : ILConnectClientService
 {
     private const int DefaultServicePort = 11021;
     private static readonly TimeSpan ProbeTimeout = TimeSpan.FromMilliseconds(900);
+    private readonly object cacheSync = new();
     private int? cachedServicePort;
     private LConnectRequestMode? cachedRequestMode;
 
@@ -29,15 +30,15 @@ public sealed class LConnectClientService
         string type,
         string? body)
     {
-        if (cachedServicePort.HasValue && cachedRequestMode.HasValue)
+        if (TryGetCachedEndpoint(out var cachedPort, out var cachedMode))
         {
             var cachedResult = await SendDeviceRequestForJsonAsync(
                 client,
-                cachedServicePort.Value,
+                cachedPort,
                 devicePath,
                 type,
                 body,
-                cachedRequestMode.Value).ConfigureAwait(false);
+                cachedMode).ConfigureAwait(false);
             if (IsMeaningfulServiceResponse(cachedResult) ||
                 (AcceptsEmptyResponse(type) && IsServiceEndpointResponse(cachedResult)))
             {
@@ -91,14 +92,14 @@ public sealed class LConnectClientService
         string action,
         string? body)
     {
-        if (cachedServicePort.HasValue && cachedRequestMode.HasValue)
+        if (TryGetCachedEndpoint(out var cachedPort, out var cachedMode))
         {
             var cachedResult = await SendServiceRequestForJsonAsync(
                 client,
-                cachedServicePort.Value,
+                cachedPort,
                 action,
                 body,
-                cachedRequestMode.Value).ConfigureAwait(false);
+                cachedMode).ConfigureAwait(false);
             if (IsMeaningfulServiceResponse(cachedResult) ||
                 (AcceptsEmptyResponse(action) && IsServiceEndpointResponse(cachedResult)))
             {
@@ -261,14 +262,37 @@ public sealed class LConnectClientService
 
     private void CacheEndpoint(int port, LConnectRequestMode mode)
     {
-        cachedServicePort = port;
-        cachedRequestMode = mode;
+        lock (cacheSync)
+        {
+            cachedServicePort = port;
+            cachedRequestMode = mode;
+        }
     }
 
     private void ClearCachedEndpoint()
     {
-        cachedServicePort = null;
-        cachedRequestMode = null;
+        lock (cacheSync)
+        {
+            cachedServicePort = null;
+            cachedRequestMode = null;
+        }
+    }
+
+    private bool TryGetCachedEndpoint(out int port, out LConnectRequestMode mode)
+    {
+        lock (cacheSync)
+        {
+            if (cachedServicePort.HasValue && cachedRequestMode.HasValue)
+            {
+                port = cachedServicePort.Value;
+                mode = cachedRequestMode.Value;
+                return true;
+            }
+        }
+
+        port = 0;
+        mode = default;
+        return false;
     }
 
     private static async Task<IReadOnlyList<int>> DiscoverResponsivePortsAsync(HttpClient client)

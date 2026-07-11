@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -7,8 +7,9 @@ using ThemeEditorCSharp.Models;
 
 namespace ThemeEditorCSharp.Services;
 
-public sealed class SupporterBridge
+public sealed class SupporterBridge : ISupporterBridge
 {
+    private static readonly Regex ColorAlphaRegex = new(@"A=(\d+)", RegexOptions.Compiled);
     private readonly SemaphoreSlim _supporterGate = new(1, 1);
     private readonly string _supporterPath;
     private readonly string _workingDirectory;
@@ -112,12 +113,12 @@ public sealed class SupporterBridge
             if (layer.CanWriteFont("name") && !string.IsNullOrWhiteSpace(layer.Font)) { args.Add("-LayerFont"); args.Add(layer.Font); }
             if (layer.CanWriteFont("isBold") && !string.IsNullOrWhiteSpace(layer.Bold)) { args.Add("-LayerBold"); args.Add(layer.Bold); }
             if (layer.CanWriteFont("IsItalic") && !string.IsNullOrWhiteSpace(layer.Italic)) { args.Add("-LayerItalic"); args.Add(layer.Italic); }
-        AddIfPresent(
-            args,
-            "-LayerAlignmentIndex",
-            layer.AlignmentIndex,
-            layer.CanWriteFont("alignment.index") ||
-            string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase));
+            AddIfPresent(
+                args,
+                "-LayerAlignmentIndex",
+                layer.AlignmentIndex,
+                layer.CanWriteFont("alignment.index") ||
+                string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase));
             AddIfPresent(args, "-LayerFontInterval", layer.FontInterval, layer.CanWriteFont("interval"));
             AddIfPresent(args, "-LayerFontGradientColor", layer.FontGradientColor, layer.CanWriteFont("GrColor"));
             AddIfPresent(args, "-LayerFontGradientDirection", layer.FontGradientDirection, layer.CanWriteFont("GrDirection"));
@@ -133,8 +134,12 @@ public sealed class SupporterBridge
         var source = layer.DataSource ?? "";
         if (isText && SupportsFormat(source))
         {
-            args.Add("-LayerFormat");
-            args.Add(NormalizeFormatForDataSource(source, string.IsNullOrWhiteSpace(layer.Format) ? DefaultFormatForDataSource(source) : layer.Format));
+            var format = string.IsNullOrWhiteSpace(layer.Format) ? DefaultFormatForDataSource(source) : layer.Format;
+            if (!string.IsNullOrWhiteSpace(format))
+            {
+                args.Add("-LayerFormat");
+                args.Add(NormalizeFormatForDataSource(source, format));
+            }
         }
         else if (isText && (source == "StaticText" || layer.ForceText))
         {
@@ -190,7 +195,7 @@ public sealed class SupporterBridge
             AddIfPresent(args, "-LayerMaxValue", layer.MaxValue, layer.CanWrite("maxValue"));
             AddIfPresent(args, "-LayerInvertDirection", layer.InvertDirection, layer.CanWrite("rollDirection"));
             AddIfPresent(args, "-LayerStartPercentage", layer.StartPercentage, layer.CanWrite("startPer"));
-            AddIfPresent(args, "-LayerTotalAngle", layer.TotalAngle, layer.CanWrite("totalAngel"));
+            AddIfPresent(args, "-LayerTotalAngle", layer.TotalAngle, layer.CanWrite(ThemeEngineNames.GraphArchBarTotalAngle));
             AddIfPresent(args, "-LayerUseBlock", layer.UseBlock, layer.CanWrite("useBlock"));
             AddIfPresent(args, "-LayerRingBorder", layer.RingBorder, layer.CanWrite("HasRingBorder"));
             AddIfPresent(args, "-LayerRound", layer.Round, layer.CanWrite("round"));
@@ -215,10 +220,16 @@ public sealed class SupporterBridge
 
         if (isImage || isAnimation || isClock)
         {
-            if (!string.IsNullOrWhiteSpace(layer.Media)) { args.Add("-LayerImgName"); args.Add(layer.Media); }
+            if (ShouldSendLayerMedia(deviceModel, layer, isAnimation, isClock))
+            {
+                args.Add("-LayerImgName");
+                args.Add(layer.Media);
+            }
             if (!string.IsNullOrWhiteSpace(layer.ZoomRate)) { args.Add("-LayerZoomRate"); args.Add(layer.ZoomRate); }
             AddIfPresent(args, "-LayerRotate", layer.Rotate,
-                isImage || isClock || layer.CanWrite("rotate") || layer.CanWrite("ration"));
+                isImage || isClock ||
+                layer.CanWrite(ThemeEngineNames.TransformRotation) ||
+                layer.CanWrite(ThemeEngineNames.GraphAnimationRotation));
             AddIfPresent(args, "-LayerRect", layer.Rect, layer.CanWrite("rect"));
             if (isClock)
             {
@@ -248,6 +259,30 @@ public sealed class SupporterBridge
         }
 
         return args;
+    }
+
+    private static bool ShouldSendLayerMedia(string deviceModel, LayerRow layer, bool isAnimation, bool isClock)
+    {
+        if (string.IsNullOrWhiteSpace(layer.Media))
+        {
+            return false;
+        }
+
+        if (isAnimation || isClock)
+        {
+            return true;
+        }
+
+        var mediaPath = layer.MediaPath;
+        if (!string.IsNullOrWhiteSpace(mediaPath) && File.Exists(mediaPath))
+        {
+            var imageRoot = Path.GetFullPath(Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "image"));
+            var fullMediaPath = Path.GetFullPath(mediaPath);
+            return fullMediaPath.StartsWith(imageRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var lConnectImagePath = Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "image", Path.GetFileName(layer.Media));
+        return File.Exists(lConnectImagePath);
     }
 
     public async Task ApplyLayerAsync(string deviceModel, string templatePath, LayerRow layer, CancellationToken cancellationToken = default)
@@ -418,6 +453,7 @@ public sealed class SupporterBridge
         return dataSource.ToUpperInvariant() switch
         {
             "TIME" or "DATE" or "DAY" or
+            "HDDTEMP" or "HDDUSED" or
             "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" => true,
             _ => false
         };
@@ -437,6 +473,7 @@ public sealed class SupporterBridge
             "TIME" => "h:m",
             "DATE" => "Y-M-D",
             "DAY" => "Day_en",
+            "HDDTEMP" or "HDDUSED" => "",
             "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" => "0",
             _ => ""
         };
@@ -563,6 +600,22 @@ public sealed class SupporterBridge
         await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task ExportTurzxThemeAsync(
+        string deviceModel,
+        string templatePath,
+        string outputPath,
+        string backgroundPath = "",
+        CancellationToken cancellationToken = default)
+    {
+        var args = BaseTemplateArgs(deviceModel, templatePath);
+        args.AddRange(new[] { "-ExportTurzxTheme", outputPath });
+        if (!string.IsNullOrWhiteSpace(backgroundPath))
+        {
+            args.AddRange(new[] { "-TurzxBackground", backgroundPath });
+        }
+        await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+    }
+
     public async Task EnsureBackgroundLayerAsync(
         string deviceModel,
         string templatePath,
@@ -614,19 +667,6 @@ public sealed class SupporterBridge
         await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
-    public async Task AddShadowAsync(string deviceModel, string templatePath, string layerIndex, string offsetX, string offsetY, string color, CancellationToken cancellationToken = default)
-    {
-        var args = BaseTemplateArgs(deviceModel, templatePath);
-        args.AddRange(new[]
-        {
-            "-AddShadowForLayer", layerIndex,
-            "-ShadowOffsetX", offsetX,
-            "-ShadowOffsetY", offsetY,
-            "-ShadowColor", color,
-            "-NoBackup"
-        });
-        await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
-    }
     public async Task AddDataAsync(string deviceModel, string templatePath, string dataSource, string x, string y, string size, string color, string font, bool bold, string format = "", CancellationToken cancellationToken = default)
     {
         var args = BaseTemplateArgs(deviceModel, templatePath);
@@ -697,8 +737,22 @@ public sealed class SupporterBridge
         return ParseTemplateResult(json);
     }
 
-    public async Task<TemplateLoadResult> LoadTemplatePathAsync(string deviceModel, string templatePath, CancellationToken cancellationToken = default)
+    public async Task<TemplateLoadResult> LoadTemplatePathAsync(string deviceModel, string templatePath, bool inspectBitmaps = true, CancellationToken cancellationToken = default)
     {
+        if (inspectBitmaps)
+        {
+            try
+            {
+                var inspectArgs = BaseTemplateArgs(deviceModel, templatePath);
+                inspectArgs.Add("-InspectBitmaps");
+                await RunSupporterAsync(inspectArgs, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // Ignore extraction failures so the template can still load.
+            }
+        }
+
         var args = BaseTemplateArgs(deviceModel, templatePath);
         args.Add("-ListLayers");
         args.Add("-Json");
@@ -717,10 +771,17 @@ public sealed class SupporterBridge
 
     private static string NormalizeDataSource(string dataSource)
     {
+        dataSource = (dataSource ?? "").Trim();
+        if (dataSource.StartsWith("#", StringComparison.Ordinal))
+        {
+            dataSource = dataSource[1..].Trim();
+        }
+
         return dataSource.ToUpperInvariant() switch
         {
             "CPUPOWER" => "CPUPWR",
             "GPUPOWER" => "GPUPWR",
+            "FPS_AVG" => "FPS",
             _ => dataSource
         };
     }
@@ -761,7 +822,7 @@ public sealed class SupporterBridge
             };
             foreach (var argument in arguments)
             {
-                startInfo.ArgumentList.Add(argument);
+                startInfo.ArgumentList.Add(SanitizeProcessArgument(argument));
             }
 
             using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start supporter process.");
@@ -848,6 +909,19 @@ public sealed class SupporterBridge
         {
             return false;
         }
+    }
+
+    private static string SanitizeProcessArgument(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return "";
+
+        var builder = new StringBuilder(value.Length);
+        foreach (var ch in value)
+        {
+            builder.Append(ch == '\0' ? ' ' : char.IsControl(ch) ? ' ' : ch);
+        }
+
+        return builder.ToString();
     }
 
     private static TemplateLoadResult ParseTemplateResult(string json)
@@ -1082,7 +1156,7 @@ public sealed class SupporterBridge
 
     private static string GetColorAlpha(string color)
     {
-        var match = System.Text.RegularExpressions.Regex.Match(color ?? "", @"A=(\d+)");
+        var match = ColorAlphaRegex.Match(color ?? "");
         return match.Success ? match.Groups[1].Value : "255";
     }
 

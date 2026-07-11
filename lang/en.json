@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Lian Li LCD Template Editor V 2.0.1",
+    "title": "Lian Li LCD Template Editor V 1.7",
     "versionBuildFormat": "Version {0}  |  Built {1}"
   },
   "common": {
@@ -50,15 +50,7 @@
     "backgroundEmpty": "Background: -",
     "backgroundLoaded": "Background: {0}",
     "activeTheme": "Active Theme",
-    "newTheme": "New Theme",
     "offlineMode": "Offline"
-  },
-  "newTheme": {
-    "title": "New Theme",
-    "source": "A blank theme will be created from the device-compatible template structure: {0}",
-    "nameLabel": "Theme name",
-    "blankSeed": "Blank seed",
-    "create": "Create"
   },
   "sections": {
     "layers": "Layers",
@@ -289,6 +281,7 @@
     "highestRated": "Highest rated",
     "mostVotes": "Most votes",
     "nameAz": "Name A-Z",
+    "newest": "Newest",
     "loading": "Loading gallery...",
     "details": "Details",
     "votingInactiveTitle": "Voting is not active",
@@ -458,9 +451,6 @@
     "importingTheme": "Importing theme...",
     "themeImported": "Theme package imported.",
     "importFailed": "Import failed.",
-    "creatingTheme": "Creating theme...",
-    "themeCreated": "Theme created: {0}",
-    "createThemeFailed": "Create theme failed.",
     "templateChangedReloaded": "The template changed in L-Connect. Layers were refreshed.",
     "layerDuplicated": "Layer duplicated.",
     "applyingChanges": "Applying changed layers...",
@@ -574,10 +564,10 @@
     "exportThemeFailed": "Theme export failed",
     "exportLConnectFailed": "L-Connect export failed",
     "importThemeFailed": "Theme import failed",
-    "createThemeFailed": "Create theme failed",
     "themeExported": "Theme exported",
     "lConnectExported": "L-Connect package exported",
     "lConnectImportHint": "In L-Connect, open the HydroShift template screen, choose Import Template, and select this ZIP.",
+    "lConnectImportHintForDevice": "In L-Connect, open the {0} screen, choose Import Template, and select this ZIP.",
     "vm92LConnectImportHint": "In L-Connect, open the VM 9.2 LCD screen, choose Import Template, and select this ZIP.",
     "convert88To92Done": "VM 9.2 package created",
     "convert88To92Failed": "Conversion failed",
@@ -793,7 +783,8 @@
     "diagnostics": "Diagnostics",
     "about": "About",
     "thanks": "Thanks",
-    "localThemes": "Installed Themes"
+    "localThemes": "Installed Themes",
+    "convertFix": "Convert & Fix"
   },
   "groups": {
     "name": "Group name",
@@ -942,6 +933,53 @@
     "hydroshiftC": "Hydroshift II LCD-C",
     "universal88": "8.8\" Universal Screen",
     "vm92": "VM 9.2 LCD"
+  },
+  "convertFix": {
+    "turzxToLianLiTitle": "Turzx to Lian Li",
+    "turzxToLianLiDesc": "Choose a .turtheme and its background media. The converter rewrites the template through L-Connect ThemeEngine and exports an L-Connect import ZIP.",
+    "themeButton": "Theme",
+    "backgroundButton": "Background",
+    "exportLianLiPackage": "Export L-Connect ZIP",
+    "noTurzxThemeSelected": "No Turzx theme selected.",
+    "lianLiToTurzxTitle": "Lian Li to Turzx",
+    "lianLiToTurzxDesc": "Choose a Lian Li package, ZIP, or template. The converter writes a real Turzx .turtheme stream instead of renaming the Lian Li template.",
+    "sourceButton": "Source",
+    "exportTurzxTheme": "Export Turzx theme",
+    "noLianLiSourceSelected": "No Lian Li source selected.",
+    "fontControl": "Font Control",
+    "fontControlDesc": "Check theme font references and install missing fonts for all users so L-Connect Theme Engine can use them.",
+    "scanFonts": "Scan fonts",
+    "installSystemWide": "Choose font file and install system wide",
+    "themeTest": "Theme Test",
+    "themeTestDesc": "Check template structure, assets, background orientation, package references, and common L-Connect compatibility problems before sharing.",
+    "runThemeTest": "Run theme test",
+    "chooseFont": "Choose font file",
+    "converting": "Converting...",
+    "convertFailed": "Conversion failed: {0}",
+    "turzxThemeSelected": "Selected Turzx theme: {0}",
+    "backgroundSelected": "Selected background: {0}",
+    "selectTurzxThemeFirst": "Select a .turtheme file first.",
+    "lianLiPackageExported": "L-Connect ZIP exported: {0}",
+    "lianLiSourceSelected": "Selected source: {0}",
+    "selectLianLiSourceFirst": "Select a Lian Li package, ZIP, or template first.",
+    "turzxThemeExported": "Turzx theme exported: {0}",
+    "themeTestCompleted": "Theme test completed.",
+    "noFontUsage": "No font usage found in template layers.",
+    "fontReferencesFound": "Found {0} font family reference(s) in template layers.",
+    "systemWideInstalled": "System-wide installed",
+    "missingSystemWide": "Missing system-wide",
+    "searchTarget": "Search target: {0}",
+    "searchDafont": "Search on DaFont",
+    "usedInLayers": "Used in {0} layer(s)",
+    "testFieldFile": "File",
+    "testFieldDevice": "Device",
+    "testFieldTemplateId": "Template ID",
+    "testFieldTemplate": "Template",
+    "testFieldLayers": "Layers",
+    "testFieldBackground": "Background",
+    "testFieldAsset": "Asset",
+    "testFieldPreview": "Preview",
+    "testFieldFonts": "Fonts"
   },
   "template": {
     "idFormat": "Template ID: {0}"

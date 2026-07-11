@@ -7,7 +7,7 @@ using ThemeEditorCSharp.Models;
 
 namespace ThemeEditorCSharp.Services;
 
-public sealed class ThemePackageValidationService
+public sealed class ThemePackageValidationService : IThemePackageValidationService
 {
     private static readonly HashSet<string> SupportedDevices = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -43,7 +43,16 @@ public sealed class ThemePackageValidationService
                     result.Issues.Add(Error("The ZIP does not contain a template file."));
                     return result;
                 }
-                result = new ThemeValidationResult { TemplateId = Path.GetFileNameWithoutExtension(template.Name), TemplateFile = template.FullName };
+                if (IsUnsafePath(template.FullName))
+                {
+                    result.Issues.Add(Error("The template file path is unsafe."));
+                    return result;
+                }
+                result = new ThemeValidationResult
+                {
+                    TemplateId = Path.GetFileNameWithoutExtension(template.Name),
+                    TemplateFile = template.FullName
+                };
                 if (!archive.Entries.Any(entry => MediaExtensions.Contains(Path.GetExtension(entry.FullName))))
                     result.Issues.Add(Warning("Background media is missing."));
                 result.Issues.Add(new ThemeValidationIssue { Severity = "Info", Message = "L-Connect ZIP package detected." });
@@ -172,7 +181,15 @@ public sealed class ThemePackageValidationService
         return text.Contains("GraphAnimation", StringComparison.OrdinalIgnoreCase) &&
                Regex.IsMatch(text, @"\.(mp4|h264|gif|png|jpe?g|webp)", RegexOptions.IgnoreCase);
     }
-    private static bool IsUnsafePath(string path) => string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path) || Normalize(path).Split('/').Any(part => part == "..");
+    private static bool IsUnsafePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || Path.IsPathRooted(path)) return true;
+
+        var basePath = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "lianli-package-root"));
+        var fullPath = Path.GetFullPath(Path.Combine(basePath, path.Replace('/', Path.DirectorySeparatorChar)));
+        return !fullPath.StartsWith(basePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
+               !string.Equals(fullPath, basePath, StringComparison.OrdinalIgnoreCase);
+    }
     private static ThemeValidationIssue Error(string message) => new() { Severity = "Error", Message = message };
     private static ThemeValidationIssue Warning(string message) => new() { Severity = "Warning", Message = message };
 }

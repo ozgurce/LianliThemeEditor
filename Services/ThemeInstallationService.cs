@@ -1,10 +1,10 @@
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
 
 namespace ThemeEditorCSharp.Services;
 
-public sealed class ThemeInstallationService
+public sealed class ThemeInstallationService : IThemeInstallationService
 {
     public async Task<string> ActivateAsync(
         string requestedId,
@@ -84,12 +84,12 @@ public sealed class ThemeInstallationService
     {
         var roots = new List<string>
         {
-            Path.Combine(@"C:\ProgramData\Lian-Li\L-Connect 3", deviceModel, "template"),
-            Path.Combine(@"C:\Program Files\Lian-Li\L-Connect 3", "Assets", deviceModel, "template")
+            Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "template"),
+            Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets", deviceModel, "template")
         };
 
-        AddSiblingTemplateRoots(roots, @"C:\ProgramData\Lian-Li\L-Connect 3");
-        AddSiblingTemplateRoots(roots, Path.Combine(@"C:\Program Files\Lian-Li\L-Connect 3", "Assets"));
+        AddSiblingTemplateRoots(roots, LConnectPaths.ProgramDataRoot);
+        AddSiblingTemplateRoots(roots, Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets"));
 
         return roots
             .Where(path => !string.IsNullOrWhiteSpace(path))
@@ -117,3 +117,4 @@ public sealed class ThemeInstallationService
         }
     }
 }
+
