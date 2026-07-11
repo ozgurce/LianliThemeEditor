@@ -93,7 +93,3 @@ The app has two different template concerns:
 - Other remote `templates` content can be gallery metadata, previews, packages, or user-shared themes used by the app at runtime through GitHub raw/API URLs.
 
 When updating GitHub from a local workspace, publish source files and blank seeds without deleting remote-only gallery assets.
-
-## Release Notes
-
-See `release/changelog-v2.3-github.md` in the local release workspace for the full v2.3 changelog. Release build folders and packaged ZIP output are generated artifacts and should stay out of source control.
