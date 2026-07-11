@@ -777,6 +777,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.png",
       "packageUrl": "packages/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.zip"
+    },
+    {
+      "id": "hydroshift-ii-lcd-c-b6c35a17",
+      "name": "hydroshift-ii-lcd-c",
+      "author": "aaa",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/hydroshift-ii-lcd-c-b6c35a17.png",
+      "packageUrl": "packages/hydroshift-ii-lcd-c-b6c35a17.zip"
     }
   ]
 }
