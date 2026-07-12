@@ -797,6 +797,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/white-black-5-dials-26343047.png",
       "packageUrl": "packages/white-black-5-dials-26343047.zip"
+    },
+    {
+      "id": "white-snd-gold-clocks-4bd697d9",
+      "name": "White Snd Gold Clocks",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/white-snd-gold-clocks-4bd697d9.png",
+      "packageUrl": "packages/white-snd-gold-clocks-4bd697d9.zip"
     }
   ]
 }
