@@ -13494,10 +13494,25 @@ public partial class MainWindow : Window
                 if (!string.IsNullOrWhiteSpace(installedTemplate.BackgroundPath) &&
                     File.Exists(installedTemplate.BackgroundPath))
                 {
-                    importedBackgroundPath = installedTemplate.BackgroundPath;
-                    AppLogger.Info(
-                        $"L-Connect imported template default background selected for {lConnectId}: " +
-                        $"{DescribeFileForLog(importedBackgroundPath)}");
+                    var installedBackgroundIsImage = IsImageFilePath(installedTemplate.BackgroundPath);
+                    var packageBackgroundIsPreferred = packageBackgroundBundle.Count > 0 &&
+                                                       !string.IsNullOrWhiteSpace(importedBackgroundPath) &&
+                                                       File.Exists(importedBackgroundPath) &&
+                                                       !IsImageFilePath(importedBackgroundPath);
+                    if (installedBackgroundIsImage && packageBackgroundIsPreferred)
+                    {
+                        AppLogger.Info(
+                            $"L-Connect imported template image background ignored for {lConnectId}; " +
+                            $"keeping package video background={DescribeFileForLog(importedBackgroundPath)}; " +
+                            $"templateBackground={DescribeFileForLog(installedTemplate.BackgroundPath)}");
+                    }
+                    else
+                    {
+                        importedBackgroundPath = installedTemplate.BackgroundPath;
+                        AppLogger.Info(
+                            $"L-Connect imported template default background selected for {lConnectId}: " +
+                            $"{DescribeFileForLog(importedBackgroundPath)}");
+                    }
                 }
             }
             catch (Exception ex)
