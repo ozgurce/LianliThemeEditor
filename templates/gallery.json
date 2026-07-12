@@ -837,6 +837,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/steins-gate-f3e16ff0.png",
       "packageUrl": "packages/steins-gate-f3e16ff0.zip"
+    },
+    {
+      "id": "space-shuttle-8dbeaa7c",
+      "name": "Space Shuttle",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/space-shuttle-8dbeaa7c.png",
+      "packageUrl": "packages/space-shuttle-8dbeaa7c.zip"
     }
   ]
 }
