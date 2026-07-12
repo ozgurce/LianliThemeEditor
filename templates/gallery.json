@@ -847,6 +847,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/space-shuttle-8dbeaa7c.png",
       "packageUrl": "packages/space-shuttle-8dbeaa7c.zip"
+    },
+    {
+      "id": "resident-evil-requiem-lc-v2-07a551bd",
+      "name": "Resident Evil Requiem LC V2",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/resident-evil-requiem-lc-v2-07a551bd.png",
+      "packageUrl": "packages/resident-evil-requiem-lc-v2-07a551bd.zip"
     }
   ]
 }
