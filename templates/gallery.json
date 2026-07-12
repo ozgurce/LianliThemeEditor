@@ -917,6 +917,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/btf-v1-vert-ba6b9e69.png",
       "packageUrl": "packages/btf-v1-vert-ba6b9e69.zip"
+    },
+    {
+      "id": "alien2-19d639fb",
+      "name": "Alien2",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/alien2-19d639fb.png",
+      "packageUrl": "packages/alien2-19d639fb.zip"
     }
   ]
 }
