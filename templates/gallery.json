@@ -887,6 +887,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/purple-white-dials-65a8d232.png",
       "packageUrl": "packages/purple-white-dials-65a8d232.zip"
+    },
+    {
+      "id": "gigabyte-aorus-dc9460d9",
+      "name": "Gigabyte Aorus",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gigabyte-aorus-dc9460d9.png",
+      "packageUrl": "packages/gigabyte-aorus-dc9460d9.zip"
     }
   ]
 }
