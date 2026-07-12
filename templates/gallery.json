@@ -807,6 +807,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/white-snd-gold-clocks-4bd697d9.png",
       "packageUrl": "packages/white-snd-gold-clocks-4bd697d9.zip"
+    },
+    {
+      "id": "tomb-raider-407b1157",
+      "name": "Tomb Raider",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/tomb-raider-407b1157.png",
+      "packageUrl": "packages/tomb-raider-407b1157.zip"
     }
   ]
 }
