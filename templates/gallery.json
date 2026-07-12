@@ -877,6 +877,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/re-requiem-v2-ba29bf72.png",
       "packageUrl": "packages/re-requiem-v2-ba29bf72.zip"
+    },
+    {
+      "id": "purple-white-dials-65a8d232",
+      "name": "Purple White Dials",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/purple-white-dials-65a8d232.png",
+      "packageUrl": "packages/purple-white-dials-65a8d232.zip"
     }
   ]
 }
