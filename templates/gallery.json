@@ -867,6 +867,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/re-requiem-v3-white-0a609287.png",
       "packageUrl": "packages/re-requiem-v3-white-0a609287.zip"
+    },
+    {
+      "id": "re-requiem-v2-ba29bf72",
+      "name": "RE Requiem V2",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/re-requiem-v2-ba29bf72.png",
+      "packageUrl": "packages/re-requiem-v2-ba29bf72.zip"
     }
   ]
 }
