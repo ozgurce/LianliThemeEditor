@@ -787,6 +787,16 @@
       "deviceName": "Hydroshift II LCD-C",
       "previewUrl": "previews/hydroshift-ii-lcd-c-b6c35a17.png",
       "packageUrl": "packages/hydroshift-ii-lcd-c-b6c35a17.zip"
+    },
+    {
+      "id": "white-black-5-dials-26343047",
+      "name": "White Black 5 Dials",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/white-black-5-dials-26343047.png",
+      "packageUrl": "packages/white-black-5-dials-26343047.zip"
     }
   ]
 }
