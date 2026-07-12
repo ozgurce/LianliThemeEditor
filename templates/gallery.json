@@ -817,6 +817,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/tomb-raider-407b1157.png",
       "packageUrl": "packages/tomb-raider-407b1157.zip"
+    },
+    {
+      "id": "sw-l2-vertical-98d1474a",
+      "name": "SW L2 Vertical",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/sw-l2-vertical-98d1474a.png",
+      "packageUrl": "packages/sw-l2-vertical-98d1474a.zip"
     }
   ]
 }
