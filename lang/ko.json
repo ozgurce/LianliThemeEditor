@@ -180,7 +180,7 @@
     "clockAngles": "시작 / 전체",
     "clockRateOffset": "비율 오프셋 (0-1)",
     "clockOrigin": "원점 X / Y",
-    "dragCenter": "중심 드래그",
+    "dragCenter": "Move Origin Point",
     "shadow": "그림자"
   },
   "edit": {

@@ -6,7 +6,7 @@ The project is currently focused on L-Connect 3 LCD devices such as HydroShift I
 
 ## Current Version
 
-`V 2.3` / `2.3.0`
+`V 2.4 Final` / `2.4.0`
 
 This version includes Universal Screen support, orientation-aware export/import, improved gallery performance, better L-Connect data-source handling, more reliable background packaging, and many editor UI fixes.
 
@@ -93,3 +93,7 @@ The app has two different template concerns:
 - Other remote `templates` content can be gallery metadata, previews, packages, or user-shared themes used by the app at runtime through GitHub raw/API URLs.
 
 When updating GitHub from a local workspace, publish source files and blank seeds without deleting remote-only gallery assets.
+
+## Release Notes
+
+Release build folders and packaged ZIP output are generated artifacts and should stay out of source control.

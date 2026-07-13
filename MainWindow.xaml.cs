@@ -178,9 +178,8 @@ public partial class MainWindow : Window
     private readonly Dictionary<LayerRow, FrameworkElement> _previewLayerVisuals = new();
     private readonly Dictionary<LayerRow, Rectangle> _previewSelectionVisuals = new();
     private readonly Dictionary<LayerRow, Ellipse> _previewClockCenterMarkers = new();
-    private readonly HashSet<LayerRow> _clockDragEditPoseLayers = new();
     private FrameworkElement? _previewResizeHandle;
-    private bool _showPreviewGuides = true;
+    private bool _showPreviewGuides;
 
     // Preview Resizing States
     private bool _isResizingPreview;
@@ -191,6 +190,9 @@ public partial class MainWindow : Window
     private double _resizeStartSize;
     private double _resizeStartZoom;
     private double _resizeStartColumnWidth;
+    private bool _isDraggingGaugeAngle;
+    private bool _draggingGaugeEndAngle;
+    private LayerRow? _gaugeAngleDragLayer;
     private int _sensorPreviewRenderVersion;
     private CancellationTokenSource? _sensorPreviewRenderCts;
     private int _graphPreviewRenderVersion;
@@ -235,6 +237,8 @@ public partial class MainWindow : Window
     private readonly IGalleryStatsService _galleryStatsService;
     private readonly LayerGroupService _layerGroupService = new();
     private double _canvasZoom = 1.8;
+    private bool _autoFitWidePreview;
+    private bool _updatingCanvasZoom;
     private Dictionary<string, string> _languageText = new(StringComparer.OrdinalIgnoreCase);
     private string _currentLanguage = "en";
     private int _languageApplyVersion;
@@ -245,6 +249,8 @@ public partial class MainWindow : Window
     private readonly object _templateThumbnailCacheLock = new();
     private readonly Dictionary<string, string> _localTemplateOrientationCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Size> _imageBoundsCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, System.Drawing.Rectangle> _imageInkBoundsCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, double> _gaugeNeedleZeroAngleCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, FontFamily> _resolvedFontsCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, BitmapSource> _gdiTextCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Rect> _gdiTextInkCache = new(StringComparer.OrdinalIgnoreCase);
@@ -410,6 +416,7 @@ public partial class MainWindow : Window
         PreviewCanvas.MouseMove += PreviewCanvas_MouseMove;
         PreviewCanvas.MouseLeftButtonUp += PreviewCanvas_MouseLeftButtonUp;
         PreviewFrame.PreviewMouseWheel += PreviewFrame_PreviewMouseWheel;
+        PreviewScrollViewer.SizeChanged += PreviewScrollViewer_SizeChanged;
         PreviewKeyDown += MainWindow_PreviewKeyDown;
 
         AttachAlphaColorMenu(ColorPickButton, ColorBox);
@@ -2040,6 +2047,11 @@ public partial class MainWindow : Window
             foreach (var layer in result.Layers)
             {
                 NormalizeAnimationLayerZoom(layer);
+                if (NormalizeClockLayerPlacementIfOffCanvas(layer))
+                {
+                    layer.IsDirty = true;
+                    _dirtyLayers.Add(layer);
+                }
                 layer.IsEditorMetadata = IsGroupingMetadataLayer(layer);
                 if (layer.IsEditorMetadata)
                 {
@@ -2084,10 +2096,10 @@ public partial class MainWindow : Window
             if (IsWideScreenDeviceSelected())
             {
                 templateOrientation = FirstNonEmpty(
-                    NormalizeUniversalOrientation((TemplateCombo.SelectedItem as TemplateOption)?.UniversalOrientation),
-                    InferGalleryThemeOrientation(_currentTemplateId, _currentTemplatePath, displayBackground, result.BackgroundPath),
-                    InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, GetSelectedDeviceModel()),
                     TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
+                    InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, GetSelectedDeviceModel()),
+                    InferGalleryThemeOrientation(_currentTemplateId, _currentTemplatePath, displayBackground, result.BackgroundPath),
+                    NormalizeUniversalOrientation((TemplateCombo.SelectedItem as TemplateOption)?.UniversalOrientation),
                     InferWideGalleryOrientationFromLayers(Layers));
             }
             if (!string.IsNullOrWhiteSpace(templateOrientation))
@@ -2503,8 +2515,17 @@ public partial class MainWindow : Window
             ? GetDataSourceDisplayName(layer.DataSource)
             : layer.Media;
         IndexBox.Text = layer.Index;
-        XBox.Text = layer.X;
-        YBox.Text = layer.Y;
+        if (string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase))
+        {
+            var visualOffset = GetClockVisualOffset(layer);
+            XBox.Text = Math.Round(visualOffset.X).ToString(CultureInfo.InvariantCulture);
+            YBox.Text = Math.Round(visualOffset.Y).ToString(CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            XBox.Text = layer.X;
+            YBox.Text = layer.Y;
+        }
         SizeBox.Text = layer.Size;
         ColorBox.Text = NormalizeColorText(layer.Color);
         TextBox.Text = NormalizeLConnectText(layer.Text);
@@ -2555,7 +2576,7 @@ public partial class MainWindow : Window
         if (isClock)
         {
             DragHintText.Text = string.Equals(layer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase)
-                ? "Drag to move gauge center"
+                ? "Drag to move origin point"
                 : "Drag to move gauge hand";
         }
         else
@@ -4416,11 +4437,11 @@ public partial class MainWindow : Window
                 var center = GetClockCenterPreviewPoint(selectedLayer);
                 var centerMarker = new Ellipse
                 {
-                    Width = 8,
-                    Height = 8,
+                    Width = 5,
+                    Height = 5,
                     Fill = Brushes.Red,
                     Stroke = Brushes.White,
-                    StrokeThickness = 1,
+                    StrokeThickness = 0.75,
                     IsHitTestVisible = false
                 };
                 Canvas.SetLeft(centerMarker, center.X - centerMarker.Width / 2.0);
@@ -4440,11 +4461,21 @@ public partial class MainWindow : Window
                 !string.Equals(selected.Hide, "True", StringComparison.OrdinalIgnoreCase))
             {
                 var resizeHandle = CreatePreviewResizeHandle();
-                resizeHandle.MouseLeftButtonDown += (s, args) =>
+                void BeginResize(MouseButtonEventArgs args)
                 {
+                    if (string.Equals(selected.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) &&
+                        TryGetGaugeAngleHandleAt(selected, args.GetPosition(PreviewCanvas), out var isEndHandle))
+                    {
+                        StartGaugeAngleDrag(selected, isEndHandle);
+                        args.Handled = true;
+                        return;
+                    }
+
                     StartResize(selected, args.GetPosition(PreviewCanvas));
                     args.Handled = true;
-                };
+                }
+                resizeHandle.PreviewMouseLeftButtonDown += (_, args) => BeginResize(args);
+                resizeHandle.MouseLeftButtonDown += (_, args) => BeginResize(args);
                 PositionPreviewResizeHandle(resizeHandle, bounds);
                 Canvas.SetZIndex(resizeHandle, 1001);
                 PreviewCanvas.Children.Add(resizeHandle);
@@ -4618,6 +4649,20 @@ public partial class MainWindow : Window
         };
         visual.MouseLeftButtonDown += (_, args) =>
         {
+            if (_isDraggingGaugeAngle || IsGaugeAngleHandleSource(args.OriginalSource))
+            {
+                args.Handled = true;
+                return;
+            }
+
+            if (string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) &&
+                TryGetGaugeAngleHandleAt(layer, args.GetPosition(PreviewCanvas), out var isEndHandle))
+            {
+                StartGaugeAngleDrag(layer, isEndHandle);
+                args.Handled = true;
+                return;
+            }
+
             if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control) ||
                 Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             {
@@ -4716,15 +4761,12 @@ public partial class MainWindow : Window
     private void DrawAlignmentGuides(LayerRow? selected)
     {
         RemovePreviewGuideLines();
-        if (selected is null)
+        if (selected is null || !_showPreviewGuides)
         {
             return;
         }
 
-        if (_showPreviewGuides)
-        {
-            AddPreviewGridBackground();
-        }
+        AddPreviewGridBackground();
 
         var selectedBounds = GetLayerSelectionBounds(selected);
         var selectedCenterX = selectedBounds.Left + selectedBounds.Width / 2.0;
@@ -4738,12 +4780,9 @@ public partial class MainWindow : Window
 
         if (TryParseInt(selected.X, out _))
         {
-            if (_showPreviewGuides)
+            foreach (var x in GetCanvasGuidePositions(_templateCanvasWidth))
             {
-                foreach (var x in GetCanvasGuidePositions(_templateCanvasWidth))
-                {
-                    AddGuideLine("X", x, "#FFFFFF", 0.18, dashed: true);
-                }
+                AddGuideLine("X", x, "#FFFFFF", 0.18, dashed: true);
             }
 
             AddPreviewGuideLine("X", selectedCenterX, "#FFFFFF", 0.72);
@@ -4751,12 +4790,9 @@ public partial class MainWindow : Window
 
         if (TryParseInt(selected.Y, out _))
         {
-            if (_showPreviewGuides)
+            foreach (var y in GetCanvasGuidePositions(_templateCanvasHeight))
             {
-                foreach (var y in GetCanvasGuidePositions(_templateCanvasHeight))
-                {
-                    AddGuideLine("Y", y, "#FFFFFF", 0.18, dashed: true);
-                }
+                AddGuideLine("Y", y, "#FFFFFF", 0.18, dashed: true);
             }
 
             AddPreviewGuideLine("Y", selectedCenterY, "#FFFFFF", 0.72);
@@ -4848,31 +4884,24 @@ public partial class MainWindow : Window
         _dragStartPositions.Clear();
         _dragStartPreviewBounds.Clear();
         _dragStartSelectionBounds.Clear();
-        _clockDragEditPoseLayers.Clear();
         foreach (LayerRow selectedLayer in LayerGrid.SelectedItems)
         {
             if (string.Equals(selectedLayer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase)) continue;
-            if (string.Equals(selectedLayer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(selectedLayer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase))
-            {
-                _clockDragEditPoseLayers.Add(selectedLayer);
-            }
             _dragStartPositions[selectedLayer] = GetPreviewDragPosition(selectedLayer);
             _dragStartPreviewBounds[selectedLayer] = GetLayerBounds(selectedLayer);
             _dragStartSelectionBounds[selectedLayer] = GetLayerSelectionBounds(selectedLayer);
 
                     }
-
-        if (_clockDragEditPoseLayers.Count > 0)
-        {
-            DrawPreview();
-        }
         PreviewCanvas.CaptureMouse();
     }
 
     private void PreviewCanvas_MouseMove(object sender, MouseEventArgs e)
     {
-        if (_isDraggingPreview && _dragLayer is not null)
+        if (_isDraggingGaugeAngle && _gaugeAngleDragLayer is not null)
+        {
+            UpdateGaugeAngleDrag(_gaugeAngleDragLayer, e.GetPosition(PreviewCanvas));
+        }
+        else if (_isDraggingPreview && _dragLayer is not null)
         {
             var point = e.GetPosition(PreviewCanvas);
             var templateX = ToTemplate(point.X);
@@ -4887,6 +4916,13 @@ public partial class MainWindow : Window
 
                 var snapX = (int)startPos.X + dx;
                 var snapY = (int)startPos.Y + dy;
+                if (string.Equals(targetLayer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) &&
+                    !string.Equals(targetLayer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase))
+                {
+                    var localDelta = RotateScreenDeltaToClockLocal(targetLayer, dx, dy);
+                    snapX = (int)Math.Round(startPos.X + localDelta.X);
+                    snapY = (int)Math.Round(startPos.Y + localDelta.Y);
+                }
 
                 SetPreviewDragPosition(targetLayer, snapX, snapY);
 
@@ -4908,7 +4944,8 @@ public partial class MainWindow : Window
                            type.Contains("GraphLine", StringComparison.OrdinalIgnoreCase) ||
                            type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase);
             bool isSensor = type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
-            bool isImage = type.Contains("Image", StringComparison.OrdinalIgnoreCase);
+            bool isImage = type.Contains("Image", StringComparison.OrdinalIgnoreCase) ||
+                           type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase);
             bool isArcGraph = type.Contains("GraphArchBar", StringComparison.OrdinalIgnoreCase);
 
             if (isSensor)
@@ -4966,27 +5003,35 @@ public partial class MainWindow : Window
 
             var startTemplate = _dragStartPositions[layer];
             var currentTemplate = GetPreviewDragPosition(layer);
-            var dx = ToPreview(currentTemplate.X - startTemplate.X);
-            var dy = ToPreview(currentTemplate.Y - startTemplate.Y);
+            var visualDeltaX = currentTemplate.X - startTemplate.X;
+            var visualDeltaY = currentTemplate.Y - startTemplate.Y;
+            if (string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(layer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase))
+            {
+                var screenDelta = RotateClockLocalDeltaToScreen(layer, visualDeltaX, visualDeltaY);
+                visualDeltaX = screenDelta.X;
+                visualDeltaY = screenDelta.Y;
+            }
+
             var bounds = _dragStartPreviewBounds[layer];
-            Canvas.SetLeft(visual, bounds.Left + dx);
-            Canvas.SetTop(visual, bounds.Top + dy);
+            Canvas.SetLeft(visual, bounds.Left + ToPreview(visualDeltaX));
+            Canvas.SetTop(visual, bounds.Top + ToPreview(visualDeltaY));
 
             if (_previewSelectionVisuals.TryGetValue(layer, out var selection))
             {
                 var selectionBounds = _dragStartSelectionBounds[layer];
                 selection.Width = selectionBounds.Width;
                 selection.Height = selectionBounds.Height;
-                Canvas.SetLeft(selection, selectionBounds.Left + dx);
-                Canvas.SetTop(selection, selectionBounds.Top + dy);
+                Canvas.SetLeft(selection, selectionBounds.Left + ToPreview(visualDeltaX));
+                Canvas.SetTop(selection, selectionBounds.Top + ToPreview(visualDeltaY));
 
                 if (ReferenceEquals(layer, _dragLayer) && _previewResizeHandle != null)
                 {
                     PositionPreviewResizeHandle(
                         _previewResizeHandle,
                         new Rect(
-                            selectionBounds.Left + dx,
-                            selectionBounds.Top + dy,
+                            selectionBounds.Left + ToPreview(visualDeltaX),
+                            selectionBounds.Top + ToPreview(visualDeltaY),
                             selectionBounds.Width,
                             selectionBounds.Height));
                 }
@@ -5004,7 +5049,21 @@ public partial class MainWindow : Window
 
     private void PreviewCanvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (_isDraggingPreview)
+        if (_isDraggingGaugeAngle)
+        {
+            _isDraggingGaugeAngle = false;
+            PreviewCanvas.ReleaseMouseCapture();
+            if (_gaugeAngleDragLayer != null)
+            {
+                MarkLayerDirty(_gaugeAngleDragLayer);
+                LayerGrid.Items.Refresh();
+                PopulateEditorFromSelection();
+                DrawPreview();
+                SetStatus(GetLanguageText("status.gaugeAngleChanged", "Gauge angle changed. Press Apply to save."));
+            }
+            _gaugeAngleDragLayer = null;
+        }
+        else if (_isDraggingPreview)
         {
             _isDraggingPreview = false;
             PreviewCanvas.ReleaseMouseCapture();
@@ -5021,14 +5080,12 @@ public partial class MainWindow : Window
             }
             PopulateEditorFromSelection();
             LayerGrid.Items.Refresh();
-            _clockDragEditPoseLayers.Clear();
             DrawPreview();
             SetStatus(GetLanguageText("status.layoutChanged", "Layout changed. Press Apply to save."));
             _dragLayer = null;
             _dragStartPositions.Clear();
             _dragStartPreviewBounds.Clear();
             _dragStartSelectionBounds.Clear();
-            _clockDragEditPoseLayers.Clear();
         }
         else if (_isResizingPreview)
         {
@@ -5104,6 +5161,40 @@ public partial class MainWindow : Window
         layer.Y = y.ToString(CultureInfo.InvariantCulture);
     }
 
+    private static Point RotateScreenDeltaToClockLocal(LayerRow layer, double dx, double dy)
+    {
+        var radians = -GetClockLayerAngle(layer) * Math.PI / 180.0;
+        var cos = Math.Cos(radians);
+        var sin = Math.Sin(radians);
+        return new Point(
+            dx * cos - dy * sin,
+            dx * sin + dy * cos);
+    }
+
+    private static Point RotateClockLocalDeltaToScreen(LayerRow layer, double dx, double dy)
+    {
+        var radians = GetClockLayerAngle(layer) * Math.PI / 180.0;
+        var cos = Math.Cos(radians);
+        var sin = Math.Sin(radians);
+        return new Point(
+            dx * cos - dy * sin,
+            dx * sin + dy * cos);
+    }
+
+    private static Point GetClockVisualOffset(LayerRow layer)
+    {
+        var localX = TryParseClockNumber(layer.X, out var x) ? x : 0.0;
+        var localY = TryParseClockNumber(layer.Y, out var y) ? y : 0.0;
+        return RotateClockLocalDeltaToScreen(layer, localX, localY);
+    }
+
+    private static Point GetClockLocalOffsetFromVisual(LayerRow layer, string visualXText, string visualYText)
+    {
+        var visualX = TryParseClockNumber(visualXText, out var x) ? x : 0.0;
+        var visualY = TryParseClockNumber(visualYText, out var y) ? y : 0.0;
+        return RotateScreenDeltaToClockLocal(layer, visualX, visualY);
+    }
+
     private Point GetClockCenterPreviewPoint(LayerRow layer)
     {
         var centerX = double.TryParse(layer.ClockCenterX, NumberStyles.Float, CultureInfo.InvariantCulture, out var cx)
@@ -5138,16 +5229,8 @@ public partial class MainWindow : Window
             var imagePath = ResolveLayerMediaPath(layer);
             if (!string.IsNullOrWhiteSpace(imagePath))
             {
-                // L-Connect edits the hand offset with the clock at its zero-angle pose.
-                // Keep that pose active for the whole hand-positioning mode, rather than
-                // switching on mouse-down; switching on mouse-down makes the image appear
-                // to jump away from the pointer before the drag even starts.
-                var positioningHand = selected &&
-                    !string.Equals(layer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase);
-                var angle = positioningHand || _clockDragEditPoseLayers.Contains(layer)
-                    ? 0.0
-                    : GetClockLayerAngle(layer);
-                return CreatePreviewLayerHitTarget(bounds, CreateClockPreviewImage(layer, imagePath, bounds.Width, bounds.Height, angle));
+                var angle = GetClockLayerAngle(layer);
+                return CreatePreviewLayerHitTarget(bounds, CreateClockPreviewImage(layer, imagePath, bounds.Width, bounds.Height, angle, selected));
             }
         }
 
@@ -5200,7 +5283,7 @@ public partial class MainWindow : Window
         return host;
     }
 
-    private FrameworkElement CreateClockPreviewImage(LayerRow layer, string imagePath, double width, double height, double angle)
+    private FrameworkElement CreateClockPreviewImage(LayerRow layer, string imagePath, double width, double height, double angle, bool selected)
     {
         var image = CreatePreviewImage(imagePath, width, height, selected: false, rotationText: "");
         var templateWidth = Math.Max(1.0, ToTemplate(width));
@@ -5213,7 +5296,344 @@ public partial class MainWindow : Window
             (originX - offsetX) / templateWidth,
             (originY - offsetY) / templateHeight);
         image.RenderTransform = new RotateTransform(angle);
-        return image;
+
+        var host = new Grid
+        {
+            Width = width,
+            Height = height,
+            Background = Brushes.Transparent
+        };
+        host.Children.Add(CreateGaugeSweepPreview(layer, imagePath, width, height, templateWidth, templateHeight, offsetX, offsetY, originX, originY, selected));
+        host.Children.Add(image);
+        return host;
+    }
+
+    private FrameworkElement CreateGaugeSweepPreview(
+        LayerRow layer,
+        string imagePath,
+        double width,
+        double height,
+        double templateWidth,
+        double templateHeight,
+        double offsetX,
+        double offsetY,
+        double originX,
+        double originY,
+        bool selected)
+    {
+        var canvas = new Canvas
+        {
+            Width = width,
+            Height = height,
+            Background = Brushes.Transparent,
+            IsHitTestVisible = selected
+        };
+
+        var pivot = new Point(ToPreview(originX - offsetX), ToPreview(originY - offsetY));
+        var zeroAngle = GetGaugeNeedleZeroAngle(layer, imagePath, templateWidth, templateHeight, offsetX, offsetY, originX, originY);
+        var startAngle = TryParseClockNumber(layer.ClockAngle, out var parsedStart)
+            ? parsedStart + zeroAngle
+            : 0.0;
+        var sweepAngle = TryParseClockNumber(layer.ClockEndAngle, out var parsedSweep)
+            ? parsedSweep
+            : 360.0;
+        sweepAngle = Math.Clamp(Math.Abs(sweepAngle), 1.0, 359.9);
+
+        var visualSize = Math.Max(width, height);
+        var radius = Math.Clamp(visualSize * 0.72, 18.0, 140.0);
+        var strokeThickness = Math.Clamp(Math.Min(width, height) * 0.08, 5.0, 18.0);
+
+        var fillBrush = new SolidColorBrush(Color.FromArgb(58, 56, 189, 248));
+        var outlineBrush = new SolidColorBrush(Color.FromArgb(170, 56, 189, 248));
+        canvas.Children.Add(new System.Windows.Shapes.Path
+        {
+            Data = CreateSectorGeometry(pivot, radius, startAngle, sweepAngle),
+            Fill = fillBrush,
+            Stroke = outlineBrush,
+            StrokeThickness = Math.Max(1.0, strokeThickness * 0.16)
+        });
+
+        if (selected)
+        {
+            AddGaugeAngleHandle(canvas, layer, pivot, radius, startAngle, isEndHandle: false);
+            AddGaugeAngleHandle(canvas, layer, pivot, radius, startAngle + sweepAngle, isEndHandle: true);
+        }
+
+        return canvas;
+    }
+
+    private static Geometry CreateSectorGeometry(Point center, double radius, double startAngle, double sweepAngle)
+    {
+        sweepAngle = Math.Clamp(sweepAngle, 1.0, 359.9);
+        var start = PointOnCircle(center, radius, startAngle);
+        var end = PointOnCircle(center, radius, startAngle + sweepAngle);
+        var figure = new PathFigure
+        {
+            StartPoint = center,
+            IsClosed = true,
+            IsFilled = true
+        };
+        figure.Segments.Add(new LineSegment(start, true));
+        figure.Segments.Add(new ArcSegment
+        {
+            Point = end,
+            Size = new Size(radius, radius),
+            SweepDirection = SweepDirection.Clockwise,
+            IsLargeArc = sweepAngle > 180.0
+        });
+        figure.Segments.Add(new LineSegment(center, true));
+        return new PathGeometry(new[] { figure });
+    }
+
+    private void AddGaugeAngleHandle(Canvas canvas, LayerRow layer, Point center, double radius, double angle, bool isEndHandle)
+    {
+        var point = PointOnCircle(center, radius, angle);
+        var size = 10.0;
+        var handle = new Ellipse
+        {
+            Width = size,
+            Height = size,
+            Fill = isEndHandle
+                ? new SolidColorBrush(Color.FromArgb(235, 34, 211, 238))
+                : new SolidColorBrush(Color.FromArgb(235, 250, 204, 21)),
+            Stroke = Brushes.White,
+            StrokeThickness = 1.5,
+            Cursor = Cursors.Hand,
+            IsHitTestVisible = true,
+            Tag = "GaugeAngleHandle",
+            ToolTip = isEndHandle ? "Adjust total angle" : "Adjust start angle"
+        };
+        void BeginDrag(MouseButtonEventArgs args)
+        {
+            StartGaugeAngleDrag(layer, isEndHandle);
+            args.Handled = true;
+        }
+        handle.PreviewMouseLeftButtonDown += (_, args) => BeginDrag(args);
+        handle.MouseLeftButtonDown += (_, args) => BeginDrag(args);
+        Canvas.SetLeft(handle, point.X - size / 2.0);
+        Canvas.SetTop(handle, point.Y - size / 2.0);
+        canvas.Children.Add(handle);
+    }
+
+    private static bool IsGaugeAngleHandleSource(object source)
+    {
+        var current = source as DependencyObject;
+        while (current is not null)
+        {
+            if (current is FrameworkElement { Tag: "GaugeAngleHandle" })
+            {
+                return true;
+            }
+            current = VisualTreeHelper.GetParent(current);
+        }
+        return false;
+    }
+
+    private static double Distance(Point a, Point b)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+
+    private void StartGaugeAngleDrag(LayerRow layer, bool isEndHandle)
+    {
+        if (layer.IsLocked)
+        {
+            return;
+        }
+
+        PreviewCanvas.Focus();
+        if (!LayerGrid.SelectedItems.Contains(layer))
+        {
+            LayerGrid.SelectedItem = layer;
+        }
+        _isDraggingPreview = false;
+        _isResizingPreview = false;
+        _dragLayer = null;
+        _dragStartPositions.Clear();
+        _dragStartPreviewBounds.Clear();
+        _dragStartSelectionBounds.Clear();
+        _isDraggingGaugeAngle = true;
+        _draggingGaugeEndAngle = isEndHandle;
+        _gaugeAngleDragLayer = layer;
+        PushUndoState(GetLanguageText("history.gaugeAngle", "Adjust gauge angle"));
+        _editorUndoArmed = true;
+        PreviewCanvas.CaptureMouse();
+    }
+
+    private void UpdateGaugeAngleDrag(LayerRow layer, Point previewPoint)
+    {
+        var pivot = GetClockCenterPreviewPoint(layer);
+        var visualAngle = NormalizeDegrees(Math.Atan2(previewPoint.Y - pivot.Y, previewPoint.X - pivot.X) * 180.0 / Math.PI);
+        var rawAngle = NormalizeDegrees(visualAngle - GetGaugeNeedleZeroAngle(layer));
+        var currentStart = TryParseClockNumber(layer.ClockAngle, out var parsedStart)
+            ? NormalizeDegrees(parsedStart)
+            : 0.0;
+        if (_draggingGaugeEndAngle)
+        {
+            var sweep = NormalizeDegrees(rawAngle - currentStart);
+            if (sweep < 1.0)
+            {
+                sweep = 1.0;
+            }
+            layer.ClockEndAngle = Math.Clamp(Math.Round(sweep), 1.0, 360.0).ToString(CultureInfo.InvariantCulture);
+            SetGaugeAngleTextSilently(ClockTotalAngleBox, layer.ClockEndAngle);
+        }
+        else
+        {
+            layer.ClockAngle = Math.Round(rawAngle).ToString(CultureInfo.InvariantCulture);
+            SetGaugeAngleTextSilently(ClockStartAngleBox, layer.ClockAngle);
+        }
+
+        UpdateLayerPreviewVisual(layer);
+    }
+
+    private void SetGaugeAngleTextSilently(TextBox textBox, string value)
+    {
+        var wasLoading = _isLoading;
+        _isLoading = true;
+        try
+        {
+            textBox.Text = value;
+        }
+        finally
+        {
+            _isLoading = wasLoading;
+        }
+    }
+
+    private bool TryGetGaugeAngleHandleAt(LayerRow layer, Point previewPoint, out bool isEndHandle)
+    {
+        isEndHandle = false;
+        if (!string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) ||
+            !ReferenceEquals(LayerGrid.SelectedItem, layer))
+        {
+            return false;
+        }
+
+        var imagePath = ResolveLayerMediaPath(layer);
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            return false;
+        }
+
+        var bounds = GetLayerBounds(layer);
+        var templateWidth = Math.Max(1.0, ToTemplate(bounds.Width));
+        var templateHeight = Math.Max(1.0, ToTemplate(bounds.Height));
+        var offsetX = double.TryParse(layer.X, NumberStyles.Float, CultureInfo.InvariantCulture, out var px) ? px : -templateWidth / 2.0;
+        var offsetY = double.TryParse(layer.Y, NumberStyles.Float, CultureInfo.InvariantCulture, out var py) ? py : -templateHeight / 2.0;
+        var originX = double.TryParse(layer.ClockOriginX, NumberStyles.Float, CultureInfo.InvariantCulture, out var ox) ? ox : 0.0;
+        var originY = double.TryParse(layer.ClockOriginY, NumberStyles.Float, CultureInfo.InvariantCulture, out var oy) ? oy : 0.0;
+        var zeroAngle = GetGaugeNeedleZeroAngle(layer, imagePath, templateWidth, templateHeight, offsetX, offsetY, originX, originY);
+        var startAngle = TryParseClockNumber(layer.ClockAngle, out var parsedStart) ? parsedStart + zeroAngle : zeroAngle;
+        var sweepAngle = TryParseClockNumber(layer.ClockEndAngle, out var parsedSweep) ? parsedSweep : 360.0;
+        sweepAngle = Math.Clamp(Math.Abs(sweepAngle), 1.0, 359.9);
+        var radius = Math.Clamp(Math.Max(bounds.Width, bounds.Height) * 0.72, 18.0, 140.0);
+        var center = GetClockCenterPreviewPoint(layer);
+        var startPoint = PointOnCircle(center, radius, startAngle);
+        var endPoint = PointOnCircle(center, radius, startAngle + sweepAngle);
+        var startDistance = Distance(previewPoint, startPoint);
+        var endDistance = Distance(previewPoint, endPoint);
+        var threshold = 18.0;
+        if (startDistance > threshold && endDistance > threshold)
+        {
+            return false;
+        }
+
+        isEndHandle = endDistance < startDistance;
+        return true;
+    }
+
+    private static double NormalizeDegrees(double degrees)
+    {
+        degrees %= 360.0;
+        return degrees < 0 ? degrees + 360.0 : degrees;
+    }
+
+    private double GetGaugeNeedleZeroAngle(LayerRow layer)
+    {
+        var imagePath = ResolveLayerMediaPath(layer);
+        var bounds = GetLayerBounds(layer);
+        var templateWidth = Math.Max(1.0, ToTemplate(bounds.Width));
+        var templateHeight = Math.Max(1.0, ToTemplate(bounds.Height));
+        var offsetX = double.TryParse(layer.X, NumberStyles.Float, CultureInfo.InvariantCulture, out var px) ? px : -templateWidth / 2.0;
+        var offsetY = double.TryParse(layer.Y, NumberStyles.Float, CultureInfo.InvariantCulture, out var py) ? py : -templateHeight / 2.0;
+        var originX = double.TryParse(layer.ClockOriginX, NumberStyles.Float, CultureInfo.InvariantCulture, out var ox) ? ox : 0.0;
+        var originY = double.TryParse(layer.ClockOriginY, NumberStyles.Float, CultureInfo.InvariantCulture, out var oy) ? oy : 0.0;
+        return GetGaugeNeedleZeroAngle(layer, imagePath, templateWidth, templateHeight, offsetX, offsetY, originX, originY);
+    }
+
+    private double GetGaugeNeedleZeroAngle(
+        LayerRow layer,
+        string imagePath,
+        double templateWidth,
+        double templateHeight,
+        double offsetX,
+        double offsetY,
+        double originX,
+        double originY)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+        {
+            return 0.0;
+        }
+
+        var pivotXRatio = templateWidth > 0 ? (originX - offsetX) / templateWidth : 0.5;
+        var pivotYRatio = templateHeight > 0 ? (originY - offsetY) / templateHeight : 0.5;
+        var cacheKey = string.Join("|",
+            imagePath,
+            Math.Round(pivotXRatio, 4).ToString(CultureInfo.InvariantCulture),
+            Math.Round(pivotYRatio, 4).ToString(CultureInfo.InvariantCulture),
+            layer.ClockOriginX,
+            layer.ClockOriginY);
+        if (_gaugeNeedleZeroAngleCache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            using var bitmap = new System.Drawing.Bitmap(imagePath);
+            var pivotX = Math.Clamp(pivotXRatio, -4.0, 5.0) * bitmap.Width;
+            var pivotY = Math.Clamp(pivotYRatio, -4.0, 5.0) * bitmap.Height;
+            var bestDistance = 0.0;
+            var bestX = 0.0;
+            var bestY = 0.0;
+            var step = Math.Max(1, Math.Min(bitmap.Width, bitmap.Height) / 180);
+            for (var y = 0; y < bitmap.Height; y += step)
+            {
+                for (var x = 0; x < bitmap.Width; x += step)
+                {
+                    var color = bitmap.GetPixel(x, y);
+                    if (color.A < 32)
+                    {
+                        continue;
+                    }
+
+                    var dx = x - pivotX;
+                    var dy = y - pivotY;
+                    var distance = dx * dx + dy * dy;
+                    if (distance > bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestX = dx;
+                        bestY = dy;
+                    }
+                }
+            }
+
+            var angle = bestDistance > 1.0
+                ? NormalizeDegrees(Math.Atan2(bestY, bestX) * 180.0 / Math.PI)
+                : 0.0;
+            _gaugeNeedleZeroAngleCache[cacheKey] = angle;
+            return angle;
+        }
+        catch
+        {
+            _gaugeNeedleZeroAngleCache[cacheKey] = 0.0;
+            return 0.0;
+        }
     }
 
     private FrameworkElement CreateSensorPreview(LayerRow layer, double width, double height)
@@ -5709,6 +6129,53 @@ public partial class MainWindow : Window
         }
 
         layer.ZoomRate = "1";
+    }
+
+    private bool NormalizeClockLayerPlacementIfOffCanvas(LayerRow layer)
+    {
+        if (!string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var mediaSize = GetLayerMediaPixelSize(layer, fallbackWidth: 0, fallbackHeight: 0);
+        if (mediaSize.Width <= 0 || mediaSize.Height <= 0)
+        {
+            return false;
+        }
+
+        var zoom = TryParseZoom(layer.ZoomRate, out var parsedZoom) && parsedZoom > 0 ? parsedZoom : 1.0;
+        var renderedWidth = mediaSize.Width * zoom;
+        var renderedHeight = mediaSize.Height * zoom;
+        if (renderedWidth <= 0 || renderedHeight <= 0)
+        {
+            return false;
+        }
+
+        var centerX = TryParseInvariant(layer.ClockCenterX, out var parsedCenterX)
+            ? parsedCenterX
+            : _templateCanvasWidth / 2.0;
+        var centerY = TryParseInvariant(layer.ClockCenterY, out var parsedCenterY)
+            ? parsedCenterY
+            : _templateCanvasHeight / 2.0;
+        var posX = TryParseInvariant(layer.X, out var parsedPosX) ? parsedPosX : 0.0;
+        var posY = TryParseInvariant(layer.Y, out var parsedPosY) ? parsedPosY : 0.0;
+
+        var left = centerX + posX;
+        var top = centerY + posY;
+        var offCanvas =
+            left + renderedWidth < 0 ||
+            top + renderedHeight < 0 ||
+            left > _templateCanvasWidth ||
+            top > _templateCanvasHeight;
+        if (!offCanvas)
+        {
+            return false;
+        }
+
+        layer.X = Math.Round(-renderedWidth / 2.0).ToString(CultureInfo.InvariantCulture);
+        layer.Y = Math.Round(-renderedHeight / 2.0).ToString(CultureInfo.InvariantCulture);
+        return true;
     }
 
     private static bool IsGroupingMetadataLayer(LayerRow layer) =>
@@ -7765,6 +8232,11 @@ public partial class MainWindow : Window
 
     private static double GetGraphPreviewRatio(LayerRow layer)
     {
+        return 1.0;
+    }
+
+    private static double GetGraphDataRatio(LayerRow layer)
+    {
         var numericText = Regex.Match(layer.Text ?? "", @"[-+]?\d+(?:[.,]\d+)?").Value;
         var value = double.TryParse(
             numericText.Replace(',', '.'),
@@ -8293,9 +8765,40 @@ public partial class MainWindow : Window
         return new Size(w, h);
     }
 
+    private System.Drawing.Rectangle GetLayerMediaInkBounds(string imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath) || !File.Exists(imagePath))
+        {
+            return System.Drawing.Rectangle.Empty;
+        }
+
+        if (_imageInkBoundsCache.TryGetValue(imagePath, out var cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            using var bitmap = new System.Drawing.Bitmap(imagePath);
+            var bounds = FindBitmapInkBounds(bitmap);
+            _imageInkBoundsCache[imagePath] = bounds;
+            return bounds;
+        }
+        catch
+        {
+            _imageInkBoundsCache[imagePath] = System.Drawing.Rectangle.Empty;
+            return System.Drawing.Rectangle.Empty;
+        }
+    }
+
     private Rect GetLayerSelectionBounds(LayerRow layer)
     {
         var type = layer.Type ?? "";
+        if (type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase))
+        {
+            return GetClockInkSelectionBounds(layer);
+        }
+
         if (!type.Equals("GraphItem", StringComparison.OrdinalIgnoreCase))
         {
             return GetLayerBounds(layer);
@@ -8309,6 +8812,59 @@ public partial class MainWindow : Window
         }
 
         return GetGdiTextLayerRender(layer, text).Bounds;
+    }
+
+    private Rect GetClockInkSelectionBounds(LayerRow layer)
+    {
+        var imagePath = ResolveLayerMediaPath(layer);
+        var ink = GetLayerMediaInkBounds(imagePath);
+        if (ink.IsEmpty)
+        {
+            return GetLayerBounds(layer);
+        }
+
+        var zoom = TryParseZoom(layer.ZoomRate, out var zr) && zr > 0 ? zr : 1.0;
+        var centerX = TryParseInvariant(layer.ClockCenterX, out var cx) ? cx : _templateCanvasWidth / 2.0;
+        var centerY = TryParseInvariant(layer.ClockCenterY, out var cy) ? cy : _templateCanvasHeight / 2.0;
+        var posX = TryParseInvariant(layer.X, out var px) ? px : 0.0;
+        var posY = TryParseInvariant(layer.Y, out var py) ? py : 0.0;
+        var originX = TryParseInvariant(layer.ClockOriginX, out var ox) ? ox : 0.0;
+        var originY = TryParseInvariant(layer.ClockOriginY, out var oy) ? oy : 0.0;
+        var angle = GetClockLayerAngle(layer);
+        var pivot = new Point(centerX + originX, centerY + originY);
+        var left = centerX + posX + ink.Left * zoom;
+        var top = centerY + posY + ink.Top * zoom;
+        var right = centerX + posX + ink.Right * zoom;
+        var bottom = centerY + posY + ink.Bottom * zoom;
+        var points = new[]
+        {
+            RotateTemplatePoint(new Point(left, top), pivot, angle),
+            RotateTemplatePoint(new Point(right, top), pivot, angle),
+            RotateTemplatePoint(new Point(right, bottom), pivot, angle),
+            RotateTemplatePoint(new Point(left, bottom), pivot, angle)
+        };
+        var minX = points.Min(p => p.X);
+        var minY = points.Min(p => p.Y);
+        var maxX = points.Max(p => p.X);
+        var maxY = points.Max(p => p.Y);
+        var padding = 4.0;
+        return new Rect(
+            ToPreview(minX - padding),
+            ToPreview(minY - padding),
+            ToPreview(maxX - minX + padding * 2),
+            ToPreview(maxY - minY + padding * 2));
+    }
+
+    private static Point RotateTemplatePoint(Point point, Point pivot, double angle)
+    {
+        var radians = angle * Math.PI / 180.0;
+        var cos = Math.Cos(radians);
+        var sin = Math.Sin(radians);
+        var dx = point.X - pivot.X;
+        var dy = point.Y - pivot.Y;
+        return new Point(
+            pivot.X + dx * cos - dy * sin,
+            pivot.Y + dx * sin + dy * cos);
     }
 
     private static double GetGraphPreviewPadding(LayerRow layer)
@@ -8697,7 +9253,7 @@ public partial class MainWindow : Window
 
             PutMemoryValues(fresh, readings);
             PutNetworkValues(fresh, readings);
-            PutRounded(fresh, "FPS_AVG", FindReading(readings, r => r.Sensor.Contains("PresentMon", StringComparison.OrdinalIgnoreCase) && r.Unit.Equals("FPS", StringComparison.OrdinalIgnoreCase) && r.Name.Contains("Presented (avg)", StringComparison.OrdinalIgnoreCase)));
+            PutRounded(fresh, "FPS_AVG", FindFpsAverageReading(readings));
             PutAlias(fresh, "DOWNSPEED", "DOWNDSPEED");
             PutAlias(fresh, "FPS", "FPS_AVG");
 
@@ -8756,6 +9312,27 @@ public partial class MainWindow : Window
         }
 
         return FindReading(readings, r => IsDiscreteGpuSensor(r) && r.Group == "READING_CLOCK" && r.Name.Equals("GPU Clock", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static SensorReading? FindFpsAverageReading(IEnumerable<SensorReading> readings)
+    {
+        var fpsReadings = readings
+            .Where(r => r.Unit.Equals("FPS", StringComparison.OrdinalIgnoreCase) ||
+                        r.Name.Contains("FPS", StringComparison.OrdinalIgnoreCase) ||
+                        r.Sensor.Contains("PresentMon", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        return fpsReadings
+                   .Where(r => r.Sensor.Contains("PresentMon", StringComparison.OrdinalIgnoreCase))
+                   .OrderByDescending(r => r.Name.Contains("Presented", StringComparison.OrdinalIgnoreCase) &&
+                                           r.Name.Contains("avg", StringComparison.OrdinalIgnoreCase))
+                   .ThenByDescending(r => r.Name.Contains("Framerate", StringComparison.OrdinalIgnoreCase) &&
+                                          r.Name.Contains("avg", StringComparison.OrdinalIgnoreCase))
+                   .ThenByDescending(r => r.Name.Contains("avg", StringComparison.OrdinalIgnoreCase))
+                   .FirstOrDefault() is var presentMonReading && !string.IsNullOrEmpty(presentMonReading.Name)
+            ? presentMonReading
+            : FindReading(fpsReadings, r => r.Name.Contains("avg", StringComparison.OrdinalIgnoreCase)) ??
+              FindReading(fpsReadings, _ => true);
     }
 
     private static bool IsCpuSensor(SensorReading reading)
@@ -10713,6 +11290,10 @@ public partial class MainWindow : Window
         if (updateCanvas)
         {
             UpdateCanvasConfiguration(resetZoom: false);
+            if (IsWideScreenDeviceSelected())
+            {
+                ScheduleFitPreviewToAvailableArea();
+            }
             RefreshBackgroundPreviewAfterOrientationChange();
         }
     }
@@ -10834,7 +11415,14 @@ public partial class MainWindow : Window
 
         if (resetZoom)
         {
-            SetCanvasZoom(universal ? 1.0 : 1.8);
+            if (universal)
+            {
+                ScheduleFitPreviewToAvailableArea();
+            }
+            else
+            {
+                SetCanvasZoom(1.8);
+            }
         }
     }
 
@@ -12194,11 +12782,13 @@ public partial class MainWindow : Window
 
     private void CanvasZoomMinus_Click(object sender, RoutedEventArgs e)
     {
+        _autoFitWidePreview = false;
         SetCanvasZoom(_canvasZoom - 0.1);
     }
 
     private void CanvasZoomPlus_Click(object sender, RoutedEventArgs e)
     {
+        _autoFitWidePreview = false;
         SetCanvasZoom(_canvasZoom + 0.1);
     }
 
@@ -12261,6 +12851,28 @@ public partial class MainWindow : Window
 
     private void FitPreviewButton_Click(object sender, RoutedEventArgs e)
     {
+        _autoFitWidePreview = IsWideScreenDeviceSelected();
+        FitPreviewToAvailableArea();
+    }
+
+    private void ScheduleFitPreviewToAvailableArea()
+    {
+        _autoFitWidePreview = IsWideScreenDeviceSelected();
+        Dispatcher.BeginInvoke(
+            new Action(FitPreviewToAvailableArea),
+            System.Windows.Threading.DispatcherPriority.Render);
+    }
+
+    private void PreviewScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_autoFitWidePreview && IsWideScreenDeviceSelected())
+        {
+            ScheduleFitPreviewToAvailableArea();
+        }
+    }
+
+    private void FitPreviewToAvailableArea()
+    {
         PreviewScrollViewer.UpdateLayout();
         var availableWidth = PreviewScrollViewer.ViewportWidth;
         var availableHeight = PreviewScrollViewer.ViewportHeight;
@@ -12270,8 +12882,8 @@ public partial class MainWindow : Window
             availableHeight = PreviewScrollViewer.ActualHeight;
         }
 
-        var widthScale = Math.Max(0.2, (availableWidth - 8) / Math.Max(1, PreviewFrame.Width));
-        var heightScale = Math.Max(0.2, (availableHeight - 8) / Math.Max(1, PreviewFrame.Height));
+        var widthScale = Math.Max(0.2, availableWidth / Math.Max(1, PreviewFrame.Width));
+        var heightScale = Math.Max(0.2, availableHeight / Math.Max(1, PreviewFrame.Height));
         SetCanvasZoom(Math.Min(widthScale, heightScale));
         PreviewScrollViewer.ScrollToHorizontalOffset(0);
         PreviewScrollViewer.ScrollToVerticalOffset(0);
@@ -12284,17 +12896,26 @@ public partial class MainWindow : Window
         CanvasZoomText.Text = $"{_canvasZoom * 100:0}%";
         if (CanvasZoomSlider.Value != _canvasZoom)
         {
-            CanvasZoomSlider.Value = _canvasZoom;
+            _updatingCanvasZoom = true;
+            try
+            {
+                CanvasZoomSlider.Value = _canvasZoom;
+            }
+            finally
+            {
+                _updatingCanvasZoom = false;
+            }
         }
     }
 
     private void CanvasZoomSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!IsLoaded)
+        if (!IsLoaded || _updatingCanvasZoom)
         {
             return;
         }
 
+        _autoFitWidePreview = false;
         SetCanvasZoom(e.NewValue);
     }
 
@@ -12305,6 +12926,7 @@ public partial class MainWindow : Window
             return;
         }
 
+        _autoFitWidePreview = false;
         SetCanvasZoom(_canvasZoom + (e.Delta > 0 ? 0.1 : -0.1));
         e.Handled = true;
     }
@@ -20101,7 +20723,7 @@ private static string CreateExportPackageBaseName(string templateId)
         ClockAnglesLabel.Content = GetText(text, "labels.clockAngles", "START / TOTAL");
         ClockRateOffsetLabel.Content = GetText(text, "labels.clockRateOffset", "RATE OFFSET (0-1)");
         ClockOriginLabel.Content = GetText(text, "labels.clockOrigin", "ORIGIN X / Y");
-        ClockMoveOriginCheck.Content = GetText(text, "labels.dragCenter", "Drag center");
+        ClockMoveOriginCheck.Content = GetText(text, "labels.dragCenter", "Move Origin Point");
         ClockStartAngleBox.ToolTip = GetText(text, "tooltips.startAngle", "Start angle");
         ClockTotalAngleBox.ToolTip = GetText(text, "tooltips.totalAngle", "Total angle");
         DeleteTemplateButton.ToolTip = GetText(text, "tooltips.deleteTheme", "Delete selected non-official theme");
@@ -26140,8 +26762,6 @@ private static string CreateExportPackageBaseName(string templateId)
 
     private void UpdateLayerFromInputs(LayerRow layer)
     {
-        layer.X = XBox.Text;
-        layer.Y = YBox.Text;
         var type = layer.Type ?? "";
         var isText = type.Equals("GraphItem", StringComparison.OrdinalIgnoreCase);
         var isGraph = type.Equals("GraphStatuBar", StringComparison.OrdinalIgnoreCase) ||
@@ -26151,6 +26771,24 @@ private static string CreateExportPackageBaseName(string templateId)
                       type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
         var isSensor = type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
         var isClock = type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase);
+
+        if (isClock)
+        {
+            layer.ClockAngle = ClockStartAngleBox.Text;
+            layer.ClockEndAngle = ClockTotalAngleBox.Text;
+            layer.ClockOffset = ClockOffsetBox.Text;
+            layer.ClockOriginX = ClockOriginXBox.Text;
+            layer.ClockOriginY = ClockOriginYBox.Text;
+            layer.Revert = ClockRevertCheck.IsChecked == true ? "True" : "False";
+            var localOffset = GetClockLocalOffsetFromVisual(layer, XBox.Text, YBox.Text);
+            layer.X = Math.Round(localOffset.X).ToString(CultureInfo.InvariantCulture);
+            layer.Y = Math.Round(localOffset.Y).ToString(CultureInfo.InvariantCulture);
+        }
+        else
+        {
+            layer.X = XBox.Text;
+            layer.Y = YBox.Text;
+        }
 
         if (isClock)
         {
@@ -26604,7 +27242,7 @@ private static string CreateExportPackageBaseName(string templateId)
     {
         if (_isLoading) return;
         if (_suppressSelectionHydrationEvents) return;
-        if (_isDraggingPreview || _isResizingPreview) return;
+        if (_isDraggingPreview || _isResizingPreview || _isDraggingGaugeAngle) return;
         if (LayerGrid.SelectedItem is not LayerRow layer) return;
 
         if (!_editorUndoArmed)
@@ -26623,7 +27261,7 @@ private static string CreateExportPackageBaseName(string templateId)
         if (string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase))
         {
             DragHintText.Text = string.Equals(layer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase)
-                ? "Drag to move gauge center"
+                ? "Drag to move origin point"
                 : "Drag to move gauge hand";
         }
         MarkLayerDirty(layer);
@@ -26772,6 +27410,8 @@ private static string CreateExportPackageBaseName(string templateId)
                 _currentTemplatePath,
                 layer,
                 output,
+                Math.Max(1, (int)Math.Round(_templateCanvasWidth)),
+                Math.Max(1, (int)Math.Round(_templateCanvasHeight)),
                 token);
             if (token.IsCancellationRequested ||
                 version != _graphPreviewRenderVersion ||
@@ -28030,7 +28670,7 @@ private static string CreateExportPackageBaseName(string templateId)
 
                     if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
                     {
-                        embeddedPreviewPackagePath = TryCreatePackageWithEmbeddedPreview(normalizedPackagePath, previewPath);
+                        embeddedPreviewPackagePath = await TryCreatePackageWithEmbeddedPreviewAsync(normalizedPackagePath, previewPath);
                         if (!string.IsNullOrWhiteSpace(embeddedPreviewPackagePath))
                         {
                             temporaryPaths.Add(embeddedPreviewPackagePath);
@@ -28113,6 +28753,16 @@ private static string CreateExportPackageBaseName(string templateId)
             {
                 manifest.TemplateId = SanitizeFileName(defaultName);
             }
+            var normalizedTemplateId = SanitizeFileName(manifest.TemplateId);
+            if (string.IsNullOrWhiteSpace(normalizedTemplateId))
+            {
+                normalizedTemplateId = SanitizeFileName(defaultName);
+            }
+            if (string.IsNullOrWhiteSpace(normalizedTemplateId))
+            {
+                normalizedTemplateId = "theme";
+            }
+            manifest.TemplateId = normalizedTemplateId;
 
             var templateEntry = !string.IsNullOrWhiteSpace(manifest.TemplateFile)
                 ? TryGetPackageEntry(archive, manifest.TemplateFile)
@@ -28120,7 +28770,21 @@ private static string CreateExportPackageBaseName(string templateId)
             templateEntry ??= archive.Entries.FirstOrDefault(entry => entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase));
             if (templateEntry != null)
             {
-                manifest.TemplateFile = templateEntry.FullName.Replace('\\', '/');
+                var normalizedTemplateName = normalizedTemplateId + ".template";
+                var oldTemplateName = templateEntry.FullName.Replace('\\', '/');
+                var normalizedTemplatePath = Path.Combine(tempRoot, normalizedTemplateName);
+                await File.WriteAllBytesAsync(normalizedTemplatePath, ReadZipEntryBytes(templateEntry));
+                await _supporter.NormalizeTemplateIdentityAsync(
+                    manifest.DeviceModel,
+                    normalizedTemplatePath,
+                    normalizedTemplateId);
+                if (!oldTemplateName.Equals(normalizedTemplateName, StringComparison.OrdinalIgnoreCase))
+                {
+                    templateEntry.Delete();
+                }
+                ReplaceArchiveEntryFromFile(archive, normalizedTemplateName, normalizedTemplatePath);
+                manifest.TemplateFile = normalizedTemplateName;
+                templateEntry = TryGetPackageEntry(archive, manifest.TemplateFile);
             }
 
             var isUniversal88 = string.Equals(
@@ -28143,14 +28807,10 @@ private static string CreateExportPackageBaseName(string templateId)
                         InferUniversalOrientationFromPackageName(packagePath),
                         InferUniversalOrientationFromPackageName(defaultName));
                     var preferLandscape = !string.Equals(orientation, "portrait", StringComparison.OrdinalIgnoreCase);
-                    var safeBase = SanitizeFileName(Path.GetFileNameWithoutExtension(backgroundEntry.Name));
+                    var safeBase = normalizedTemplateId;
                     if (string.IsNullOrWhiteSpace(safeBase))
                     {
-                        safeBase = SanitizeFileName(manifest.TemplateId);
-                    }
-                    if (string.IsNullOrWhiteSpace(safeBase))
-                    {
-                        safeBase = "background";
+                        safeBase = "theme";
                     }
 
                     var sourcePath = Path.Combine(tempRoot, backgroundEntry.Name);
@@ -28200,10 +28860,12 @@ private static string CreateExportPackageBaseName(string templateId)
                     var mp4EntryName = $"background/{Path.GetFileName(mp4Path)}";
                     await WaitForFileReadableAsync(h264Path);
                     ReplaceArchiveEntryFromFile(archive, h264EntryName, h264Path);
+                    ReplaceArchiveEntryFromFile(archive, Path.GetFileName(h264Path), h264Path);
                     if (File.Exists(mp4Path))
                     {
                         await WaitForFileReadableAsync(mp4Path);
                         ReplaceArchiveEntryFromFile(archive, mp4EntryName, mp4Path);
+                        ReplaceArchiveEntryFromFile(archive, Path.GetFileName(mp4Path), mp4Path);
                     }
                     manifest.BackgroundFile = h264EntryName;
                     manifest.UniversalOrientation = string.Equals(orientation, "portrait", StringComparison.OrdinalIgnoreCase)
@@ -28356,7 +29018,7 @@ private static string CreateExportPackageBaseName(string templateId)
 
             if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
             {
-                embeddedPreviewPackagePath = TryCreatePackageWithEmbeddedPreview(packagePath, previewPath);
+                embeddedPreviewPackagePath = await TryCreatePackageWithEmbeddedPreviewAsync(packagePath, previewPath);
             }
 
             var uploadPackagePath = string.IsNullOrWhiteSpace(embeddedPreviewPackagePath)
@@ -28386,8 +29048,10 @@ private static string CreateExportPackageBaseName(string templateId)
         }
     }
 
-    private static string TryCreatePackageWithEmbeddedPreview(string packagePath, string previewPath)
+    private async Task<string> TryCreatePackageWithEmbeddedPreviewAsync(string packagePath, string previewPath)
     {
+        var normalizedPreviewPath = "";
+        var extractedTemplatePath = "";
         try
         {
             if (!File.Exists(packagePath) || !File.Exists(previewPath))
@@ -28431,9 +29095,60 @@ private static string CreateExportPackageBaseName(string templateId)
                 safeId = "theme";
             }
 
+            normalizedPreviewPath = NormalizeGallerySubmissionPreviewImage(previewPath, manifest);
+            var effectivePreviewPath = string.IsNullOrWhiteSpace(normalizedPreviewPath)
+                ? previewPath
+                : normalizedPreviewPath;
+
+            var templateEntry = !string.IsNullOrWhiteSpace(manifest.TemplateFile)
+                ? TryGetPackageEntry(archive, manifest.TemplateFile)
+                : null;
+            templateEntry ??= archive.Entries.FirstOrDefault(entry =>
+                entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase));
+            if (templateEntry != null)
+            {
+                var normalizedTemplateName = safeId + ".template";
+                extractedTemplatePath = Path.Combine(
+                    Path.GetTempPath(),
+                    $"gallery-submit-template-{Guid.NewGuid():N}.template");
+                await File.WriteAllBytesAsync(extractedTemplatePath, ReadZipEntryBytes(templateEntry));
+                await _supporter.NormalizeTemplateIdentityAsync(
+                    manifest.DeviceModel,
+                    extractedTemplatePath,
+                    safeId);
+                await _supporter.UpdateThemePreviewAsync(
+                    manifest.DeviceModel,
+                    extractedTemplatePath,
+                    effectivePreviewPath);
+                if (IsWideScreenDeviceModel(manifest.DeviceModel))
+                {
+                    try
+                    {
+                        await _supporter.UpdateAnimationPreviewBitmapsAsync(
+                            manifest.DeviceModel,
+                            extractedTemplatePath,
+                            effectivePreviewPath);
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Warning(
+                            $"Package animation preview could not be embedded for {safeId}: " +
+                            $"{ex.GetType().Name}: {ex.Message}");
+                    }
+                }
+
+                if (!templateEntry.FullName.Equals(normalizedTemplateName, StringComparison.OrdinalIgnoreCase))
+                {
+                    templateEntry.Delete();
+                }
+                ReplaceArchiveEntryFromFile(archive, normalizedTemplateName, extractedTemplatePath);
+                manifest.TemplateFile = normalizedTemplateName;
+                manifest.TemplateId = safeId;
+            }
+
             manifest.PreviewFile = $"preview/template_{safeId}.png";
             TryGetPackageEntry(archive, manifest.PreviewFile)?.Delete();
-            archive.CreateEntryFromFile(previewPath, manifest.PreviewFile, CompressionLevel.Optimal);
+            archive.CreateEntryFromFile(effectivePreviewPath, manifest.PreviewFile, CompressionLevel.Optimal);
 
             archive.GetEntry("manifest.json")?.Delete();
             var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
@@ -28446,6 +29161,11 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             AppLogger.Warning($"Package preview could not be embedded: {ex.Message}");
             return "";
+        }
+        finally
+        {
+            TryDeleteFile(normalizedPreviewPath);
+            TryDeleteFile(extractedTemplatePath);
         }
     }
 
@@ -28613,6 +29333,194 @@ private static string CreateExportPackageBaseName(string templateId)
         var output = Path.Combine(Path.GetTempPath(), $"gallery-submit-preview-{Guid.NewGuid():N}.png");
         File.WriteAllBytes(output, previewBytes);
         return output;
+    }
+
+    private static string NormalizeGallerySubmissionPreviewImage(
+        string sourcePath,
+        ThemePackageManifest manifest)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath) ||
+            !IsGalleryImageExtension(Path.GetExtension(sourcePath)) ||
+            !IsWideScreenDeviceModel(manifest.DeviceModel))
+        {
+            return "";
+        }
+
+        var portrait = string.Equals(
+            NormalizeUniversalOrientation(manifest.UniversalOrientation),
+            "portrait",
+            StringComparison.OrdinalIgnoreCase);
+        var targetWidth = portrait ? 480 : 1920;
+        var targetHeight = portrait ? 1920 : 480;
+
+        try
+        {
+            using var source = new System.Drawing.Bitmap(sourcePath);
+            if (source.Width <= 0 || source.Height <= 0)
+            {
+                return "";
+            }
+
+            var crop = portrait
+                ? FindDominantContentColumnBounds(source)
+                : FindDominantContentRowBounds(source);
+            if (crop.IsEmpty)
+            {
+                return "";
+            }
+
+            var shouldNormalize =
+                source.Width != targetWidth ||
+                source.Height != targetHeight ||
+                crop.X > 4 ||
+                crop.Y > 4 ||
+                source.Width - crop.Right > 4 ||
+                source.Height - crop.Bottom > 4;
+            if (!shouldNormalize)
+            {
+                return "";
+            }
+
+            using var cropped = source.Clone(crop, source.PixelFormat);
+            using var normalized = new System.Drawing.Bitmap(
+                targetWidth,
+                targetHeight,
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var graphics = System.Drawing.Graphics.FromImage(normalized))
+            {
+                graphics.Clear(System.Drawing.Color.Black);
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.HighQuality;
+                graphics.DrawImage(
+                    cropped,
+                    new System.Drawing.Rectangle(0, 0, targetWidth, targetHeight),
+                    new System.Drawing.Rectangle(0, 0, cropped.Width, cropped.Height),
+                    System.Drawing.GraphicsUnit.Pixel);
+            }
+
+            var output = Path.Combine(Path.GetTempPath(), $"gallery-submit-preview-normalized-{Guid.NewGuid():N}.png");
+            normalized.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+            return output;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"Gallery submission preview could not be normalized: {ex.Message}");
+            return "";
+        }
+    }
+
+    private static System.Drawing.Rectangle FindDominantContentColumnBounds(System.Drawing.Bitmap bitmap)
+    {
+        var threshold = Math.Max(20, bitmap.Height / 100);
+        var counts = new int[bitmap.Width];
+        for (var x = 0; x < bitmap.Width; x++)
+        {
+            var count = 0;
+            for (var y = 0; y < bitmap.Height; y++)
+            {
+                if (IsNonBlackPreviewPixel(bitmap.GetPixel(x, y)))
+                {
+                    count++;
+                }
+            }
+            counts[x] = count;
+        }
+
+        var run = FindDominantActivityRun(counts, threshold, 3);
+        if (run.Start < 0)
+        {
+            return new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height);
+        }
+
+        var left = Math.Max(0, run.Start - 4);
+        var right = Math.Min(bitmap.Width, run.End + 1 + 4);
+        return new System.Drawing.Rectangle(left, 0, Math.Max(1, right - left), bitmap.Height);
+    }
+
+    private static System.Drawing.Rectangle FindDominantContentRowBounds(System.Drawing.Bitmap bitmap)
+    {
+        var threshold = Math.Max(20, bitmap.Width / 100);
+        var counts = new int[bitmap.Height];
+        for (var y = 0; y < bitmap.Height; y++)
+        {
+            var count = 0;
+            for (var x = 0; x < bitmap.Width; x++)
+            {
+                if (IsNonBlackPreviewPixel(bitmap.GetPixel(x, y)))
+                {
+                    count++;
+                }
+            }
+            counts[y] = count;
+        }
+
+        var run = FindDominantActivityRun(counts, threshold, 3);
+        if (run.Start < 0)
+        {
+            return new System.Drawing.Rectangle(0, 0, bitmap.Width, bitmap.Height);
+        }
+
+        var top = Math.Max(0, run.Start - 4);
+        var bottom = Math.Min(bitmap.Height, run.End + 1 + 4);
+        return new System.Drawing.Rectangle(0, top, bitmap.Width, Math.Max(1, bottom - top));
+    }
+
+    private static (int Start, int End) FindDominantActivityRun(int[] counts, int threshold, int gapTolerance)
+    {
+        var bestStart = -1;
+        var bestEnd = -1;
+        long bestScore = -1;
+        var start = -1;
+        var end = -1;
+        var gap = 0;
+        long score = 0;
+
+        for (var i = 0; i < counts.Length; i++)
+        {
+            if (counts[i] > threshold)
+            {
+                if (start < 0)
+                {
+                    start = i;
+                    score = 0;
+                }
+                end = i;
+                gap = 0;
+                score += counts[i];
+            }
+            else if (start >= 0 && gap++ > gapTolerance)
+            {
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestStart = start;
+                    bestEnd = end;
+                }
+                start = -1;
+                end = -1;
+                score = 0;
+                gap = 0;
+            }
+        }
+
+        if (start >= 0 && score > bestScore)
+        {
+            bestStart = start;
+            bestEnd = end;
+        }
+
+        return (bestStart, bestEnd);
+    }
+
+    private static bool IsNonBlackPreviewPixel(System.Drawing.Color color)
+    {
+        if (color.A < 16)
+        {
+            return false;
+        }
+
+        return color.R > 18 || color.G > 18 || color.B > 18;
     }
 
     private static string NormalizeJpegOrientationToPng(string sourcePath)

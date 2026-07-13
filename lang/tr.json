@@ -180,7 +180,7 @@
     "clockAngles": "BAŞLANGIÇ / TOPLAM",
     "clockRateOffset": "ORAN OFSETİ (0-1)",
     "clockOrigin": "ORİJİN X / Y",
-    "dragCenter": "Merkezi sürükle",
+    "dragCenter": "Origin noktasını taşı",
     "shadow": "GÖLGE"
   },
   "edit": {

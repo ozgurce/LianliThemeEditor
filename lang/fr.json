@@ -180,7 +180,7 @@
     "clockAngles": "DÉBUT / TOTAL",
     "clockRateOffset": "DÉCALAGE DE TAUX (0-1)",
     "clockOrigin": "ORIGINE X/Y",
-    "dragCenter": "Faites glisser le centre",
+    "dragCenter": "Move Origin Point",
     "shadow": "OMBRE"
   },
   "edit": {

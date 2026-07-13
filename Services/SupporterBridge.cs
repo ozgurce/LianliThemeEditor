@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using System.Text.Json;
@@ -375,6 +376,8 @@ public sealed class SupporterBridge : ISupporterBridge
         string templatePath,
         LayerRow layer,
         string outputPath,
+        int canvasWidth = 480,
+        int canvasHeight = 480,
         CancellationToken cancellationToken = default)
     {
         var args = BaseTemplateArgs(deviceModel, templatePath);
@@ -384,7 +387,9 @@ public sealed class SupporterBridge : ISupporterBridge
             "-LayerIndex", layer.Index,
             "-LayerX", layer.X,
             "-LayerY", layer.Y,
-            "-PreviewValue", string.IsNullOrWhiteSpace(layer.Text) || layer.Text == "0" ? "53" : layer.Text,
+            "-PreviewValue", "100",
+            "-CanvasWidth", Math.Max(1, canvasWidth).ToString(CultureInfo.InvariantCulture),
+            "-CanvasHeight", Math.Max(1, canvasHeight).ToString(CultureInfo.InvariantCulture),
             "-Output", outputPath
         });
 
@@ -781,7 +786,6 @@ public sealed class SupporterBridge : ISupporterBridge
         {
             "CPUPOWER" => "CPUPWR",
             "GPUPOWER" => "GPUPWR",
-            "FPS_AVG" => "FPS",
             _ => dataSource
         };
     }

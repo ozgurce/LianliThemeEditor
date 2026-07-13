@@ -12,7 +12,7 @@ public interface ISupporterBridge
     Task ApplyLayersAsync(string deviceModel, string templatePath, IEnumerable<LayerRow> layers, CancellationToken cancellationToken = default);
     Task AddSensorAsync(string deviceModel, string templatePath, string sensorStyle, string sensorType, string x, string y, string zoom, string color1, string color2, string bgColor, string textColor, string font, CancellationToken cancellationToken = default);
     Task<string> RenderSensorPreviewAsync(LayerRow layer, string outputPath, CancellationToken cancellationToken = default);
-    Task<string> RenderGraphPreviewAsync(string deviceModel, string templatePath, LayerRow layer, string outputPath, CancellationToken cancellationToken = default);
+    Task<string> RenderGraphPreviewAsync(string deviceModel, string templatePath, LayerRow layer, string outputPath, int canvasWidth = 480, int canvasHeight = 480, CancellationToken cancellationToken = default);
     Task AddTextAsync(string deviceModel, string templatePath, string text, string x, string y, string size, string color, string font, bool bold, CancellationToken cancellationToken = default);
     Task SetGroupingMetadataAsync(string deviceModel, string templatePath, string metadata, CancellationToken cancellationToken = default);
     Task AddImageAsync(string deviceModel, string templatePath, string imagePath, string x, string y, string size, CancellationToken cancellationToken = default);

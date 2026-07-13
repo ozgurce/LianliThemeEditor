@@ -8,12 +8,12 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>LianLiThemeEditor</AssemblyName>
     <RootNamespace>ThemeEditorCSharp</RootNamespace>
-    <Version>2.3.0</Version>
-    <AssemblyVersion>2.3.0.0</AssemblyVersion>
-    <FileVersion>2.3.0.0</FileVersion>
-    <InformationalVersion>V 2.3</InformationalVersion>
-    <Title>Lian Li LCD Template Editor V 2.3</Title>
-    <AssemblyTitle>Lian Li LCD Template Editor V 2.3</AssemblyTitle>
+    <Version>2.4.0</Version>
+    <AssemblyVersion>2.4.0.0</AssemblyVersion>
+    <FileVersion>2.4.0.0</FileVersion>
+    <InformationalVersion>V 2.4 Final</InformationalVersion>
+    <Title>Lian Li LCD Template Editor V 2.4 Final</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor V 2.4 Final</AssemblyTitle>
     <Product>Lian Li LCD Template Editor</Product>
     <Description>Theme editor for Lian Li LCD devices</Description>
     <Company>Ozgur Yalcin</Company>
@@ -23,7 +23,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseAppHost>true</UseAppHost>
     <BaseOutputPath>bin_build\</BaseOutputPath>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;outputs\**;tmp\**;tmp_*\**;release\**;cloudflare\**;tools\**;_project-archive\**;bin\**;bin_build\**;obj\**;obj_build\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;outputs\**;tmp\**;tmp_*\**;release\**;gallery_fix_work\**;cloudflare\**;tools\**;_project-archive\**;PhoneControl\**;compare_extract\**;dim_probe\**;lc_v2_repack\**;lc_v2_verify_idnamed\**;themePic_local_fix\**;video_work\**;tmp_video_frames\**;tmp_video_frames_cv2\**;bin\**;bin_build\**;obj\**;obj_build\**;active_*.json;tmp_*;firmwares-*.json;*.fw;extracted_from_lianli88*.png</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -53,6 +53,13 @@
     <Compile Remove="tools\ThemeUploader\**\*.cs" />
     <Compile Remove="tools\ThemeReview\**\*.cs" />
     <Compile Remove="SupporterCs\**\*.cs" />
+    <Compile Remove="PhoneControl\**\*.cs" />
+    <Compile Remove="compare_extract\**\*.cs" />
+    <Compile Remove="dim_probe\**\*.cs" />
+    <Compile Remove="lc_v2_repack\**\*.cs" />
+    <Compile Remove="lc_v2_verify_idnamed\**\*.cs" />
+    <Compile Remove="themePic_local_fix\**\*.cs" />
+    <Compile Remove="video_work\**\*.cs" />
     <Compile Remove="UsbDeviceEmulator\**\*.cs" />
     <Compile Remove="Backups\**\*.cs" />
     <Compile Remove="PLUS\**\*.cs" />
@@ -60,6 +67,13 @@
     <Page Remove="Tools\**\*.xaml" />
     <Page Remove="tmp_*\**\*.xaml" />
     <Page Remove="tools\**\*.xaml" />
+    <Page Remove="PhoneControl\**\*.xaml" />
+    <Page Remove="compare_extract\**\*.xaml" />
+    <Page Remove="dim_probe\**\*.xaml" />
+    <Page Remove="lc_v2_repack\**\*.xaml" />
+    <Page Remove="lc_v2_verify_idnamed\**\*.xaml" />
+    <Page Remove="themePic_local_fix\**\*.xaml" />
+    <Page Remove="video_work\**\*.xaml" />
     <Page Remove="_project-archive\**\*.xaml" />
     <Page Remove="artifacts\**\*.xaml" />
     <Page Remove="tools\ThemeUploader\**\*.xaml" />
@@ -67,8 +81,27 @@
     <Page Remove="Backups\**\*.xaml" />
     <ApplicationDefinition Remove="Tools\**\App.xaml" />
     <ApplicationDefinition Remove="tools\**\App.xaml" />
+    <ApplicationDefinition Remove="PhoneControl\**\App.xaml" />
     <ApplicationDefinition Remove="_project-archive\**\App.xaml" />
     <ApplicationDefinition Remove="Backups\**\App.xaml" />
+    <None Remove="PhoneControl\**" />
+    <None Remove="compare_extract\**" />
+    <None Remove="dim_probe\**" />
+    <None Remove="lc_v2_repack\**" />
+    <None Remove="lc_v2_verify_idnamed\**" />
+    <None Remove="themePic_local_fix\**" />
+    <None Remove="video_work\**" />
+    <None Remove="tmp_video_frames\**" />
+    <None Remove="tmp_video_frames_cv2\**" />
+    <Resource Remove="PhoneControl\**" />
+    <Resource Remove="compare_extract\**" />
+    <Resource Remove="dim_probe\**" />
+    <Resource Remove="lc_v2_repack\**" />
+    <Resource Remove="lc_v2_verify_idnamed\**" />
+    <Resource Remove="themePic_local_fix\**" />
+    <Resource Remove="video_work\**" />
+    <Resource Remove="tmp_video_frames\**" />
+    <Resource Remove="tmp_video_frames_cv2\**" />
   </ItemGroup>
 
   <Target Name="BuildCSharpSupporter" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipSupporterBuild)' != 'true'">

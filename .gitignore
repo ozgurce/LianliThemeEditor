@@ -15,9 +15,26 @@ _project-archive/
 *.user
 *.suo
 *.rsuser
+*.bak
 .vs/
 .idea/
 .vscode/
+
+# Local investigation/work artifacts
+compare_extract/
+dim_probe/
+gallery_fix_work/
+lc_v2_repack/
+lc_v2_verify_idnamed/
+themePic_local_fix/
+video_work/
+tmp_video_frames/
+tmp_video_frames_cv2/
+active_*.json
+tmp_*
+firmwares-*.json
+*.fw
+extracted_from_lianli88*.png
 
 # Logs and diagnostics
 *.log

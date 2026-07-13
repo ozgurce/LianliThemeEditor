@@ -11,6 +11,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -1263,14 +1264,15 @@ internal static class Program
                 throw new InvalidOperationException("Layer is not a ThemeEngine graph layer.");
             }
             ApplyRawLayerEdit(layer);
-            var data = Reflection.Get(layer, "m_data");
-            var currentValue = Reflection.GetString(data, "Value");
-            if (string.IsNullOrWhiteSpace(currentValue) || currentValue == "0")
-            {
-                SetDataValue(layer, _args.Get("PreviewValue", "53"));
-            }
+            SetDataValue(layer, _args.Get("PreviewValue", "100"));
 
-            var rendered = LayerInspector.GraphPreviewPath(layer, _templatePath);
+            var rendered = string.Equals(layer.GetType().Name, "GraphArchBar", StringComparison.Ordinal)
+                ? LayerInspector.GraphPreviewPathFromCanvas(
+                    layer,
+                    _templatePath,
+                    GetCanvasDimension("CanvasWidth", 1920),
+                    GetCanvasDimension("CanvasHeight", 480))
+                : LayerInspector.GraphPreviewPath(layer, _templatePath);
             if (string.IsNullOrWhiteSpace(rendered) || !File.Exists(rendered))
             {
                 throw new InvalidOperationException("Graph preview could not be rendered.");
@@ -1868,6 +1870,15 @@ internal static class Program
                 using var bitmap = new Bitmap(imagePath);
                 var zoom = Reflection.GetDouble(layer, "zoom_rate", 1);
                 EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
+                return;
+            }
+
+            if (layer.GetType().Name == "GraphClock" &&
+                Reflection.Get(layer, "O_bitmap") is Bitmap originalBitmap)
+            {
+                var zoom = Reflection.GetDouble(layer, "zoom_rate", 1);
+                using var bitmap = new Bitmap(originalBitmap);
+                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
             }
         }
 
@@ -1903,9 +1914,19 @@ internal static class Program
             Reflection.TrySet(layer, "zoom_rate", zoom);
             var name = Reflection.GetString(layer, "ImgName");
             var path = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "image", name);
-            if (!File.Exists(path)) return;
-            using var bitmap = new Bitmap(path);
-            EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
+            if (File.Exists(path))
+            {
+                using var bitmap = new Bitmap(path);
+                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
+                return;
+            }
+
+            if (layer.GetType().Name == "GraphClock" &&
+                Reflection.Get(layer, "O_bitmap") is Bitmap originalBitmap)
+            {
+                using var bitmap = new Bitmap(originalBitmap);
+                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
+            }
         }
 
         private static void SetThemeZoomRate(object theme, double zoom)
@@ -3585,11 +3606,12 @@ internal static class Program
                 var frame = GetGraphPreviewFrame(graph);
                 if (frame.Size.Width <= 0 || frame.Size.Height <= 0) return "";
                 var clone = TemplateSerializer.Clone(graph);
+                ClearPreviewRenderCache(clone);
                 var data = Reflection.Get(clone, "m_data");
                 var previewValue = Reflection.GetString(data, "Value");
                 if (string.IsNullOrWhiteSpace(previewValue) || previewValue == "0")
                 {
-                    previewValue = "53";
+                    previewValue = "100";
                     SetPreviewDataValue(clone, previewValue);
                 }
                 PrepareGraphLinePreviewData(clone, previewValue);
@@ -3620,6 +3642,26 @@ internal static class Program
                     Reflection.Get(graph, "LineColor"),
                     Reflection.Get(graph, "BorderColor"),
                     Reflection.Get(graph, "FillColor"),
+                    Reflection.Get(graph, "direction"),
+                    Reflection.Get(graph, "lineWidth"),
+                    Reflection.Get(graph, "columnWidth"),
+                    Reflection.Get(graph, "borderWidth"),
+                    Reflection.Get(graph, "InnerCircleRadius"),
+                    Reflection.Get(graph, "SplitBlockWidth"),
+                    Reflection.Get(graph, "SplitBlankWidth"),
+                    Reflection.Get(graph, "useGradient"),
+                    Reflection.Get(graph, "useSubsection"),
+                    Reflection.Get(graph, "fillBack"),
+                    Reflection.Get(graph, "revert"),
+                    Reflection.Get(graph, "trBack"),
+                    Reflection.Get(graph, "rollDirection"),
+                    Reflection.Get(graph, "useBlock"),
+                    Reflection.Get(graph, "HasRingBorder"),
+                    Reflection.Get(graph, "round"),
+                    Reflection.Get(graph, "startPer"),
+                    Reflection.Get(graph, "totalAngel"),
+                    Reflection.Get(graph, "FrontAlpha"),
+                    Reflection.Get(graph, "BackAlpha"),
                     Reflection.GetString(Reflection.Get(graph, "m_data"), "DataName"),
                     previewValue,
                     frame.Size.Width,
@@ -3635,6 +3677,115 @@ internal static class Program
             {
                 return "";
             }
+        }
+
+        public static string GraphPreviewPathFromCanvas(object graph, string templatePath, int canvasWidth, int canvasHeight)
+        {
+            try
+            {
+                var frame = GetGraphPreviewFrame(graph);
+                if (frame.Size.Width <= 0 || frame.Size.Height <= 0 || canvasWidth <= 0 || canvasHeight <= 0)
+                {
+                    return "";
+                }
+                var clone = TemplateSerializer.Clone(graph);
+                ClearPreviewRenderCache(clone);
+                var data = Reflection.Get(clone, "m_data");
+                var previewValue = Reflection.GetString(data, "Value");
+                if (string.IsNullOrWhiteSpace(previewValue) || previewValue == "0")
+                {
+                    previewValue = "100";
+                    SetPreviewDataValue(clone, previewValue);
+                }
+                PrepareGraphLinePreviewData(clone, previewValue);
+
+                using var canvas = new Bitmap(canvasWidth, canvasHeight, PixelFormat.Format32bppArgb);
+                using (var graphics = Graphics.FromImage(canvas))
+                {
+                    graphics.Clear(Color.Transparent);
+                    graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    var render = clone.GetType().GetMethod("Render", new[] { typeof(Graphics), typeof(bool), typeof(bool), typeof(bool) });
+                    render?.Invoke(clone, new object[] { graphics, true, true, false });
+                }
+
+                var cropX = Reflection.GetInt(clone, "posX") - frame.OffsetX;
+                var cropY = Reflection.GetInt(clone, "posY") - frame.OffsetY;
+                using var bitmap = new Bitmap(frame.Size.Width, frame.Size.Height, PixelFormat.Format32bppArgb);
+                using (var graphics = Graphics.FromImage(bitmap))
+                {
+                    graphics.Clear(Color.Transparent);
+                    graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    var srcX = Math.Max(0, cropX);
+                    var srcY = Math.Max(0, cropY);
+                    var srcRight = Math.Min(canvasWidth, cropX + frame.Size.Width);
+                    var srcBottom = Math.Min(canvasHeight, cropY + frame.Size.Height);
+                    var srcWidth = Math.Max(0, srcRight - srcX);
+                    var srcHeight = Math.Max(0, srcBottom - srcY);
+                    if (srcWidth > 0 && srcHeight > 0)
+                    {
+                        var destX = srcX - cropX;
+                        var destY = srcY - cropY;
+                        graphics.DrawImage(
+                            canvas,
+                            new Rectangle(destX, destY, srcWidth, srcHeight),
+                            new Rectangle(srcX, srcY, srcWidth, srcHeight),
+                            GraphicsUnit.Pixel);
+                    }
+                }
+
+                var directory = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "graph-previews");
+                Directory.CreateDirectory(directory);
+                var key = string.Join("-",
+                    Path.GetFileNameWithoutExtension(templatePath),
+                    graph.GetType().Name,
+                    "canvas",
+                    canvasWidth,
+                    canvasHeight,
+                    Reflection.GetInt(graph, "posX"),
+                    Reflection.GetInt(graph, "posY"),
+                    Reflection.Get(graph, "diameter"),
+                    Reflection.Get(graph, "archWidth"),
+                    Reflection.Get(graph, "FrontColor"),
+                    Reflection.Get(graph, "BackColor"),
+                    Reflection.Get(graph, "GradientColor"),
+                    Reflection.Get(graph, "lineWidth"),
+                    Reflection.Get(graph, "borderWidth"),
+                    Reflection.Get(graph, "SplitBlockWidth"),
+                    Reflection.Get(graph, "SplitBlankWidth"),
+                    Reflection.Get(graph, "useBlock"),
+                    Reflection.Get(graph, "useSubsection"),
+                    Reflection.Get(graph, "round"),
+                    Reflection.Get(graph, "startPer"),
+                    Reflection.Get(graph, "totalAngel"),
+                    Reflection.Get(graph, "FrontAlpha"),
+                    Reflection.Get(graph, "BackAlpha"),
+                    Reflection.GetString(Reflection.Get(graph, "m_data"), "DataName"),
+                    previewValue,
+                    frame.Size.Width,
+                    frame.Size.Height,
+                    frame.OffsetX,
+                    frame.OffsetY);
+                var preview = Path.Combine(directory, "canvas-" + HashFilePart(key) + ".png");
+                bitmap.SetResolution(96f, 96f);
+                bitmap.Save(preview, ImageFormat.Png);
+                return preview;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        private static string HashFilePart(string value)
+        {
+            using var md5 = MD5.Create();
+            var bytes = md5.ComputeHash(Encoding.UTF8.GetBytes(value ?? ""));
+            return BitConverter.ToString(bytes).Replace("-", "").ToLowerInvariant();
+        }
+
+        private static void ClearPreviewRenderCache(object graph)
+        {
+            Reflection.TrySet(graph, "tmp", null);
         }
 
         private static GraphPreviewCanvas GetGraphPreviewFrame(object graph)
