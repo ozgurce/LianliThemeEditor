@@ -14,7 +14,7 @@
     "browse": "찾아보기",
     "cancel": "취소",
     "ok": "확인",
-    "yes": "?",
+    "yes": "예",
     "no": "아니요",
     "reset": "초기화",
     "refresh": "새로 고침",
@@ -316,7 +316,6 @@
     "custom": "사용자 지정",
     "customOnly": "사용자 지정만",
     "customFirst": "사용자 지정 먼저",
-    "newest": "최신순",
     "orientation": "방향",
     "landscape": "가로",
     "portrait": "세로",
@@ -370,7 +369,8 @@
     "updatesDesc": "편집기를 나가지 않고 최신 릴리스를 확인합니다.",
     "support": "지원",
     "supportDesc": "버그를 신고하거나 다음 개선 사항을 제안하세요.",
-    "diagnosticsDesc": "문제 해결을 위해 버전, 장치, 로그 정보를 수집합니다."
+    "diagnosticsDesc": "문제 해결을 위해 버전, 장치, 로그 정보를 수집합니다.",
+    "updateStatusIdle": "마지막 확인: 아직 확인하지 않음."
   },
   "updates": {
     "checking": "GitHub 릴리스를 확인하는 중...",
@@ -381,7 +381,15 @@
     "availableTitle": "업데이트 가능",
     "failed": "업데이트를 확인할 수 없습니다: {0}",
     "failedPrompt": "자동 확인이 GitHub 릴리스에 연결하지 못했습니다. 대신 릴리스 페이지를 열까요?",
-    "failedTitle": "업데이트 확인 실패"
+    "failedTitle": "업데이트 확인 실패",
+    "availableSummary": "{0} 버전을 사용할 수 있습니다. 설치된 버전은 {1}입니다.",
+    "availableBody": "지금 업데이트를 다운로드하여 설치하거나, 먼저 릴리스 페이지를 열어 확인할 수 있습니다.",
+    "noInstallerBody": "이 릴리스에는 설치 파일이 포함되어 있지 않습니다. 릴리스 페이지를 열어 확인할 수 있습니다.",
+    "latestVersionLabel": "최신 버전",
+    "currentVersionLabel": "현재 버전",
+    "installNow": "다운로드 및 설치",
+    "openRelease": "릴리스 페이지 열기",
+    "later": "나중에"
   },
   "layers": {
     "count": "{0} layers",
@@ -676,7 +684,6 @@
     "layerGrouping": "레이어 그룹화",
     "layerGroupingDesc": "저장된 그룹을 레이어 목록에 표시합니다.",
     "enabled": "사용",
-    "showLegacyToolbarActions": "도구 모음에 저장 및 모두 적용 표시",
     "editing": "편집",
     "editingDesc": "편집기 동작을 바꾸는 설정입니다.",
     "themeList": "테마 목록",
@@ -708,7 +715,8 @@
     "noBackupsFound": "백업이 없습니다.",
     "deviceNamePlaceholder": "장치 이름",
     "displayNameTooltip": "표시 이름",
-    "universalDisplayNameTooltip": "8.8 #{0} 표시 이름"
+    "universalDisplayNameTooltip": "8.8 #{0} 표시 이름",
+    "minimizeToTray": "트레이로 최소화"
   },
   "window": {
     "minimize": "최소화",
@@ -780,10 +788,11 @@
     "gallery": "테마 갤러리",
     "settings": "설정",
     "diagnostics": "진단",
-    "about": "정보",
+    "about": "정보 및 감사",
     "thanks": "감사",
     "localThemes": "설치된 테마",
-    "convertFix": "변환 및 수정"
+    "convertFix": "변환 및 수정",
+    "phoneLink": "Phone Link"
   },
   "groups": {
     "name": "Group name",
@@ -886,7 +895,7 @@
     "rbuschyx": "모든 테스트 요청에 포기하지 않고 답해 주고, 편집기를 크게 개선할 수 있도록 도와줘서 감사합니다.",
     "sOncoreName": "S_Oncore",
     "sOncore": "처음부터 믿어 주고 초기 테스트를 진행해 줘서 감사합니다.",
-    "testers88Name": "Wr3ck3r, uhf_Seven, Darcy",
+    "testers88Name": "Wr3ck3r, Darcy",
     "testers88": "8.8인치 Universal Screen 지원을 꾸준히 테스트해 주셔서 감사합니다.",
     "mrDoName": "MrDo.LianLi",
     "mrDo": "개발 초반과 이후에도 바쁜 일정 속에서 가능한 만큼 도와주셔서 감사합니다.",
@@ -896,7 +905,9 @@
     "jimmy": "서로 다른 나라에 있어도 도울 수 있는 모든 일을 해 줘서 감사합니다.",
     "hatikoName": "hatiko0953",
     "hatiko": "처음부터 러시아어 번역을 도와줘서 감사합니다.",
-    "closing": "저를 믿고 이 길에서 응원해 준 모든 분께 감사드립니다. 함께해 주셔서 기쁩니다."
+    "closing": "저를 믿고 이 길에서 응원해 준 모든 분께 감사드립니다. 함께해 주셔서 기쁩니다.",
+    "uhfSevenName": "uhf_Seven",
+    "uhfSeven": "모든 단계에서 저를 믿고 신뢰해 주시고, 물질적·정신적으로 아낌없이 지원해 주셔서 감사합니다."
   },
   "languages": {
     "en": "영어",
@@ -935,5 +946,35 @@
   },
   "template": {
     "idFormat": "Template ID: {0}"
+  },
+  "phoneLink": {
+    "title": "Phone Link",
+    "description": "L-Connect 화면과 무선 팬을 위한 모바일 웹 제어입니다.",
+    "enable": "Phone Link",
+    "enableDesc": "통합 Phone Link 설정을 활성화합니다. 서버는 사용자가 시작할 때까지 중지 상태로 유지됩니다.",
+    "startServer": "서버 시작",
+    "stop": "중지",
+    "serverRunning": "서버 실행 중",
+    "serverStopped": "서버 중지됨",
+    "access": "접근",
+    "accessDesc": "휴대폰 웹 인터페이스에서 사용할 로컬 포트와 선택적 PIN을 선택합니다.",
+    "port": "포트",
+    "usePin": "PIN 사용",
+    "pin": "PIN",
+    "saveSettings": "설정 저장",
+    "openWebUi": "웹 UI 열기",
+    "phoneUrls": "휴대폰 URL",
+    "phoneUrlsDesc": "같은 네트워크의 휴대폰에서 이 주소 중 하나를 여세요.",
+    "invalidPort": "포트는 1에서 65535 사이여야 합니다.",
+    "pinRequired": "PIN을 입력하거나 PIN 사용을 끄세요.",
+    "closeTitle": "Phone Link가 실행 중입니다",
+    "closeMessage": "Phone Link 서버가 아직 실행 중입니다. 앱을 닫으려면 먼저 서버를 중지해야 합니다.",
+    "stopAndExit": "서버 중지 후 종료"
+  },
+  "tray": {
+    "show": "Theme Editor 표시",
+    "startPhoneLink": "Phone Link 시작",
+    "stopPhoneLink": "Phone Link 중지",
+    "exit": "종료"
   }
 }

@@ -8,12 +8,12 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>LianLiThemeEditor</AssemblyName>
     <RootNamespace>ThemeEditorCSharp</RootNamespace>
-    <Version>2.4.0</Version>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
-    <FileVersion>2.4.0.0</FileVersion>
-    <InformationalVersion>V 2.4 Final</InformationalVersion>
-    <Title>Lian Li LCD Template Editor V 2.4 Final</Title>
-    <AssemblyTitle>Lian Li LCD Template Editor V 2.4 Final</AssemblyTitle>
+    <Version>2.5</Version>
+    <AssemblyVersion>2.5.0.0</AssemblyVersion>
+    <FileVersion>2.5.0.0</FileVersion>
+    <InformationalVersion>2.5</InformationalVersion>
+    <Title>Lian Li LCD Template Editor 2.5</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor 2.5</AssemblyTitle>
     <Product>Lian Li LCD Template Editor</Product>
     <Description>Theme editor for Lian Li LCD devices</Description>
     <Company>Ozgur Yalcin</Company>
@@ -27,7 +27,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Resource Include="editor.ico" />
+    <Resource Include="editor.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Resource Include="Assets\glass-background.png" />
     <Resource Include="Assets\glass-background-light.png" />
     <Resource Include="Assets\Devices\hydroshift-ii-lcd-s.png" />
@@ -37,7 +37,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="lang\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="editor.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="PhoneLinkWeb\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="templates\blank-seeds\*.template" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe" Link="LianLiThemeEditor.TemplateWorker.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe.config" Link="LianLiThemeEditor.TemplateWorker.exe.config" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />

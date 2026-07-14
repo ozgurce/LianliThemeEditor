@@ -281,7 +281,7 @@
     "highestRated": "评分最高",
     "mostVotes": "投票最多",
     "nameAz": "名称 A-Z",
-    "newest": "Newest",
+    "newest": "最新",
     "loading": "正在加载主题库...",
     "details": "详情",
     "votingInactiveTitle": "投票未启用",
@@ -316,7 +316,6 @@
     "custom": "自定义",
     "customOnly": "仅自定义",
     "customFirst": "自定义优先",
-    "newest": "最新",
     "orientation": "方向",
     "landscape": "横向",
     "portrait": "纵向",
@@ -370,7 +369,8 @@
     "updatesDesc": "无需离开编辑器即可检查最新版本。",
     "support": "支持",
     "supportDesc": "报告错误或建议下一个改进。",
-    "diagnosticsDesc": "收集版本、设备和日志信息以便排查问题。"
+    "diagnosticsDesc": "收集版本、设备和日志信息以便排查问题。",
+    "updateStatusIdle": "上次检查：尚未检查。"
   },
   "updates": {
     "checking": "正在检查 GitHub 发布版本...",
@@ -381,7 +381,15 @@
     "availableTitle": "发现更新",
     "failed": "无法检查更新：{0}",
     "failedPrompt": "自动检查无法访问 GitHub 发布版本。是否改为打开发布页面？",
-    "failedTitle": "更新检查失败"
+    "failedTitle": "更新检查失败",
+    "availableSummary": "版本 {0} 已可用。当前安装版本为 {1}。",
+    "availableBody": "你可以立即下载并安装更新，也可以先打开发布页面查看详情。",
+    "noInstallerBody": "此版本不包含安装程序文件。你可以打开发布页面查看详情。",
+    "latestVersionLabel": "最新版本",
+    "currentVersionLabel": "当前版本",
+    "installNow": "下载并安装",
+    "openRelease": "打开发布页面",
+    "later": "稍后"
   },
   "layers": {
     "count": "{0} 个图层",
@@ -676,7 +684,6 @@
     "layerGrouping": "图层分组",
     "layerGroupingDesc": "在图层列表中显示已保存的分组。",
     "enabled": "已启用",
-    "showLegacyToolbarActions": "在工具栏中显示保存和全部应用",
     "editing": "编辑",
     "editingDesc": "控制编辑器行为的选项。",
     "themeList": "主题列表",
@@ -708,7 +715,8 @@
     "noBackupsFound": "未找到备份。",
     "deviceNamePlaceholder": "设备名称",
     "displayNameTooltip": "显示名称",
-    "universalDisplayNameTooltip": "8.8 #{0} 显示名称"
+    "universalDisplayNameTooltip": "8.8 #{0} 显示名称",
+    "minimizeToTray": "最小化到托盘"
   },
   "window": {
     "minimize": "最小化",
@@ -780,10 +788,11 @@
     "gallery": "主题库",
     "settings": "设置",
     "diagnostics": "诊断",
-    "about": "关于",
+    "about": "关于与致谢",
     "thanks": "致谢",
     "localThemes": "已安装主题",
-    "convertFix": "转换与修复"
+    "convertFix": "转换与修复",
+    "phoneLink": "Phone Link"
   },
   "groups": {
     "name": "组名称",
@@ -886,7 +895,7 @@
     "rbuschyx": "感谢你没有放弃任何测试请求，并帮助我大幅改进这个编辑器。",
     "sOncoreName": "S_Oncore",
     "sOncore": "感谢你从一开始就信任我，并参与早期测试。",
-    "testers88Name": "Wr3ck3r, uhf_Seven, Darcy",
+    "testers88Name": "Wr3ck3r, Darcy",
     "testers88": "感谢你们持续测试 8.8 英寸 Universal Screen 支持。",
     "mrDoName": "MrDo.LianLi",
     "mrDo": "感谢你在开发初期和之后都尽力提供帮助，即使日程很忙。",
@@ -896,7 +905,9 @@
     "jimmy": "感谢你即使身处不同国家，也尽力提供帮助。",
     "hatikoName": "hatiko0953",
     "hatiko": "感谢你从一开始就帮助俄语翻译。",
-    "closing": "感谢所有相信我并在这条路上支持我的人。很高兴有你们在。"
+    "closing": "感谢所有相信我并在这条路上支持我的人。很高兴有你们在。",
+    "uhfSevenName": "uhf_Seven",
+    "uhfSeven": "感谢你在每一个阶段都相信我、信任我，并给予我物质和精神上的各种支持。"
   },
   "languages": {
     "en": "英语",
@@ -935,5 +946,35 @@
   },
   "template": {
     "idFormat": "Template ID: {0}"
+  },
+  "phoneLink": {
+    "title": "Phone Link",
+    "description": "用于 L-Connect 屏幕和无线风扇的移动网页控制。",
+    "enable": "Phone Link",
+    "enableDesc": "启用集成的 Phone Link 设置。服务器会保持停止，直到您启动它。",
+    "startServer": "启动服务器",
+    "stop": "停止",
+    "serverRunning": "服务器正在运行",
+    "serverStopped": "服务器已停止",
+    "access": "访问",
+    "accessDesc": "选择手机网页界面使用的本地端口和可选 PIN。",
+    "port": "端口",
+    "usePin": "使用 PIN",
+    "pin": "PIN",
+    "saveSettings": "保存设置",
+    "openWebUi": "打开网页界面",
+    "phoneUrls": "手机 URL",
+    "phoneUrlsDesc": "在同一网络中的手机上打开这些地址之一。",
+    "invalidPort": "端口必须在 1 到 65535 之间。",
+    "pinRequired": "请输入 PIN 或关闭使用 PIN。",
+    "closeTitle": "Phone Link 正在运行",
+    "closeMessage": "Phone Link 服务器仍在运行。要关闭应用程序，必须先停止服务器。",
+    "stopAndExit": "停止服务器并退出"
+  },
+  "tray": {
+    "show": "显示 Theme Editor",
+    "startPhoneLink": "启动 Phone Link",
+    "stopPhoneLink": "停止 Phone Link",
+    "exit": "退出"
   }
 }

@@ -32,11 +32,27 @@ using Ellipse = System.Windows.Shapes.Ellipse;
 using Line = System.Windows.Shapes.Line;
 using Polygon = System.Windows.Shapes.Polygon;
 using Rectangle = System.Windows.Shapes.Rectangle;
+using DrawingIcon = System.Drawing.Icon;
 
 namespace ThemeEditorCSharp;
 
 public partial class MainWindow : Window
 {
+    private enum UpdateDialogChoice
+    {
+        Skip,
+        Install,
+        OpenRelease
+    }
+
+    private sealed class UpdateReleaseInfo
+    {
+        public string LatestTag { get; init; } = "";
+        public string LatestName { get; init; } = "";
+        public string ReleaseUrl { get; init; } = GitHubReleasesUrl;
+        public string? InstallerUrl { get; init; }
+    }
+
     private const int WmGetMinMaxInfo = 0x0024;
     private const string UniversalScreenDeviceModel = "universal-screen-8.8-inch";
     private const string Vm92DeviceModel = "vm-9.2-inch";
@@ -101,6 +117,70 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out NativePoint point);
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool Shell_NotifyIcon(uint dwMessage, ref NotifyIconData lpData);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern IntPtr CreatePopupMenu();
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AppendMenu(IntPtr hMenu, uint uFlags, uint uIdNewItem, string? lpNewItem);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool DestroyMenu(IntPtr hMenu);
+
+    [DllImport("user32.dll")]
+    private static extern uint TrackPopupMenu(
+        IntPtr hMenu,
+        uint uFlags,
+        int x,
+        int y,
+        int nReserved,
+        IntPtr hWnd,
+        IntPtr prcRect);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NotifyIconData
+    {
+        public int cbSize;
+        public IntPtr hWnd;
+        public uint uID;
+        public uint uFlags;
+        public uint uCallbackMessage;
+        public IntPtr hIcon;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string szTip;
+
+        public uint dwState;
+        public uint dwStateMask;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+        public string szInfo;
+
+        public uint uTimeoutOrVersion;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+        public string szInfoTitle;
+
+        public uint dwInfoFlags;
+        public Guid guidItem;
+        public IntPtr hBalloonIcon;
+    }
 
     private static bool NormalizeThemePackageManifest(
         ThemePackageManifest manifest,
@@ -235,6 +315,33 @@ public partial class MainWindow : Window
     private readonly IGalleryPaginationService _galleryPaginationService;
     private readonly IGalleryManifestService _galleryManifestService;
     private readonly IGalleryStatsService _galleryStatsService;
+    private PhoneControl.PhoneControlSettingsStore? _phoneLinkSettingsStore;
+    private PhoneControl.PhoneControlServer? _phoneLinkServer;
+    private bool _syncingPhoneLinkUi;
+    private const int SmCxSmallIcon = 49;
+    private const int TrayIconId = 1;
+    private const int WmTrayIcon = 0x0400 + 42;
+    private const int WmRButtonUp = 0x0205;
+    private const int WmLButtonDblClk = 0x0203;
+    private const int TrayCommandShow = 1001;
+    private const int TrayCommandTogglePhoneLink = 1002;
+    private const int TrayCommandExit = 1003;
+    private const uint NimAdd = 0x00000000;
+    private const uint NimDelete = 0x00000002;
+    private const uint NifMessage = 0x00000001;
+    private const uint NifIcon = 0x00000002;
+    private const uint NifTip = 0x00000004;
+    private const uint MfString = 0x00000000;
+    private const uint MfSeparator = 0x00000800;
+    private const uint TpmReturnCmd = 0x0100;
+    private const uint TpmRightButton = 0x0002;
+    private const uint WmNull = 0x0000;
+    private IntPtr _windowHandle;
+    private bool _trayIconVisible;
+    private DrawingIcon? _trayDrawingIcon;
+    private bool _forceClose;
+    private bool _wasLivePreviewTimerRunningBeforeTray;
+    private bool _backgroundPreviewPausedBeforeTray;
     private readonly LayerGroupService _layerGroupService = new();
     private double _canvasZoom = 1.8;
     private bool _autoFitWidePreview;
@@ -370,6 +477,8 @@ public partial class MainWindow : Window
             throw;
         }
         ConfigureReadOnlyComboBoxDisplays(this);
+        ConfigureMainTabOrder();
+        InitializePhoneLinkIntegration();
         AddHandler(Selector.SelectionChangedEvent, new SelectionChangedEventHandler(ComboBoxSelectionDisplay_SelectionChanged), true);
         AddHandler(UIElement.PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(ReadOnlyDisplayCombo_PreviewMouseLeftButtonDown), true);
         _autoSaveTimer = new System.Windows.Threading.DispatcherTimer
@@ -412,6 +521,7 @@ public partial class MainWindow : Window
 
         Loaded += MainWindow_Loaded;
         Closing += MainWindow_Closing;
+        StateChanged += MainWindow_StateChanged;
         SourceInitialized += MainWindow_SourceInitialized;
         PreviewCanvas.MouseMove += PreviewCanvas_MouseMove;
         PreviewCanvas.MouseLeftButtonUp += PreviewCanvas_MouseLeftButtonUp;
@@ -445,6 +555,475 @@ public partial class MainWindow : Window
 
         RegisterInputListeners();
     }
+
+    private void ConfigureMainTabOrder()
+    {
+        ThanksTab.Visibility = Visibility.Collapsed;
+
+        var orderedTabs = new TabItem[]
+        {
+            EditorTab,
+            LocalThemesTab,
+            GalleryTab,
+            PhoneLinkTab,
+            ConvertFixTab,
+            SettingsTab,
+            AboutTab,
+            DiagnosticsTab,
+            ThanksTab
+        };
+
+        foreach (var tab in orderedTabs)
+        {
+            MainTabs.Items.Remove(tab);
+        }
+
+        foreach (var tab in orderedTabs)
+        {
+            MainTabs.Items.Add(tab);
+        }
+
+        MainTabs.SelectedItem = EditorTab;
+    }
+
+    private void InitializePhoneLinkIntegration()
+    {
+        var contentRoot = Path.Combine(AppContext.BaseDirectory, "PhoneLinkWeb");
+        Directory.CreateDirectory(contentRoot);
+        Directory.CreateDirectory(Path.Combine(contentRoot, "wwwroot"));
+
+        _phoneLinkSettingsStore = new PhoneControl.PhoneControlSettingsStore(contentRoot);
+        _phoneLinkServer = new PhoneControl.PhoneControlServer(_phoneLinkSettingsStore);
+        LoadPhoneLinkSettingsIntoUi();
+        RefreshPhoneLinkUi();
+    }
+
+    private void LoadPhoneLinkSettingsIntoUi()
+    {
+        if (_phoneLinkSettingsStore == null)
+        {
+            return;
+        }
+
+        _syncingPhoneLinkUi = true;
+        try
+        {
+            var settings = _phoneLinkSettingsStore.Load();
+            PhoneLinkPortBox.Text = settings.Port.ToString(CultureInfo.InvariantCulture);
+            PhoneLinkUsePinCheck.IsChecked = settings.UsePin;
+            PhoneLinkPinBox.Text = settings.Token;
+        }
+        finally
+        {
+            _syncingPhoneLinkUi = false;
+        }
+    }
+
+    private void RefreshPhoneLinkUi()
+    {
+        if (_phoneLinkServer == null)
+        {
+            return;
+        }
+
+        var enabled = PhoneLinkEnabledCheck?.IsChecked == true;
+        var running = _phoneLinkServer.IsRunning;
+        PhoneLinkSettingsPanel.IsEnabled = enabled;
+        PhoneLinkSettingsPanel.Opacity = enabled ? 1 : 0.45;
+        PhoneLinkStartButton.IsEnabled = enabled && !running;
+        PhoneLinkStopButton.IsEnabled = enabled && running;
+        PhoneLinkOpenWebButton.IsEnabled = enabled && running;
+        PhoneLinkStatusDot.Fill = running
+            ? new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4FF889"))
+            : (Brush)FindResource("BrDanger");
+        PhoneLinkServerStateText.Text = running
+            ? GetLanguageText("phoneLink.serverRunning", "Server running")
+            : GetLanguageText("phoneLink.serverStopped", "Server stopped");
+        PhoneLinkUrlsBox.Text = running && _phoneLinkServer.Urls.Count > 0
+            ? string.Join(Environment.NewLine, _phoneLinkServer.Urls)
+            : "";
+        PhoneLinkErrorText.Text = _phoneLinkServer.LastError;
+        UpdateTrayMenuText();
+    }
+
+    private bool TryReadPhoneLinkSettings(out PhoneControl.PhoneControlOptions settings)
+    {
+        settings = _phoneLinkSettingsStore?.Load() ?? new PhoneControl.PhoneControlOptions();
+        if (!int.TryParse(PhoneLinkPortBox.Text.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var port) ||
+            port is <= 0 or > 65535)
+        {
+            PhoneLinkErrorText.Text = GetLanguageText("phoneLink.invalidPort", "Port must be between 1 and 65535.");
+            return false;
+        }
+
+        var token = PhoneLinkPinBox.Text.Trim();
+        if (PhoneLinkUsePinCheck.IsChecked == true && string.IsNullOrWhiteSpace(token))
+        {
+            PhoneLinkErrorText.Text = GetLanguageText("phoneLink.pinRequired", "Enter a PIN or turn off Use PIN.");
+            return false;
+        }
+
+        settings.Port = port;
+        settings.UsePin = PhoneLinkUsePinCheck.IsChecked == true;
+        settings.Token = token;
+        settings.Host = string.IsNullOrWhiteSpace(settings.Host) ? "0.0.0.0" : settings.Host;
+        PhoneLinkErrorText.Text = "";
+        return true;
+    }
+
+    private void SavePhoneLinkSettingsOnly()
+    {
+        if (_phoneLinkSettingsStore == null || !TryReadPhoneLinkSettings(out var settings))
+        {
+            return;
+        }
+
+        _phoneLinkSettingsStore.Save(settings);
+        SaveEditorSettings();
+        RefreshPhoneLinkUi();
+    }
+
+    private async Task StartPhoneLinkServerAsync()
+    {
+        if (_phoneLinkServer == null || _phoneLinkSettingsStore == null || !TryReadPhoneLinkSettings(out var settings))
+        {
+            return;
+        }
+
+        settings.Language = NormalizePhoneLinkLanguage(_currentLanguage);
+        _phoneLinkSettingsStore.Save(settings);
+        await _phoneLinkServer.RestartAsync(settings);
+        RefreshPhoneLinkUi();
+    }
+
+    private async Task StopPhoneLinkServerAsync()
+    {
+        if (_phoneLinkServer == null)
+        {
+            return;
+        }
+
+        await _phoneLinkServer.StopAsync();
+        RefreshPhoneLinkUi();
+    }
+
+    private void OpenPhoneLinkWebUi()
+    {
+        var settings = _phoneLinkSettingsStore?.Load() ?? new PhoneControl.PhoneControlOptions();
+        var url = _phoneLinkServer?.Urls.FirstOrDefault() ?? $"http://localhost:{settings.Port}";
+        OpenExternalUrl(url);
+    }
+
+    private void EnsureTrayIcon()
+    {
+        if (_windowHandle == IntPtr.Zero)
+        {
+            _windowHandle = new WindowInteropHelper(this).Handle;
+        }
+
+        if (_trayIconVisible || _windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        _trayDrawingIcon ??= LoadTrayIcon();
+        var data = CreateTrayIconData();
+        Shell_NotifyIcon(NimAdd, ref data);
+        _trayIconVisible = true;
+    }
+
+    private static DrawingIcon LoadTrayIcon()
+    {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "editor.ico");
+        var sourceIcon = File.Exists(iconPath)
+            ? new DrawingIcon(iconPath)
+            : DrawingIcon.ExtractAssociatedIcon(Environment.ProcessPath ?? Process.GetCurrentProcess().MainModule?.FileName ?? "");
+
+        if (sourceIcon == null)
+        {
+            sourceIcon = (DrawingIcon)System.Drawing.SystemIcons.Application.Clone();
+        }
+
+        var iconSize = GetSystemMetrics(SmCxSmallIcon);
+        if (iconSize <= 0)
+        {
+            iconSize = 16;
+        }
+
+        using (sourceIcon)
+        {
+            return new DrawingIcon(sourceIcon, iconSize, iconSize);
+        }
+    }
+
+    private void UpdateTrayMenuText()
+    {
+        // Native tray menu text is generated on demand before TrackPopupMenu is shown.
+    }
+
+    private void HideToTray()
+    {
+        EnsureTrayIcon();
+        PauseVisualWorkForTray();
+        ShowInTaskbar = false;
+        Hide();
+        UpdateTrayMenuText();
+    }
+
+    private void ShowFromTray()
+    {
+        ShowInTaskbar = true;
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+        ResumeVisualWorkFromTray();
+        UpdateTrayMenuText();
+    }
+
+    private void PauseVisualWorkForTray()
+    {
+        _wasLivePreviewTimerRunningBeforeTray = _livePreviewTimer.IsEnabled;
+        _backgroundPreviewPausedBeforeTray = BackgroundPreviewPaused;
+        _livePreviewTimer.Stop();
+        _previewDrawTimer.Stop();
+        _autoSaveTimer.Stop();
+        _sensorPreviewRenderCts?.Cancel();
+        _graphPreviewRenderCts?.Cancel();
+
+        try
+        {
+            BackgroundMedia.Pause();
+        }
+        catch
+        {
+            // MediaElement can throw while changing state during shutdown; tray minimization should remain best-effort.
+        }
+
+        BackgroundPreviewPaused = true;
+    }
+
+    private void ResumeVisualWorkFromTray()
+    {
+        if (_wasLivePreviewTimerRunningBeforeTray)
+        {
+            _livePreviewTimer.Start();
+        }
+
+        if (!_backgroundPreviewPausedBeforeTray)
+        {
+            BackgroundPreviewPaused = false;
+            try
+            {
+                if (BackgroundMedia.Source != null && BackgroundMedia.Visibility == Visibility.Visible)
+                {
+                    BackgroundMedia.Play();
+                }
+            }
+            catch
+            {
+                // If playback cannot resume, the next preview refresh will recover the visual state.
+            }
+        }
+
+        RequestPreviewDraw();
+    }
+
+    private async Task ExitFromTrayAsync()
+    {
+        if (_phoneLinkServer?.IsRunning == true && !ShowPhoneLinkCloseConfirmation())
+        {
+            return;
+        }
+
+        if (_phoneLinkServer?.IsRunning == true)
+        {
+            await StopPhoneLinkServerAsync();
+        }
+
+        _forceClose = true;
+        RemoveTrayIcon();
+        Close();
+    }
+
+    private NotifyIconData CreateTrayIconData()
+    {
+        return new NotifyIconData
+        {
+            cbSize = Marshal.SizeOf<NotifyIconData>(),
+            hWnd = _windowHandle,
+            uID = TrayIconId,
+            uFlags = NifMessage | NifIcon | NifTip,
+            uCallbackMessage = WmTrayIcon,
+            hIcon = _trayDrawingIcon?.Handle ?? IntPtr.Zero,
+            szTip = "Lian Li Theme Editor"
+        };
+    }
+
+    private void RemoveTrayIcon()
+    {
+        if (!_trayIconVisible || _windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var data = CreateTrayIconData();
+        Shell_NotifyIcon(NimDelete, ref data);
+        _trayIconVisible = false;
+    }
+
+    private async Task TogglePhoneLinkFromTrayAsync()
+    {
+        if (_phoneLinkServer?.IsRunning == true)
+        {
+            await StopPhoneLinkServerAsync();
+        }
+        else
+        {
+            PhoneLinkEnabledCheck.IsChecked = true;
+            await StartPhoneLinkServerAsync();
+        }
+    }
+
+    private void ShowTrayMenu()
+    {
+        if (_windowHandle == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var menu = CreatePopupMenu();
+        if (menu == IntPtr.Zero)
+        {
+            return;
+        }
+
+        try
+        {
+            AppendMenu(menu, MfString, TrayCommandShow, GetLanguageText("tray.show", "Show Theme Editor"));
+            AppendMenu(
+                menu,
+                MfString,
+                TrayCommandTogglePhoneLink,
+                _phoneLinkServer?.IsRunning == true
+                    ? GetLanguageText("tray.stopPhoneLink", "Stop Phone Link")
+                    : GetLanguageText("tray.startPhoneLink", "Start Phone Link"));
+            AppendMenu(menu, MfSeparator, 0, null);
+            AppendMenu(menu, MfString, TrayCommandExit, GetLanguageText("tray.exit", "Exit"));
+
+            if (!GetCursorPos(out var point))
+            {
+                return;
+            }
+
+            SetForegroundWindow(_windowHandle);
+            var command = TrackPopupMenu(
+                menu,
+                TpmReturnCmd | TpmRightButton,
+                point.X,
+                point.Y,
+                0,
+                _windowHandle,
+                IntPtr.Zero);
+            PostMessage(_windowHandle, WmNull, IntPtr.Zero, IntPtr.Zero);
+
+            _ = command switch
+            {
+                TrayCommandShow => Dispatcher.InvokeAsync(ShowFromTray),
+                TrayCommandTogglePhoneLink => Dispatcher.InvokeAsync(async () => await TogglePhoneLinkFromTrayAsync()),
+                TrayCommandExit => Dispatcher.InvokeAsync(async () => await ExitFromTrayAsync()),
+                _ => null
+            };
+        }
+        finally
+        {
+            DestroyMenu(menu);
+        }
+    }
+
+    private bool ShowPhoneLinkCloseConfirmation()
+    {
+        var language = ReadPersistedLanguage();
+        if (string.IsNullOrWhiteSpace(language))
+        {
+            language = _currentLanguage;
+        }
+
+        var text = LoadLanguage(language);
+        string T(string key, string fallback) => GetText(text, key, fallback);
+
+        var title = T("phoneLink.closeTitle", "Phone Link is running");
+
+        var stack = new StackPanel
+        {
+            Margin = new Thickness(18, 16, 18, 18),
+            MinWidth = 410
+        };
+        stack.Children.Add(new TextBlock
+        {
+            Text = title,
+            FontSize = 17,
+            FontWeight = FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+        stack.Children.Add(new TextBlock
+        {
+            Text = T(
+                "phoneLink.closeMessage",
+                "The Phone Link server is still running. To close the application, the server must be stopped first."),
+            Margin = new Thickness(0, 10, 0, 0),
+            Foreground = (Brush)FindResource("BrTextSecondary"),
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 18, 0, 0)
+        };
+
+        var cancel = new Button
+        {
+            Content = T("common.cancel", "Cancel"),
+            Style = (Style)FindResource("BtnGhost"),
+            MinWidth = 110,
+            Height = 36,
+            Padding = new Thickness(16, 0, 16, 0),
+            Margin = new Thickness(0, 0, 10, 0),
+            IsCancel = true
+        };
+
+        var stopAndExit = new Button
+        {
+            Content = T("phoneLink.stopAndExit", "Stop server and exit"),
+            Style = (Style)FindResource("BtnDanger"),
+            MinWidth = 170,
+            Height = 36,
+            Padding = new Thickness(16, 0, 16, 0),
+            IsDefault = true
+        };
+
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(stopAndExit);
+        stack.Children.Add(buttons);
+
+        var dialog = CreateThemedDialog(title, stack, 500);
+        cancel.Click += (_, _) => dialog.DialogResult = false;
+        stopAndExit.Click += (_, _) => dialog.DialogResult = true;
+        return dialog.ShowDialog() == true;
+    }
+
+    private static string NormalizePhoneLinkLanguage(string language) =>
+        string.IsNullOrWhiteSpace(language) ? "en" : language.Trim().ToLowerInvariant() switch
+        {
+            "tr" => "tr",
+            "ru" => "ru",
+            "zh" => "zh",
+            "de" => "de",
+            "ko" => "ko",
+            "fr" => "fr",
+            _ => "en"
+        };
 
     private void ComboBoxSelectionDisplay_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -597,17 +1176,35 @@ public partial class MainWindow : Window
 
     private void MainWindow_SourceInitialized(object? sender, EventArgs e)
     {
-        var source = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+        _windowHandle = new WindowInteropHelper(this).Handle;
+        var source = HwndSource.FromHwnd(_windowHandle);
         source?.AddHook(WindowMessageHook);
     }
 
-    private static IntPtr WindowMessageHook(
+    private IntPtr WindowMessageHook(
         IntPtr hwnd,
         int message,
         IntPtr wParam,
         IntPtr lParam,
         ref bool handled)
     {
+        if (message == WmTrayIcon)
+        {
+            var eventCode = lParam.ToInt32();
+            if (eventCode == WmLButtonDblClk)
+            {
+                ShowFromTray();
+                handled = true;
+            }
+            else if (eventCode == WmRButtonUp)
+            {
+                ShowTrayMenu();
+                handled = true;
+            }
+
+            return IntPtr.Zero;
+        }
+
         if (message != WmGetMinMaxInfo)
         {
             return IntPtr.Zero;
@@ -3643,9 +4240,46 @@ public partial class MainWindow : Window
         }
     }
 
-    private void MainWindow_Closing(object? sender, CancelEventArgs e)
+    private async void MainWindow_Closing(object? sender, CancelEventArgs e)
     {
+        if (_forceClose)
+        {
+            SaveEditorSettings();
+            RemoveTrayIcon();
+            return;
+        }
+
+        if (MinimizeToTrayCheck?.IsChecked == true)
+        {
+            e.Cancel = true;
+            HideToTray();
+            return;
+        }
+
+        if (_phoneLinkServer?.IsRunning == true)
+        {
+            e.Cancel = true;
+            if (!ShowPhoneLinkCloseConfirmation())
+            {
+                return;
+            }
+
+            await StopPhoneLinkServerAsync();
+            _forceClose = true;
+            Close();
+            return;
+        }
+
         SaveEditorSettings();
+        RemoveTrayIcon();
+    }
+
+    private void MainWindow_StateChanged(object? sender, EventArgs e)
+    {
+        if (WindowState == WindowState.Minimized && MinimizeToTrayCheck?.IsChecked == true)
+        {
+            HideToTray();
+        }
     }
 
     private static string ResolveUploadedBackgroundPath(
@@ -6936,6 +7570,167 @@ public partial class MainWindow : Window
         cancel.Click += (_, _) => dialog.DialogResult = false;
         confirm.Click += (_, _) => dialog.DialogResult = true;
         return dialog.ShowDialog() == true;
+    }
+
+    private UpdateDialogChoice ShowUpdateAvailableDialog(string latestVersion, string currentVersion, bool canInstall)
+    {
+        var choice = UpdateDialogChoice.Skip;
+        var panel = new StackPanel
+        {
+            Margin = new Thickness(18, 16, 18, 18),
+            MinWidth = 430
+        };
+
+        var content = new Grid { MaxWidth = 600 };
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(14) });
+        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        var iconShell = new Border
+        {
+            Width = 44,
+            Height = 44,
+            CornerRadius = new CornerRadius(22),
+            BorderThickness = new Thickness(1),
+            VerticalAlignment = VerticalAlignment.Top
+        };
+        iconShell.SetResourceReference(Border.BackgroundProperty, "GlassToolbarBrush");
+        iconShell.SetResourceReference(Border.BorderBrushProperty, "BrAccentHover");
+        iconShell.Child = new System.Windows.Shapes.Path
+        {
+            Data = Geometry.Parse("M10,4 A6,6 0 1 0 16,10 M16,10 L16,5 M16,10 L11,10"),
+            Width = 22,
+            Height = 22,
+            Stretch = Stretch.Uniform,
+            StrokeThickness = 2.2,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        ((System.Windows.Shapes.Path)iconShell.Child).SetResourceReference(System.Windows.Shapes.Shape.StrokeProperty, "BrAccentHover");
+        content.Children.Add(iconShell);
+
+        var textPanel = new StackPanel();
+        Grid.SetColumn(textPanel, 2);
+        textPanel.Children.Add(new TextBlock
+        {
+            Text = FormatLanguageText("updates.availableSummary", "Version {0} is available. Your installed version is {1}.", latestVersion, currentVersion),
+            FontSize = 15,
+            FontWeight = FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap
+        });
+        textPanel.Children.Add(new TextBlock
+        {
+            Text = canInstall
+                ? GetLanguageText("updates.availableBody", "You can download and install the update now, or open the release page to review it first.")
+                : GetLanguageText("updates.noInstallerBody", "The release does not include an installer asset. You can open the release page to review it."),
+            Margin = new Thickness(0, 8, 0, 0),
+            LineHeight = 19,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        var versionGrid = new Grid { Margin = new Thickness(0, 14, 0, 0) };
+        versionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        versionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+        versionGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        versionGrid.Children.Add(CreateUpdateVersionPill(GetLanguageText("updates.latestVersionLabel", "Latest version"), latestVersion, true));
+        var currentPill = CreateUpdateVersionPill(GetLanguageText("updates.currentVersionLabel", "Current version"), currentVersion, false);
+        Grid.SetColumn(currentPill, 2);
+        versionGrid.Children.Add(currentPill);
+        textPanel.Children.Add(versionGrid);
+        content.Children.Add(textPanel);
+        panel.Children.Add(content);
+
+        var buttons = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 22, 0, 0)
+        };
+
+        var later = CreateDialogButton(GetLanguageText("updates.later", "Later"), "BtnGhost", isCancel: true);
+        later.Click += (_, _) =>
+        {
+            choice = UpdateDialogChoice.Skip;
+            Window.GetWindow(later)!.DialogResult = false;
+        };
+        buttons.Children.Add(later);
+
+        var release = CreateDialogButton(GetLanguageText("updates.openRelease", "Open release page"), canInstall ? "BtnGhost" : "BtnPrimary");
+        release.Margin = new Thickness(8, 0, 0, 0);
+        release.Click += (_, _) =>
+        {
+            choice = UpdateDialogChoice.OpenRelease;
+            Window.GetWindow(release)!.DialogResult = true;
+        };
+        buttons.Children.Add(release);
+
+        if (canInstall)
+        {
+            var install = CreateDialogButton(GetLanguageText("updates.installNow", "Download and install"), "BtnPrimary", isDefault: true);
+            install.Margin = new Thickness(8, 0, 0, 0);
+            install.Click += (_, _) =>
+            {
+                choice = UpdateDialogChoice.Install;
+                Window.GetWindow(install)!.DialogResult = true;
+            };
+            buttons.Children.Add(install);
+        }
+
+        panel.Children.Add(buttons);
+        var dialog = CreateThemedDialog(GetLanguageText("updates.availableTitle", "Update available"), panel, 680);
+        dialog.ShowDialog();
+        return choice;
+    }
+
+    private Border CreateUpdateVersionPill(string label, string value, bool accent)
+    {
+        var border = new Border
+        {
+            Padding = new Thickness(12, 9, 12, 10),
+            CornerRadius = new CornerRadius(6),
+            BorderThickness = new Thickness(1)
+        };
+        border.SetResourceReference(Border.BackgroundProperty, accent ? "GlassToolbarBrush" : "BrSurface2");
+        border.SetResourceReference(Border.BorderBrushProperty, accent ? "BrAccentHover" : "BrBorderSoft");
+
+        var stack = new StackPanel();
+        var labelText = new TextBlock
+        {
+            Text = label,
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold
+        };
+        labelText.SetResourceReference(TextBlock.ForegroundProperty, "BrTextTertiary");
+        stack.Children.Add(labelText);
+
+        var valueText = new TextBlock
+        {
+            Text = value,
+            FontSize = 18,
+            FontWeight = FontWeights.SemiBold,
+            Margin = new Thickness(0, 3, 0, 0)
+        };
+        valueText.SetResourceReference(TextBlock.ForegroundProperty, accent ? "BrAccentHover" : "BrTextPrimary");
+        stack.Children.Add(valueText);
+        border.Child = stack;
+        return border;
+    }
+
+    private Button CreateDialogButton(string text, string styleKey, bool isDefault = false, bool isCancel = false)
+    {
+        return new Button
+        {
+            Content = text,
+            MinWidth = 110,
+            Height = 36,
+            Padding = new Thickness(16, 0, 16, 0),
+            Style = (Style)FindResource(styleKey),
+            IsDefault = isDefault,
+            IsCancel = isCancel
+        };
     }
 
     private void AlignLayersButton_Click(object sender, RoutedEventArgs e)
@@ -11951,10 +12746,6 @@ public partial class MainWindow : Window
         {
             ApplyInstalledThemesDefaultFilter();
         }
-        else if (sender == ShowLegacyToolbarActionsCheck)
-        {
-            ApplyLegacyToolbarActionsVisibility();
-        }
         else
         {
             ApplyLocalThemeFilter();
@@ -11978,13 +12769,9 @@ public partial class MainWindow : Window
 
     private void ApplyLegacyToolbarActionsVisibility()
     {
-        var visible = ShowLegacyToolbarActionsCheck?.IsChecked == true
-            ? Visibility.Visible
-            : Visibility.Collapsed;
-
         if (SaveButton != null)
         {
-            SaveButton.Visibility = visible;
+            SaveButton.Visibility = Visibility.Collapsed;
         }
         if (ApplyAllButton != null)
         {
@@ -14890,6 +15677,36 @@ public partial class MainWindow : Window
         ReapplyCurrentLanguageAfterLayout();
     }
 
+    private void PhoneLinkEnabled_Changed(object sender, RoutedEventArgs e)
+    {
+        if (!_syncingPhoneLinkUi)
+        {
+            SaveEditorSettings();
+        }
+
+        RefreshPhoneLinkUi();
+    }
+
+    private async void PhoneLinkStartButton_Click(object sender, RoutedEventArgs e)
+    {
+        await StartPhoneLinkServerAsync();
+    }
+
+    private async void PhoneLinkStopButton_Click(object sender, RoutedEventArgs e)
+    {
+        await StopPhoneLinkServerAsync();
+    }
+
+    private void PhoneLinkSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        SavePhoneLinkSettingsOnly();
+    }
+
+    private void PhoneLinkOpenWebButton_Click(object sender, RoutedEventArgs e)
+    {
+        OpenPhoneLinkWebUi();
+    }
+
     private void OpenGitHubIssuesButton_Click(object sender, RoutedEventArgs e)
     {
         OpenExternalUrl(GitHubIssuesUrl);
@@ -15950,43 +16767,35 @@ public partial class MainWindow : Window
         UpdateStatusText.Text = GetLanguageText("updates.checking", "Checking GitHub releases...");
         try
         {
-            var json = await SharedHttpClient.GetStringAsync(GitHubLatestReleaseApiUrl);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-            var latestName = GetJsonString(root, "name");
-            var latestTag = GetJsonString(root, "tag_name", latestName);
-            var releaseUrl = GetJsonString(root, "html_url", GitHubReleasesUrl);
+            var release = await GetLatestUpdateReleaseInfoAsync();
             var currentVersion = GetAppDisplayVersion();
 
-            if (!IsRemoteVersionNewer(currentVersion, latestTag, latestName))
+            if (!IsRemoteVersionNewer(currentVersion, release.LatestTag, release.LatestName))
             {
                 UpdateStatusText.Text = FormatLanguageText("updates.current", "You are up to date. Current version: {0}.", currentVersion);
                 SetStatus(GetLanguageText("updates.noUpdate", "No update found."));
                 return;
             }
 
-            UpdateStatusText.Text = FormatLanguageText("updates.latestFound", "Latest release: {0}. Current version: {1}.", latestTag, currentVersion);
-            var result = MessageBox.Show(
-                this,
-                FormatLanguageText("updates.openReleasePrompt", "Latest release: {0}\nCurrent version: {1}\n\nOpen the release page?", latestTag, currentVersion),
-                GetLanguageText("updates.availableTitle", "Update available"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-            if (result == MessageBoxResult.Yes)
+            UpdateStatusText.Text = FormatLanguageText("updates.latestFound", "Latest release: {0}. Current version: {1}.", release.LatestTag, currentVersion);
+            var choice = ShowUpdateAvailableDialog(release.LatestTag, currentVersion, !string.IsNullOrWhiteSpace(release.InstallerUrl));
+            if (choice == UpdateDialogChoice.Install && !string.IsNullOrWhiteSpace(release.InstallerUrl))
             {
-                OpenExternalUrl(releaseUrl);
+                await StartSelfUpdateAsync(release.InstallerUrl, release.LatestTag);
+            }
+            else if (choice == UpdateDialogChoice.OpenRelease)
+            {
+                OpenExternalUrl(release.ReleaseUrl);
             }
         }
         catch (Exception ex)
         {
             UpdateStatusText.Text = FormatLanguageText("updates.failed", "Could not check updates: {0}", ex.Message);
-            var result = MessageBox.Show(
-                this,
-                GetLanguageText("updates.failedPrompt", "The automatic check could not reach GitHub releases. Open the releases page instead?"),
+            if (ShowThemedConfirm(
                 GetLanguageText("updates.failedTitle", "Update check failed"),
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Information);
-            if (result == MessageBoxResult.Yes)
+                GetLanguageText("updates.failedPrompt", "The automatic check could not reach GitHub releases. Open the releases page instead?"),
+                GetLanguageText("updates.openRelease", "Open release page"),
+                GetLanguageText("updates.later", "Later")))
             {
                 OpenExternalUrl(GitHubReleasesUrl);
             }
@@ -15995,6 +16804,233 @@ public partial class MainWindow : Window
         {
             CheckUpdatesButton.IsEnabled = true;
         }
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        await Task.Delay(5000);
+        try
+        {
+            var release = await GetLatestUpdateReleaseInfoAsync();
+            var currentVersion = GetAppDisplayVersion();
+
+            if (IsRemoteVersionNewer(currentVersion, release.LatestTag, release.LatestName))
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    var choice = ShowUpdateAvailableDialog(release.LatestTag, currentVersion, !string.IsNullOrWhiteSpace(release.InstallerUrl));
+                    if (choice == UpdateDialogChoice.Install && !string.IsNullOrWhiteSpace(release.InstallerUrl))
+                    {
+                        _ = StartSelfUpdateAsync(release.InstallerUrl, release.LatestTag);
+                    }
+                    else if (choice == UpdateDialogChoice.OpenRelease)
+                    {
+                        OpenExternalUrl(release.ReleaseUrl);
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"Silent startup update check failed: {ex.Message}");
+        }
+    }
+
+    private static async Task<UpdateReleaseInfo> GetLatestUpdateReleaseInfoAsync()
+    {
+        var json = await SharedHttpClient.GetStringAsync(GitHubLatestReleaseApiUrl);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var latestName = GetJsonString(root, "name");
+        var latestTag = GetJsonString(root, "tag_name", latestName);
+        var releaseUrl = GetJsonString(root, "html_url", GitHubReleasesUrl);
+        string? installerUrl = null;
+
+        if (root.TryGetProperty("assets", out var assets) && assets.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var asset in assets.EnumerateArray())
+            {
+                var name = GetJsonString(asset, "name");
+                if (IsInstallerAssetName(name))
+                {
+                    installerUrl = GetJsonString(asset, "browser_download_url");
+                    break;
+                }
+            }
+        }
+
+        return new UpdateReleaseInfo
+        {
+            LatestTag = latestTag,
+            LatestName = latestName,
+            ReleaseUrl = releaseUrl,
+            InstallerUrl = installerUrl
+        };
+    }
+
+    private async Task StartSelfUpdateAsync(string installerUrl, string latestVersion)
+    {
+        var extension = GetInstallerExtension(installerUrl);
+        var tempPath = Path.Combine(Path.GetTempPath(), $"LianLiThemeEditorSetup{extension}");
+        
+        var progressWindow = new Window
+        {
+            Owner = this,
+            Title = GetLanguageText("updates.downloadingTitle", "Downloading Update"),
+            Width = 450,
+            Height = 160,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            Background = (Brush)FindResource("BrBg"),
+            Foreground = (Brush)FindResource("BrTextPrimary"),
+            BorderBrush = (Brush)FindResource("GlassAccentBorderBrush"),
+            BorderThickness = new Thickness(1)
+        };
+
+        var mainGrid = new Grid { Margin = new Thickness(20) };
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(10) });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(15) });
+        mainGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+
+        var statusText = new TextBlock
+        {
+            Text = FormatLanguageText("updates.downloadingProgress", "Downloading version {0}... 0%", latestVersion, 0),
+            Foreground = (Brush)FindResource("BrTextPrimary"),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap
+        };
+        Grid.SetRow(statusText, 0);
+        mainGrid.Children.Add(statusText);
+
+        var progressBar = new ProgressBar
+        {
+            Height = 12,
+            Minimum = 0,
+            Maximum = 100,
+            Value = 0,
+            IsIndeterminate = false
+        };
+        Grid.SetRow(progressBar, 2);
+        mainGrid.Children.Add(progressBar);
+
+        var cancelButton = new Button
+        {
+            Content = GetLanguageText("common.cancel", "Cancel"),
+            Width = 90,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Style = (Style)FindResource("BtnGhost")
+        };
+        Grid.SetRow(cancelButton, 4);
+        mainGrid.Children.Add(cancelButton);
+
+        progressWindow.Content = mainGrid;
+
+        var cts = new System.Threading.CancellationTokenSource();
+        cancelButton.Click += (_, _) =>
+        {
+            cts.Cancel();
+            progressWindow.Close();
+        };
+
+        progressWindow.Loaded += async (_, _) =>
+        {
+            try
+            {
+                await DownloadFileWithProgressAsync(installerUrl, tempPath, (progress) =>
+                {
+                    Dispatcher.Invoke(() =>
+                    {
+                        progressBar.Value = progress;
+                        statusText.Text = FormatLanguageText("updates.downloadingProgress", "Downloading version {0}... {1:0}%", latestVersion, progress);
+                    });
+                }, cts.Token);
+
+                var startInfo = extension.Equals(".msi", StringComparison.OrdinalIgnoreCase)
+                    ? new ProcessStartInfo
+                    {
+                        FileName = "msiexec.exe",
+                        Arguments = $"/i \"{tempPath}\"",
+                        UseShellExecute = true
+                    }
+                    : new ProcessStartInfo
+                    {
+                        FileName = tempPath,
+                        UseShellExecute = true
+                    };
+
+                Process.Start(startInfo);
+
+                Application.Current.Shutdown();
+            }
+            catch (OperationCanceledException)
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch {}
+            }
+            catch (Exception ex)
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch {}
+                progressWindow.Close();
+                ShowThemedMessage(
+                    GetLanguageText("updates.failedTitle", "Update check failed"),
+                    FormatLanguageText("updates.downloadFailed", "Failed to download update: {0}", ex.Message));
+            }
+        };
+
+        progressWindow.ShowDialog();
+    }
+
+    private static bool IsInstallerAssetName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        return name.EndsWith("Setup.exe", StringComparison.OrdinalIgnoreCase) ||
+               name.EndsWith("Setup.msi", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("LianLiThemeEditorSetup.exe", StringComparison.OrdinalIgnoreCase) ||
+               name.Equals("LianLiThemeEditorSetup.msi", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetInstallerExtension(string installerUrl)
+    {
+        try
+        {
+            var path = Uri.TryCreate(installerUrl, UriKind.Absolute, out var uri)
+                ? uri.LocalPath
+                : installerUrl;
+            return path.EndsWith(".msi", StringComparison.OrdinalIgnoreCase) ? ".msi" : ".exe";
+        }
+        catch
+        {
+            return ".exe";
+        }
+    }
+
+    private static async Task DownloadFileWithProgressAsync(string sourceUrl, string destinationPath, Action<double> reportProgress, System.Threading.CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, sourceUrl);
+        using var response = await SharedHttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var totalBytes = response.Content.Headers.ContentLength;
+        await using var input = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await using var output = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
+        var buffer = new byte[81920];
+        long readTotal = 0;
+        int read;
+        while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
+        {
+            await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+            readTotal += read;
+            if (totalBytes.HasValue && totalBytes.Value > 0)
+            {
+                reportProgress(Math.Min(100, readTotal * 100.0 / totalBytes.Value));
+            }
+        }
+        reportProgress(100);
     }
 
     private static void OpenExternalUrl(string url)
@@ -20451,17 +21487,14 @@ private static string CreateExportPackageBaseName(string templateId)
         OwnedVm92Check.Content = GetText(text, "devices.vm92", "VM 9.2 LCD");
         ApplyDeviceNameTextBoxLanguage(text);
         Universal88DeviceCountText.Text = GetText(text, "settings.universal88DeviceCount", "8.8 screen count");
-        SaveSettingsButton.Content = GetText(text, "settings.saveSettings", "Save settings");
         SettingsLanguageThemeTitleText.Text = GetText(text, "settings.languageTheme", "Language & theme");
         SettingsLanguageThemeDescText.Text = GetText(text, "settings.languageThemeDesc", "These choices also update the footer controls.");
         SettingsGalleryTitleText.Text = GetText(text, "settings.themeGallery", "Theme Gallery");
         SettingsGalleryDescText.Text = GetText(text, "settings.themeGalleryDesc", "Automatically apply downloaded themes after installation.");
         AutoApplyGalleryThemesCheck.Content = GetText(text, "settings.applyAutomatically", "Apply automatically");
         AnimateVideoPreviewsCheck.Content = GetText(text, "settings.playAnimatedPreviews", "Play animated previews");
-        ShowLegacyToolbarActionsCheck.Content = GetText(text, "settings.showLegacyToolbarActions", "Show Save and Apply All in toolbar");
-        SettingsUnusedSensorsTitleText.Text = GetText(text, "settings.unusedSensorsTitle", "Map unused L-Connect sensors");
-        SettingsUnusedSensorsDescText.Text = GetText(text, "settings.unusedSensorsDesc", "Map unused L-Connect sensors to other values");
-        UnusedSensorsComingSoonCheck.Content = GetText(text, "settings.comingSoon", "Coming soon");
+        SaveSettingsButton.Content = GetText(text, "settings.saveSettings", "Save settings");
+        MinimizeToTrayCheck.Content = GetText(text, "settings.minimizeToTray", "Minimize to tray");
         _syncingLanguageCombo = true;
         try
         {
@@ -20506,6 +21539,7 @@ private static string CreateExportPackageBaseName(string templateId)
         EditorTab.Header = GetText(text, "tabs.editor", "Editor");
         GalleryTab.Header = GetText(text, "tabs.gallery", "Theme Gallery");
         LocalThemesTab.Header = GetText(text, "tabs.localThemes", "Installed Themes");
+        PhoneLinkTab.Header = GetText(text, "tabs.phoneLink", "Phone Link");
         SettingsTab.Header = GetText(text, "tabs.settings", "Settings");
         DiagnosticsTab.Header = GetText(text, "tabs.diagnostics", "Diagnostics");
         ThanksTab.Header = GetText(text, "tabs.thanks", "");
@@ -20528,11 +21562,35 @@ private static string CreateExportPackageBaseName(string templateId)
         ThanksHatikoNameText.Text = GetText(text, "thanks.hatikoName", "");
         ThanksHatikoText.Text = GetText(text, "thanks.hatiko", "");
         ThanksClosingText.Text = GetText(text, "thanks.closing", "");
+        AboutThanksTitleText.Text = GetText(text, "thanks.title", "Thanks");
+        AboutThanksDescriptionText.Text = GetText(text, "thanks.description", "");
+        AboutThanksGalrimNameText.Text = GetText(text, "thanks.galrimName", "");
+        AboutThanksGalrimText.Text = GetText(text, "thanks.galrim", "");
+        AboutThanksRBuschyXNameText.Text = GetText(text, "thanks.rbuschyxName", "");
+        AboutThanksRBuschyXText.Text = GetText(text, "thanks.rbuschyx", "");
+        AboutThanksSOncoreNameText.Text = GetText(text, "thanks.sOncoreName", "");
+        AboutThanksSOncoreText.Text = GetText(text, "thanks.sOncore", "");
+        AboutThanks88TestersNameText.Text = GetText(text, "thanks.testers88Name", "");
+        AboutThanks88TestersText.Text = GetText(text, "thanks.testers88", "");
+        AboutThanksUhfSevenNameText.Text = GetText(text, "thanks.uhfSevenName", "uhf_Seven");
+        AboutThanksUhfSevenText.Text = GetText(text, "thanks.uhfSeven", "");
+        AboutThanksMrDoNameText.Text = GetText(text, "thanks.mrDoName", "");
+        AboutThanksMrDoText.Text = GetText(text, "thanks.mrDo", "");
+        AboutThanksJiveturkeyNameText.Text = GetText(text, "thanks.jiveturkeyName", "");
+        AboutThanksJiveturkeyText.Text = GetText(text, "thanks.jiveturkey", "");
+        AboutThanksJimmyNameText.Text = GetText(text, "thanks.jimmyName", "");
+        AboutThanksJimmyText.Text = GetText(text, "thanks.jimmy", "");
+        AboutThanksHatikoNameText.Text = GetText(text, "thanks.hatikoName", "");
+        AboutThanksHatikoText.Text = GetText(text, "thanks.hatiko", "");
+        AboutThanksClosingText.Text = GetText(text, "thanks.closing", "");
         AboutTab.Header = GetText(text, "tabs.about", "About");
+        ApplyPhoneLinkLanguage(text);
+        UpdateTrayMenuText();
         RefreshGalleryLocalizedText();
         AboutTitleText.Text = GetText(text, "about.title", "Lian Li Theme Editor");
         AboutUpdatesTitleText.Text = GetText(text, "about.updates", "Updates");
         AboutUpdatesDescText.Text = GetText(text, "about.updatesDesc", "Check the latest release without leaving the editor.");
+        UpdateStatusText.Text = GetText(text, "about.updateStatusIdle", "Last check: not checked yet.");
         AboutSupportTitleText.Text = GetText(text, "about.support", "Support");
         AboutSupportDescText.Text = GetText(text, "about.supportDesc", "Report bugs or suggest the next improvement.");
         AboutDiagnosticsTitleText.Text = GetText(text, "tabs.diagnostics", "Diagnostics");
@@ -20551,8 +21609,8 @@ private static string CreateExportPackageBaseName(string templateId)
         AboutIntroText.Text = GetText(text, "about.intro", "This editor is built for people who like to make tiny screens feel personal.");
         AboutDescText.Text = GetText(text, "about.desc", "It tries to keep the technical parts quiet: load a theme, see what is there, change it, and send it back to L-Connect without turning the whole thing into a puzzle.");
         AboutWarningText.Text = GetText(text, "about.warning", "It is an unofficial community tool, so please keep backups of themes you care about. Careful work still deserves a safety net.");
-        RestoreRecoveryButton.Content = GetText(text, "recovery.restore", "Restore");
-        DismissRecoveryButton.Content = GetText(text, "recovery.discard", "Discard");
+        RestoreRecoveryButtonText.Text = GetText(text, "recovery.restore", "Restore");
+        DismissRecoveryButtonText.Text = GetText(text, "recovery.discard", "Discard");
 
         IndexLabel.Content = GetText(text, "labels.index", "INDEX");
         FontLabel.Content = GetText(text, "labels.font", "FONT");
@@ -20867,6 +21925,7 @@ private static string CreateExportPackageBaseName(string templateId)
         AboutWarningText.Text = GetText(text, "about.warning", "It is an unofficial community tool, so please keep backups of themes you care about. Careful work still deserves a safety net.");
         AboutUpdatesTitleText.Text = GetText(text, "about.updates", "Updates");
         AboutUpdatesDescText.Text = GetText(text, "about.updatesDesc", "Check the latest release without leaving the editor.");
+        UpdateStatusText.Text = GetText(text, "about.updateStatusIdle", "Last check: not checked yet.");
         AboutSupportTitleText.Text = GetText(text, "about.support", "Support");
         AboutSupportDescText.Text = GetText(text, "about.supportDesc", "Report bugs or suggest the next improvement.");
         AboutDiagnosticsTitleText.Text = GetText(text, "tabs.diagnostics", "Diagnostics");
@@ -20881,9 +21940,50 @@ private static string CreateExportPackageBaseName(string templateId)
         CopyDiagnosticPackageInfoButton.Content = GetText(text, "diagnostics.copyInfo", "Copy Diagnostic Info");
         CreateDiagnosticPackageButton.Content = GetText(text, "diagnostics.createPackage", "Create Diagnostic Package");
         AboutCreateDiagnosticPackageButton.Content = GetText(text, "diagnostics.createPackage", "Create Diagnostic Package");
-        RestoreRecoveryButton.Content = GetText(text, "recovery.restore", "Restore");
-        DismissRecoveryButton.Content = GetText(text, "recovery.discard", "Discard");
+        RestoreRecoveryButtonText.Text = GetText(text, "recovery.restore", "Restore");
+        DismissRecoveryButtonText.Text = GetText(text, "recovery.discard", "Discard");
         SoloLayerButton.Content = GetText(text, "preview.solo", "Solo");
+        ApplyPhoneLinkLanguage(text);
+    }
+
+    private void ApplyPhoneLinkLanguage(Dictionary<string, string> text)
+    {
+        PhoneLinkTitleText.Text = GetText(text, "phoneLink.title", "Phone Link");
+        PhoneLinkDescriptionText.Text = GetText(text, "phoneLink.description", "Mobile web control for L-Connect screens and wireless fans.");
+        PhoneLinkEnabledCheck.Content = GetText(text, "phoneLink.enable", "Phone Link");
+        PhoneLinkEnableDescText.Text = GetText(text, "phoneLink.enableDesc", "Enable the integrated Phone Link settings. The server stays stopped until you start it.");
+        PhoneLinkStartButton.Content = GetText(text, "phoneLink.startServer", "Start Server");
+        PhoneLinkStopButton.Content = GetText(text, "phoneLink.stop", "Stop");
+        PhoneLinkAccessTitleText.Text = GetText(text, "phoneLink.access", "Access");
+        PhoneLinkAccessDescText.Text = GetText(text, "phoneLink.accessDesc", "Choose the local port and optional PIN used by the phone web interface.");
+        PhoneLinkPortLabelText.Text = GetText(text, "phoneLink.port", "Port");
+        PhoneLinkUsePinCheck.Content = GetText(text, "phoneLink.usePin", "Use PIN");
+        PhoneLinkPinLabelText.Text = GetText(text, "phoneLink.pin", "PIN");
+        PhoneLinkSaveButton.Content = GetText(text, "phoneLink.saveSettings", "Save settings");
+        PhoneLinkOpenWebButton.Content = GetText(text, "phoneLink.openWebUi", "Open Web UI");
+        PhoneLinkUrlsTitleText.Text = GetText(text, "phoneLink.phoneUrls", "Phone URLs");
+        PhoneLinkUrlsDescText.Text = GetText(text, "phoneLink.phoneUrlsDesc", "Open one of these addresses from your phone on the same network.");
+        PersistPhoneLinkLanguage();
+        RefreshPhoneLinkUi();
+    }
+
+    private void PersistPhoneLinkLanguage()
+    {
+        if (_phoneLinkSettingsStore == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var settings = _phoneLinkSettingsStore.Load();
+            settings.Language = NormalizePhoneLinkLanguage(_currentLanguage);
+            _phoneLinkSettingsStore.Save(settings);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"Phone Link language could not be persisted: {ex.Message}");
+        }
     }
 
     private void ApplyLanguageComboText(ComboBox combo, Dictionary<string, string> text, string selectedLanguage)
@@ -21083,7 +22183,6 @@ private static string CreateExportPackageBaseName(string templateId)
             ["Activate after install"] = ("gallery.activateAfterInstall", "Activate after install"),
             ["Apply automatically"] = ("settings.applyAutomatically", "Apply automatically"),
             ["Play animated previews"] = ("settings.playAnimatedPreviews", "Play animated previews"),
-            ["Coming soon"] = ("settings.comingSoon", "Coming soon"),
             ["Editing"] = ("settings.editing", "Editing"),
             ["Controls that change editor behavior."] = ("settings.editingDesc", "Controls that change editor behavior."),
             ["Theme list"] = ("settings.themeList", "Theme list"),
@@ -21115,7 +22214,6 @@ private static string CreateExportPackageBaseName(string templateId)
             ["Remember apply target"] = ("settings.rememberApplyTarget", "Remember apply target"),
             ["Backup before delete"] = ("settings.backupBeforeDelete", "Backup before delete"),
             ["Convert 8.8 theme to 9.2 theme"] = ("settings.convert88To92", "Convert 8.8 theme to 9.2 theme"),
-            ["Save settings"] = ("settings.saveSettings", "Save settings"),
             ["My devices"] = ("settings.myDevices", "My devices"),
             ["Only selected devices appear across the editor and gallery."] = ("settings.myDevicesDesc", "Only selected devices appear across the editor and gallery."),
             ["8.8 screen count"] = ("settings.universal88DeviceCount", "8.8 screen count"),
@@ -21681,6 +22779,7 @@ private static string CreateExportPackageBaseName(string templateId)
             await LoadFontsDeferredAsync();
             await RefreshGraphStylesAsync();
             PopulateFontCombos(new[] { GetDefaultLayerFontName() }.Concat(_systemFonts).Concat(_customFontNames));
+            _ = CheckForUpdatesOnStartupAsync();
         }
         catch (Exception ex)
         {
@@ -23210,11 +24309,12 @@ private static string CreateExportPackageBaseName(string templateId)
                 confirmBeforeApply = ConfirmBeforeApplyCheck?.IsChecked == true,
                 rememberApplyTarget = RememberApplyTargetCheck?.IsChecked == true,
                 autoRefreshLConnectAfterApply = AutoRefreshLConnectAfterApplyCheck?.IsChecked == true,
-                showLegacyToolbarActions = ShowLegacyToolbarActionsCheck?.IsChecked == true,
                 backupBeforeApply = BackupBeforeApplyCheck?.IsChecked == true,
                 backupBeforeDelete = BackupBeforeDeleteCheck?.IsChecked == true,
                 showOfficialThemes = ShowOfficialThemesCheck?.IsChecked != false,
                 developerDiagnostics = DeveloperDiagnosticsCheck?.IsChecked == true,
+                phoneLinkEnabled = PhoneLinkEnabledCheck?.IsChecked == true,
+                minimizeToTray = MinimizeToTrayCheck?.IsChecked == true,
                 thumbnailQuality = GetSelectedThumbnailQuality(),
                 themeListDensity = GetSelectedThemeListDensity(),
                 lastLocalApplyTargets = _lastLocalApplyTargets
@@ -27746,10 +28846,6 @@ private static string CreateExportPackageBaseName(string templateId)
             {
                 AutoRefreshLConnectAfterApplyCheck.IsChecked = autoRefresh.GetBoolean();
             }
-            if (doc.RootElement.TryGetProperty("showLegacyToolbarActions", out var showLegacyToolbarActions) && showLegacyToolbarActions.ValueKind is JsonValueKind.True or JsonValueKind.False)
-            {
-                ShowLegacyToolbarActionsCheck.IsChecked = showLegacyToolbarActions.GetBoolean();
-            }
             if (doc.RootElement.TryGetProperty("backupBeforeApply", out var backupApply) && backupApply.ValueKind is JsonValueKind.True or JsonValueKind.False)
             {
                 BackupBeforeApplyCheck.IsChecked = backupApply.GetBoolean();
@@ -27765,6 +28861,14 @@ private static string CreateExportPackageBaseName(string templateId)
             if (doc.RootElement.TryGetProperty("developerDiagnostics", out var diagnostics) && diagnostics.ValueKind is JsonValueKind.True or JsonValueKind.False)
             {
                 DeveloperDiagnosticsCheck.IsChecked = diagnostics.GetBoolean();
+            }
+            if (doc.RootElement.TryGetProperty("phoneLinkEnabled", out var phoneLinkEnabled) && phoneLinkEnabled.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                PhoneLinkEnabledCheck.IsChecked = phoneLinkEnabled.GetBoolean();
+            }
+            if (doc.RootElement.TryGetProperty("minimizeToTray", out var minimizeToTray) && minimizeToTray.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            {
+                MinimizeToTrayCheck.IsChecked = minimizeToTray.GetBoolean();
             }
             if (doc.RootElement.TryGetProperty("thumbnailQuality", out var thumbnailQuality) && thumbnailQuality.ValueKind == JsonValueKind.String)
             {
@@ -27800,6 +28904,7 @@ private static string CreateExportPackageBaseName(string templateId)
             ApplyDeveloperDiagnosticsVisibility();
             ApplyLegacyToolbarActionsVisibility();
             ApplyInstalledThemesDefaultFilter();
+            RefreshPhoneLinkUi();
             if (!settingsHadVersion)
             {
                 SaveEditorSettings();
@@ -27821,11 +28926,12 @@ private static string CreateExportPackageBaseName(string templateId)
         if (ConfirmBeforeApplyCheck != null) ConfirmBeforeApplyCheck.IsChecked = true;
         if (RememberApplyTargetCheck != null) RememberApplyTargetCheck.IsChecked = true;
         if (AutoRefreshLConnectAfterApplyCheck != null) AutoRefreshLConnectAfterApplyCheck.IsChecked = true;
-        if (ShowLegacyToolbarActionsCheck != null) ShowLegacyToolbarActionsCheck.IsChecked = false;
         if (BackupBeforeApplyCheck != null) BackupBeforeApplyCheck.IsChecked = false;
         if (BackupBeforeDeleteCheck != null) BackupBeforeDeleteCheck.IsChecked = true;
         if (ShowOfficialThemesCheck != null) ShowOfficialThemesCheck.IsChecked = true;
         if (DeveloperDiagnosticsCheck != null) DeveloperDiagnosticsCheck.IsChecked = false;
+        if (PhoneLinkEnabledCheck != null) PhoneLinkEnabledCheck.IsChecked = false;
+        if (MinimizeToTrayCheck != null) MinimizeToTrayCheck.IsChecked = false;
         SetComboSelectedByTag(InstalledThemesDefaultFilterCombo, "all");
         SetComboSelectedByTag(ThumbnailQualityCombo, "balanced");
         SetComboSelectedByTag(ThemeListDensityCombo, "comfortable");
@@ -27836,6 +28942,7 @@ private static string CreateExportPackageBaseName(string templateId)
         ApplyDeveloperDiagnosticsVisibility();
         ApplyLegacyToolbarActionsVisibility();
         ApplyInstalledThemesDefaultFilter();
+        RefreshPhoneLinkUi();
     }
 
     private void SelectAllOwnedDevices()
@@ -28361,13 +29468,6 @@ private static string CreateExportPackageBaseName(string templateId)
             Margin = new Thickness(0, 0, 0, 7),
             Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color))
         });
-    }
-
-    private void UnusedSensorsHelp_Click(object sender, RoutedEventArgs e)
-    {
-        ShowThemedMessage(
-            GetLanguageText("settings.unusedSensorsTitle", ""),
-            GetLanguageText("settings.unusedSensorsHelp", ""));
     }
 
     private void FeatureRequestButton_Click(object sender, RoutedEventArgs e) =>

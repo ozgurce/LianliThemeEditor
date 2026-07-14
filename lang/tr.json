@@ -316,7 +316,6 @@
     "custom": "Özel",
     "customOnly": "Sadece özel",
     "customFirst": "Özel önce",
-    "newest": "En yeni",
     "orientation": "Yön",
     "landscape": "Yatay",
     "portrait": "Dikey",
@@ -370,7 +369,8 @@
     "updatesDesc": "Editörden çıkmadan en son sürümü kontrol edin.",
     "support": "Destek",
     "supportDesc": "Hata bildirin veya sıradaki geliştirmeyi önerin.",
-    "diagnosticsDesc": "Sorun giderme için sürüm, cihaz ve log bilgilerini toplayın."
+    "diagnosticsDesc": "Sorun giderme için sürüm, cihaz ve log bilgilerini toplayın.",
+    "updateStatusIdle": "Son kontrol: henüz kontrol edilmedi."
   },
   "updates": {
     "checking": "GitHub sürümleri kontrol ediliyor...",
@@ -381,7 +381,20 @@
     "availableTitle": "Güncelleme bulundu",
     "failed": "Güncelleme kontrol edilemedi: {0}",
     "failedPrompt": "Otomatik kontrol GitHub sürümlerine ulaşamadı. Bunun yerine sürümler sayfası açılsın mı?",
-    "failedTitle": "Güncelleme kontrolü başarısız"
+    "failedTitle": "Güncelleme kontrolü başarısız",
+    "selfUpdatePrompt": "Yeni sürüm: {0}\nMevcut sürüm: {1}\n\nGüncellemeyi şimdi indirip kurmak ister misiniz?\n- Otomatik güncellemek için Evet'e tıklayın.\n- Sürüm sayfasını tarayıcıda açmak için Hayır'a tıklayın.\n- Atlamak için İptal'e tıklayın.",
+    "startupPrompt": "Lian Li LCD Template Editor uygulamasının yeni bir sürümü ({0}) mevcut.\nŞimdi indirip kurmak ister misiniz?",
+    "downloadingTitle": "Güncelleme İndiriliyor",
+    "downloadingProgress": "Sürüm {0} indiriliyor... %{1:0}",
+    "downloadFailed": "Güncelleme indirilemedi: {0}",
+    "availableSummary": "{0} sürümü hazır. Kurulu sürümünüz {1}.",
+    "availableBody": "Güncellemeyi şimdi indirip kurabilir veya önce sürüm sayfasını açıp inceleyebilirsiniz.",
+    "noInstallerBody": "Bu sürümde installer dosyası yok. İncelemek için sürüm sayfasını açabilirsiniz.",
+    "latestVersionLabel": "Yeni sürüm",
+    "currentVersionLabel": "Mevcut sürüm",
+    "installNow": "İndir ve kur",
+    "openRelease": "Sürüm sayfasını aç",
+    "later": "Daha sonra"
   },
   "layers": {
     "count": "{0} katman",
@@ -677,7 +690,6 @@
     "layerGrouping": "Katman gruplama",
     "layerGroupingDesc": "Kaydedilen grupları katman listesinde göster.",
     "enabled": "Etkin",
-    "showLegacyToolbarActions": "Araç çubuğunda Kaydet ve Tümünü Uygula göster",
     "editing": "Düzenleme",
     "editingDesc": "Editör davranışını değiştiren kontroller.",
     "themeList": "Tema listesi",
@@ -709,7 +721,8 @@
     "noBackupsFound": "Yedek bulunamadı.",
     "deviceNamePlaceholder": "Cihaz adı",
     "displayNameTooltip": "Görünen ad",
-    "universalDisplayNameTooltip": "8.8 #{0} görünen adı"
+    "universalDisplayNameTooltip": "8.8 #{0} görünen adı",
+    "minimizeToTray": "Tray’e küçült"
   },
   "window": {
     "minimize": "Küçült",
@@ -781,10 +794,11 @@
     "gallery": "Tema Galerisi",
     "settings": "Ayarlar",
     "diagnostics": "Tanılama",
-    "about": "Hakkında",
+    "about": "Hakkında & Teşekkürler",
     "thanks": "Teşekkürler",
     "localThemes": "Yüklü Temalar",
-    "convertFix": "Dönüştür ve Düzelt"
+    "convertFix": "Dönüştür ve Düzelt",
+    "phoneLink": "Phone Link"
   },
   "groups": {
     "name": "Grup adı",
@@ -887,7 +901,7 @@
     "rbuschyx": "Her test isteğine vazgeçmeden yanıt verdiğin ve editörü bu kadar geliştirmeme yardım ettiğin için teşekkürler.",
     "sOncoreName": "S_Oncore",
     "sOncore": "En başından beri güvendiğin ve ilk testleri yaptığın için teşekkürler.",
-    "testers88Name": "Wr3ck3r, uhf_Seven, Darcy",
+    "testers88Name": "Wr3ck3r, Darcy",
     "testers88": "8.8 inç Universal Screen desteğini sürekli test ettiğiniz için teşekkürler.",
     "mrDoName": "MrDo.LianLi",
     "mrDo": "Geliştirmenin başında ve sonrasında, yoğunluğuna rağmen elinden geldikçe yardım etmeye çalıştığın için teşekkürler.",
@@ -897,7 +911,9 @@
     "jimmy": "Farklı ülkelerde olsak da yardım etmek için elinden geleni yaptığın için teşekkürler.",
     "hatikoName": "hatiko0953",
     "hatiko": "Rusça çevirilere en başından beri yardım ettiğin için teşekkürler.",
-    "closing": "Bana inanan ve bu yolda destek olan herkese teşekkürler. İyi ki varsınız."
+    "closing": "Bana inanan ve bu yolda destek olan herkese teşekkürler. İyi ki varsınız.",
+    "uhfSevenName": "uhf_Seven",
+    "uhfSeven": "Her aşamada bana inandığı, güvendiği; maddi ve manevi her türlü desteği için teşekkürler."
   },
   "languages": {
     "en": "İngilizce",
@@ -983,5 +999,35 @@
   },
   "template": {
     "idFormat": "Şablon ID: {0}"
+  },
+  "phoneLink": {
+    "title": "Phone Link",
+    "description": "L-Connect ekranları ve kablosuz fanlar için mobil web kontrolü.",
+    "enable": "Phone Link",
+    "enableDesc": "Entegre Phone Link ayarlarını etkinleştirir. Server, siz başlatana kadar kapalı kalır.",
+    "startServer": "Serverı Başlat",
+    "stop": "Durdur",
+    "serverRunning": "Server çalışıyor",
+    "serverStopped": "Server kapalı",
+    "access": "Erişim",
+    "accessDesc": "Telefon web arayüzünün kullanacağı yerel portu ve isteğe bağlı PIN'i seçin.",
+    "port": "Port",
+    "usePin": "PIN kullan",
+    "pin": "PIN",
+    "saveSettings": "Ayarları kaydet",
+    "openWebUi": "Web arayüzünü aç",
+    "phoneUrls": "Telefon URL'leri",
+    "phoneUrlsDesc": "Aynı ağdaki telefonunuzdan bu adreslerden birini açın.",
+    "invalidPort": "Port 1 ile 65535 arasında olmalı.",
+    "pinRequired": "PIN girin veya PIN kullan seçeneğini kapatın.",
+    "closeTitle": "Phone Link çalışıyor",
+    "closeMessage": "Phone Link serverı hâlâ çalışıyor. Uygulamayı kapatmak için önce server durdurulmalı.",
+    "stopAndExit": "Serverı durdur ve çık"
+  },
+  "tray": {
+    "show": "Theme Editor’ü göster",
+    "startPhoneLink": "Phone Link’i başlat",
+    "stopPhoneLink": "Phone Link’i durdur",
+    "exit": "Çıkış"
   }
 }

@@ -281,7 +281,7 @@
     "highestRated": "Bestbewertet",
     "mostVotes": "Meiste Stimmen",
     "nameAz": "Name A-Z",
-    "newest": "Newest",
+    "newest": "Neueste",
     "loading": "Galerie wird geladen...",
     "details": "Details",
     "votingInactiveTitle": "Voting is not active",
@@ -316,7 +316,6 @@
     "custom": "Benutzerdefiniert",
     "customOnly": "Nur benutzerdefiniert",
     "customFirst": "Benutzerdefiniert zuerst",
-    "newest": "Neueste",
     "orientation": "Ausrichtung",
     "landscape": "Querformat",
     "portrait": "Hochformat",
@@ -370,7 +369,8 @@
     "updatesDesc": "Prüfe die neueste Version, ohne den Editor zu verlassen.",
     "support": "Support",
     "supportDesc": "Melde Fehler oder schlage die nächste Verbesserung vor.",
-    "diagnosticsDesc": "Sammle Versions-, Geräte- und Protokolldaten zur Fehleranalyse."
+    "diagnosticsDesc": "Sammle Versions-, Geräte- und Protokolldaten zur Fehleranalyse.",
+    "updateStatusIdle": "Letzte Prüfung: noch nicht geprüft."
   },
   "updates": {
     "checking": "GitHub-Releases werden geprüft...",
@@ -381,7 +381,15 @@
     "availableTitle": "Update verfügbar",
     "failed": "Updates konnten nicht geprüft werden: {0}",
     "failedPrompt": "Die automatische Prüfung konnte GitHub-Releases nicht erreichen. Stattdessen die Release-Seite öffnen?",
-    "failedTitle": "Update-Prüfung fehlgeschlagen"
+    "failedTitle": "Update-Prüfung fehlgeschlagen",
+    "availableSummary": "Version {0} ist verfügbar. Installierte Version: {1}.",
+    "availableBody": "Du kannst das Update jetzt herunterladen und installieren oder zuerst die Release-Seite öffnen.",
+    "noInstallerBody": "Dieses Release enthält keine Installer-Datei. Du kannst die Release-Seite zur Prüfung öffnen.",
+    "latestVersionLabel": "Neueste Version",
+    "currentVersionLabel": "Aktuelle Version",
+    "installNow": "Herunterladen und installieren",
+    "openRelease": "Release-Seite öffnen",
+    "later": "Später"
   },
   "layers": {
     "count": "{0} layers",
@@ -676,7 +684,6 @@
     "layerGrouping": "Layer grouping",
     "layerGroupingDesc": "Show saved groups in the layer list.",
     "enabled": "Enabled",
-    "showLegacyToolbarActions": "Speichern und Alle anwenden in der Werkzeugleiste anzeigen",
     "editing": "Bearbeitung",
     "editingDesc": "Optionen, die das Verhalten des Editors steuern.",
     "themeList": "Themenliste",
@@ -708,7 +715,8 @@
     "noBackupsFound": "Keine Backups gefunden.",
     "deviceNamePlaceholder": "Geraetename",
     "displayNameTooltip": "Anzeigename",
-    "universalDisplayNameTooltip": "8.8 #{0} Anzeigename"
+    "universalDisplayNameTooltip": "8.8 #{0} Anzeigename",
+    "minimizeToTray": "In den Infobereich minimieren"
   },
   "window": {
     "minimize": "Minimieren",
@@ -780,10 +788,11 @@
     "gallery": "Theme-Galerie",
     "settings": "Einstellungen",
     "diagnostics": "Diagnose",
-    "about": "Ueber",
+    "about": "Info & Danksagung",
     "thanks": "Danke",
     "localThemes": "Installierte Themes",
-    "convertFix": "Konvertieren und reparieren"
+    "convertFix": "Konvertieren und reparieren",
+    "phoneLink": "Phone Link"
   },
   "groups": {
     "name": "Group name",
@@ -886,7 +895,7 @@
     "rbuschyx": "Danke, dass du jede Testanfrage beantwortet und mir so sehr geholfen hast, den Editor zu verbessern.",
     "sOncoreName": "S_Oncore",
     "sOncore": "Danke für dein Vertrauen von Anfang an und für die frühen Tests.",
-    "testers88Name": "Wr3ck3r, uhf_Seven, Darcy",
+    "testers88Name": "Wr3ck3r, Darcy",
     "testers88": "Danke, dass ihr die Unterstützung für den 8,8-Zoll Universal Screen immer wieder getestet habt.",
     "mrDoName": "MrDo.LianLi",
     "mrDo": "Danke, dass du immer geholfen hast, wenn es möglich war, am Anfang der Entwicklung und später trotz deines vollen Zeitplans.",
@@ -896,7 +905,9 @@
     "jimmy": "Danke, dass du alles getan hast, was du konntest, obwohl wir in verschiedenen Ländern sind.",
     "hatikoName": "hatiko0953",
     "hatiko": "Danke, dass du von Anfang an bei den russischen Übersetzungen geholfen hast.",
-    "closing": "Danke an alle, die an mich geglaubt und mich auf diesem Weg unterstützt haben. Schön, dass ihr da seid."
+    "closing": "Danke an alle, die an mich geglaubt und mich auf diesem Weg unterstützt haben. Schön, dass ihr da seid.",
+    "uhfSevenName": "uhf_Seven",
+    "uhfSeven": "Danke, dass du in jeder Phase an mich geglaubt, mir vertraut und mich materiell wie moralisch auf jede Weise unterstützt hast."
   },
   "languages": {
     "en": "Englisch",
@@ -935,5 +946,35 @@
   },
   "template": {
     "idFormat": "Template ID: {0}"
+  },
+  "phoneLink": {
+    "title": "Phone Link",
+    "description": "Mobile Web-Steuerung für L-Connect-Bildschirme und drahtlose Lüfter.",
+    "enable": "Phone Link",
+    "enableDesc": "Aktiviert die integrierten Phone Link-Einstellungen. Der Server bleibt gestoppt, bis Sie ihn starten.",
+    "startServer": "Server starten",
+    "stop": "Stoppen",
+    "serverRunning": "Server läuft",
+    "serverStopped": "Server gestoppt",
+    "access": "Zugriff",
+    "accessDesc": "Wählen Sie den lokalen Port und die optionale PIN für die Telefon-Weboberfläche.",
+    "port": "Port",
+    "usePin": "PIN verwenden",
+    "pin": "PIN",
+    "saveSettings": "Einstellungen speichern",
+    "openWebUi": "Weboberfläche öffnen",
+    "phoneUrls": "Telefon-URLs",
+    "phoneUrlsDesc": "Öffnen Sie eine dieser Adressen auf Ihrem Telefon im selben Netzwerk.",
+    "invalidPort": "Der Port muss zwischen 1 und 65535 liegen.",
+    "pinRequired": "Geben Sie eine PIN ein oder deaktivieren Sie PIN verwenden.",
+    "closeTitle": "Phone Link läuft",
+    "closeMessage": "Der Phone Link-Server läuft noch. Zum Schließen der Anwendung muss der Server zuerst gestoppt werden.",
+    "stopAndExit": "Server stoppen und beenden"
+  },
+  "tray": {
+    "show": "Theme Editor anzeigen",
+    "startPhoneLink": "Phone Link starten",
+    "stopPhoneLink": "Phone Link stoppen",
+    "exit": "Beenden"
   }
 }

@@ -2270,8 +2270,9 @@
                             Visibility="Collapsed"
                             Click="LoadButton_Click"/>
                     <Button x:Name="SaveButton" Content="Save"
-                            Tag="M4,3 H15 L18,6 V17 H4 Z M7,3 V8 H14 V3 M7,13 H15 M7,16 H15 M14,10 L16,12 L19,8"
+                            Tag="M4,3 H16 L19,6 V17 H4 Z M7,3 V8 H14 V3 M7,14 H16 M7,11 H16"
                             Style="{DynamicResource ToolbarIconButton}" Margin="0,0,6,0"
+                            Visibility="Collapsed"
                             Click="ApplyAllButton_Click"/>
                     <Button x:Name="DeleteTemplateButton" Content="" Width="38"
                             Tag="M5,6 H15 M8,6 V4 H12 V6 M7,8 V16 M10,8 V16 M13,8 V16 M6,6 L7,18 H13 L14,6"
@@ -4347,6 +4348,114 @@
                     </Border>
                 </Grid>
             </TabItem>
+            <TabItem x:Name="PhoneLinkTab" Header="Phone Link">
+                <Grid Margin="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="58"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Rectangle Grid.Row="0" Height="1" Margin="970,0,0,0"
+                               HorizontalAlignment="Stretch" VerticalAlignment="Top"
+                               Fill="{DynamicResource GlassAccentBorderBrush}"
+                               IsHitTestVisible="False" Panel.ZIndex="2"/>
+                    <Border Grid.Row="0" Background="{DynamicResource GlassToolbarBrush}"
+                            BorderBrush="{DynamicResource GlassAccentBorderBrush}" BorderThickness="1,0,1,1"
+                            Padding="16,0" CornerRadius="6,6,0,0">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Rectangle Width="4" Height="22" Fill="{DynamicResource BrAccent}" RadiusX="2" RadiusY="2" Margin="0,0,10,0"/>
+                                <StackPanel>
+                                    <TextBlock x:Name="PhoneLinkTitleText" Text="Phone Link" FontSize="18" FontWeight="SemiBold"/>
+                                    <TextBlock x:Name="PhoneLinkDescriptionText" Text="Mobile web control for L-Connect screens and wireless fans."
+                                               Foreground="{DynamicResource BrTextTertiary}" FontSize="11.5" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Ellipse x:Name="PhoneLinkStatusDot" Width="10" Height="10" Fill="{DynamicResource BrDanger}" Margin="0,0,8,0"/>
+                                <TextBlock x:Name="PhoneLinkServerStateText" Text="Server stopped" Foreground="{DynamicResource BrTextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="1" Style="{DynamicResource Card}" Padding="22" CornerRadius="0,0,5,5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="14"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="5" Padding="16">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <CheckBox x:Name="PhoneLinkEnabledCheck"
+                                                      Content="Phone Link"
+                                                      FontSize="15"
+                                                      FontWeight="SemiBold"
+                                                      Checked="PhoneLinkEnabled_Changed"
+                                                      Unchecked="PhoneLinkEnabled_Changed"/>
+                                            <TextBlock x:Name="PhoneLinkEnableDescText"
+                                                       Text="Enable the integrated Phone Link settings. The server stays stopped until you start it."
+                                                       Margin="0,8,0,0" Foreground="{DynamicResource BrTextTertiary}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0,0,0">
+                                            <Button x:Name="PhoneLinkStartButton" Content="Start Server" Style="{DynamicResource BtnPrimary}" Padding="14,8" Margin="0,0,8,0" Click="PhoneLinkStartButton_Click"/>
+                                            <Button x:Name="PhoneLinkStopButton" Content="Stop" Style="{DynamicResource BtnDanger}" Padding="14,8" Click="PhoneLinkStopButton_Click"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Grid x:Name="PhoneLinkSettingsPanel" Grid.Row="2" IsEnabled="False" Opacity="0.45">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.05*"/>
+                                        <ColumnDefinition Width="18"/>
+                                        <ColumnDefinition Width="1.25*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{DynamicResource Card}" Padding="16">
+                                        <StackPanel>
+                                            <TextBlock x:Name="PhoneLinkAccessTitleText" Text="Access" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="PhoneLinkAccessDescText" Text="Choose the local port and optional PIN used by the phone web interface."
+                                                       Margin="0,6,0,12" Foreground="{DynamicResource BrTextTertiary}" TextWrapping="Wrap"/>
+                                            <TextBlock x:Name="PhoneLinkPortLabelText" Text="Port" FontSize="11" Foreground="{DynamicResource BrTextTertiary}" Margin="0,0,0,4"/>
+                                            <TextBox x:Name="PhoneLinkPortBox" Height="32" Text="37373"/>
+                                            <CheckBox x:Name="PhoneLinkUsePinCheck" Content="Use PIN" Margin="0,12,0,6"/>
+                                            <TextBlock x:Name="PhoneLinkPinLabelText" Text="PIN" FontSize="11" Foreground="{DynamicResource BrTextTertiary}" Margin="0,0,0,4"/>
+                                            <TextBox x:Name="PhoneLinkPinBox" Height="32"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
+                                                <Button x:Name="PhoneLinkSaveButton" Content="Save settings" Style="{DynamicResource BtnPrimary}" Padding="14,8" Margin="0,0,8,0" Click="PhoneLinkSaveButton_Click"/>
+                                                <Button x:Name="PhoneLinkOpenWebButton" Content="Open Web UI" Style="{DynamicResource BtnGhost}" Padding="14,8" Click="PhoneLinkOpenWebButton_Click"/>
+                                            </StackPanel>
+                                            <TextBlock x:Name="PhoneLinkErrorText" Margin="0,12,0,0" Foreground="#FFFFB4A9" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Grid.Column="2" Style="{DynamicResource Card}" Padding="16">
+                                        <Grid>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="*"/>
+                                            </Grid.RowDefinitions>
+                                            <TextBlock x:Name="PhoneLinkUrlsTitleText" Text="Phone URLs" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="PhoneLinkUrlsDescText" Grid.Row="1" Text="Open one of these addresses from your phone on the same network."
+                                                       Margin="0,6,0,12" Foreground="{DynamicResource BrTextTertiary}" TextWrapping="Wrap"/>
+                                            <TextBox x:Name="PhoneLinkUrlsBox" Grid.Row="2" MinHeight="180" TextWrapping="Wrap" AcceptsReturn="True" IsReadOnly="True"
+                                                     VerticalScrollBarVisibility="Auto" Text=""/>
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
             <TabItem x:Name="SettingsTab" Header="Settings">
                 <Grid Margin="0">
                     <Grid.RowDefinitions>
@@ -4422,7 +4531,7 @@
                                                     <CheckBox x:Name="ConfirmBeforeApplyCheck" Content="Confirm before apply" IsChecked="True" Margin="0,8,0,0" Checked="SettingsOption_Changed" Unchecked="SettingsOption_Changed"/>
                                                     <CheckBox x:Name="RememberApplyTargetCheck" Content="Remember apply target" IsChecked="True" Margin="0,8,0,0" Checked="SettingsOption_Changed" Unchecked="SettingsOption_Changed"/>
                                                     <CheckBox x:Name="AutoRefreshLConnectAfterApplyCheck" Content="Auto refresh L-Connect after apply" IsChecked="True" Margin="0,8,0,0" Checked="SettingsOption_Changed" Unchecked="SettingsOption_Changed"/>
-                                                    <CheckBox x:Name="ShowLegacyToolbarActionsCheck" Content="Show Save and Apply All in toolbar" IsChecked="False" Margin="0,8,0,0" Checked="SettingsOption_Changed" Unchecked="SettingsOption_Changed"/>
+                                                    <CheckBox x:Name="MinimizeToTrayCheck" Content="Minimize to tray" IsChecked="False" Margin="0,8,0,0" Checked="SettingsOption_Changed" Unchecked="SettingsOption_Changed"/>
                                                 </StackPanel>
                                             </Border>
                                             <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,12,12">
@@ -4510,16 +4619,6 @@
                                                         <TextBlock x:Name="SettingsLanguageThemeDescText" Text="These choices also update the footer controls." Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/>
                                                         <ComboBox x:Name="SettingsLanguageCombo" SelectedValuePath="Tag" SelectionChanged="SettingsLanguageCombo_SelectionChanged"><ComboBoxItem Content="English" Tag="en"/><ComboBoxItem Content="Türkçe" Tag="tr"/><ComboBoxItem Content="Русский" Tag="ru"/><ComboBoxItem Content="中文" Tag="zh"/><ComboBoxItem Content="Deutsch" Tag="de"/><ComboBoxItem Content="한국어" Tag="ko"/><ComboBoxItem Content="Français" Tag="fr"/></ComboBox>
                                                         <ComboBox x:Name="SettingsThemeCombo" Margin="0,10,0,0" SelectedValuePath="Tag" SelectionChanged="SettingsThemeCombo_SelectionChanged"><ComboBoxItem Content="Dark" Tag="dark"/><ComboBoxItem Content="Light" Tag="light"/></ComboBox>
-                                                    </StackPanel>
-                                                </Border>
-                                                <Border Style="{DynamicResource Card}" Padding="16" Margin="0,0,0,12">
-                                                    <StackPanel>
-                                                        <StackPanel Orientation="Horizontal">
-                                                            <TextBlock x:Name="SettingsUnusedSensorsTitleText" Text="Map unused L-Connect sensors" FontSize="14" FontWeight="SemiBold"/>
-                                                            <Button Width="30" Height="30" Margin="8,0,0,0" Padding="0" Style="{DynamicResource LayerIconActionButton}" Click="UnusedSensorsHelp_Click"><TextBlock Text="?" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource BrTextPrimary}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Button>
-                                                        </StackPanel>
-                                                        <TextBlock x:Name="SettingsUnusedSensorsDescText" Text="Map unused L-Connect sensors to other values" Margin="0,6,0,12" TextWrapping="Wrap" Foreground="{DynamicResource BrTextTertiary}"/>
-                                                        <CheckBox x:Name="UnusedSensorsComingSoonCheck" Content="Coming soon" IsEnabled="False"/>
                                                     </StackPanel>
                                                 </Border>
                                             </StackPanel>
@@ -4820,6 +4919,8 @@
                                         <RowDefinition Height="Auto"/>
                                         <RowDefinition Height="14"/>
                                         <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="14"/>
+                                        <RowDefinition Height="Auto"/>
                                     </Grid.RowDefinitions>
 
                                     <Border Padding="18"
@@ -4854,15 +4955,36 @@
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
                                                 <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
                                             </Grid.RowDefinitions>
-                                            <TextBlock x:Name="AboutUpdatesTitleText" Text="Updates" FontSize="14" FontWeight="SemiBold"/>
-                                            <TextBlock x:Name="AboutUpdatesDescText"
-                                                       Text="Check the latest release without leaving the editor."
-                                                       Grid.Row="1"
-                                                       Margin="0,5,0,12"
-                                                       Foreground="{DynamicResource BrTextTertiary}"
-                                                       TextWrapping="Wrap"/>
-                                            <StackPanel Grid.Row="2" Orientation="Horizontal">
+                                            <DockPanel>
+                                                <Border Width="26"
+                                                        Height="26"
+                                                        CornerRadius="13"
+                                                        Background="#1F68A8FF"
+                                                        BorderBrush="{DynamicResource BrAccentHover}"
+                                                        BorderThickness="1"
+                                                        Margin="0,0,10,0">
+                                                    <Path Data="M10,4 A6,6 0 1 0 16,10 M16,10 L16,5 M16,10 L11,10"
+                                                          Width="15"
+                                                          Height="15"
+                                                          Stretch="Uniform"
+                                                          Stroke="{DynamicResource BrAccentHover}"
+                                                          StrokeThickness="1.8"
+                                                          StrokeStartLineCap="Round"
+                                                          StrokeEndLineCap="Round"
+                                                          StrokeLineJoin="Round"/>
+                                                </Border>
+                                                <StackPanel>
+                                                    <TextBlock x:Name="AboutUpdatesTitleText" Text="Updates" FontSize="14" FontWeight="SemiBold"/>
+                                                    <TextBlock x:Name="AboutUpdatesDescText"
+                                                               Text="Check the latest release without leaving the editor."
+                                                               Margin="0,4,0,0"
+                                                               Foreground="{DynamicResource BrTextTertiary}"
+                                                               TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DockPanel>
+                                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,14,0,0">
                                                 <Button x:Name="CheckUpdatesButton"
                                                         Content="Check for Updates"
                                                         Tag="M17,7 A7,7 0 1 0 17,15 M17,7 L17,2 M17,7 L12,7"
@@ -4879,12 +5001,116 @@
                                                         Padding="14,8"
                                                         Click="OpenGitHubButton_Click"/>
                                             </StackPanel>
-                                            <TextBlock x:Name="UpdateStatusText"
-                                                       Grid.Row="2"
-                                                       Margin="0,44,0,0"
-                                                       Foreground="{DynamicResource BrTextTertiary}"
-                                                       TextWrapping="Wrap"/>
+                                            <Border Grid.Row="3"
+                                                    Margin="0,12,0,0"
+                                                    Padding="11,9"
+                                                    Background="#141D3554"
+                                                    BorderBrush="{DynamicResource BrBorderSoft}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="5">
+                                                <TextBlock x:Name="UpdateStatusText"
+                                                           Foreground="{DynamicResource BrTextSecondary}"
+                                                           FontWeight="SemiBold"
+                                                           TextWrapping="Wrap"/>
+                                            </Border>
                                         </Grid>
+                                    </Border>
+
+                                    <Border Grid.Row="4" Padding="16"
+                                            Background="{DynamicResource BrSurface2}"
+                                            BorderBrush="{DynamicResource BrBorder}"
+                                            BorderThickness="1"
+                                            CornerRadius="5">
+                                        <StackPanel>
+                                            <TextBlock x:Name="AboutThanksTitleText" Text="Thanks" FontSize="14" FontWeight="SemiBold"/>
+                                            <TextBlock x:Name="AboutThanksDescriptionText" Text=""
+                                                       Margin="0,5,0,12" Foreground="{DynamicResource BrTextTertiary}" TextWrapping="Wrap"/>
+                                            <StackPanel>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksGalrimNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksGalrimText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksRBuschyXNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksRBuschyXText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksSOncoreNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksSOncoreText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanks88TestersNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanks88TestersText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksUhfSevenNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksUhfSevenText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksMrDoNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksMrDoText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksJiveturkeyNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksJiveturkeyText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid Margin="0,0,0,9">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksJimmyNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksJimmyText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="170"/>
+                                                        <ColumnDefinition Width="14"/>
+                                                        <ColumnDefinition Width="*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock x:Name="AboutThanksHatikoNameText" Text="" FontWeight="SemiBold" Foreground="{DynamicResource BrAccentHover}" TextWrapping="Wrap"/>
+                                                    <TextBlock x:Name="AboutThanksHatikoText" Grid.Column="2" Text="" Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </StackPanel>
+                                            <TextBlock x:Name="AboutThanksClosingText" Text="" Margin="0,6,0,0" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource BrTextSecondary}" TextWrapping="Wrap"/>
+                                        </StackPanel>
                                     </Border>
                                 </Grid>
 
@@ -4960,19 +5186,41 @@
                                                        TextWrapping="Wrap"/>
                                             <WrapPanel>
                                                 <Button x:Name="RestoreRecoveryButton"
-                                                        Content="Restore"
-                                                        Tag="M10,3 A7,7 0 1 1 5,15 M10,3 V8 H15"
                                                         Margin="0,0,8,8"
-                                                        Style="{DynamicResource ToolbarIconButton}"
+                                                        Style="{DynamicResource BtnPrimary}"
                                                         Padding="14,8"
-                                                        Click="RestoreRecoveryButton_Click"/>
+                                                        Click="RestoreRecoveryButton_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                                            <Path Data="M5,7 H2 V4 M2,7 A7,7 0 1 1 5,13"
+                                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                  StrokeThickness="1.8"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round"
+                                                                  StrokeLineJoin="Round"
+                                                                  Fill="Transparent"/>
+                                                        </Viewbox>
+                                                        <TextBlock x:Name="RestoreRecoveryButtonText" Text="Restore" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
                                                 <Button x:Name="DismissRecoveryButton"
-                                                        Content="Discard"
-                                                        Tag="M4,4 L16,16 M16,4 L4,16"
                                                         Margin="0,0,8,8"
-                                                        Style="{DynamicResource ToolbarIconButton}"
+                                                        Style="{DynamicResource BtnGhost}"
                                                         Padding="14,8"
-                                                        Click="DismissRecoveryButton_Click"/>
+                                                        Click="DismissRecoveryButton_Click">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Viewbox Width="16" Height="16" Margin="0,0,8,0">
+                                                            <Path Data="M5,6 H15 M8,6 V4 H12 V6 M7,8 L8,16 H12 L13,8 M9,9 V15 M11,9 V15"
+                                                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                                                  StrokeThickness="1.8"
+                                                                  StrokeStartLineCap="Round"
+                                                                  StrokeEndLineCap="Round"
+                                                                  StrokeLineJoin="Round"
+                                                                  Fill="Transparent"/>
+                                                        </Viewbox>
+                                                        <TextBlock x:Name="DismissRecoveryButtonText" Text="Discard" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+                                                </Button>
                                             </WrapPanel>
                                         </StackPanel>
                                     </Border>

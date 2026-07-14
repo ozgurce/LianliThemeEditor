@@ -316,7 +316,6 @@
     "custom": "Custom",
     "customOnly": "Custom only",
     "customFirst": "Custom first",
-    "newest": "Newest",
     "orientation": "Orientation",
     "landscape": "Landscape",
     "portrait": "Portrait",
@@ -370,7 +369,8 @@
     "updatesDesc": "Check the latest release without leaving the editor.",
     "support": "Support",
     "supportDesc": "Report bugs or suggest the next improvement.",
-    "diagnosticsDesc": "Collect version, device and log details for troubleshooting."
+    "diagnosticsDesc": "Collect version, device and log details for troubleshooting.",
+    "updateStatusIdle": "Last check: not checked yet."
   },
   "updates": {
     "checking": "Checking GitHub releases...",
@@ -381,7 +381,20 @@
     "availableTitle": "Update available",
     "failed": "Could not check updates: {0}",
     "failedPrompt": "The automatic check could not reach GitHub releases. Open the releases page instead?",
-    "failedTitle": "Update check failed"
+    "failedTitle": "Update check failed",
+    "selfUpdatePrompt": "Latest release: {0}\nCurrent version: {1}\n\nWould you like to download and install the update now?\n- Click Yes to automatically update.\n- Click No to open the release page in your browser.\n- Click Cancel to skip.",
+    "startupPrompt": "A new version ({0}) of Lian Li LCD Template Editor is available.\nWould you like to download and install it now?",
+    "downloadingTitle": "Downloading Update",
+    "downloadingProgress": "Downloading version {0}... {1:0}%",
+    "downloadFailed": "Failed to download update: {0}",
+    "availableSummary": "Version {0} is available. Your installed version is {1}.",
+    "availableBody": "You can download and install the update now, or open the release page to review it first.",
+    "noInstallerBody": "The release does not include an installer asset. You can open the release page to review it.",
+    "latestVersionLabel": "Latest version",
+    "currentVersionLabel": "Current version",
+    "installNow": "Download and install",
+    "openRelease": "Open release page",
+    "later": "Later"
   },
   "layers": {
     "count": "{0} layers",
@@ -677,7 +690,6 @@
     "layerGrouping": "Layer grouping",
     "layerGroupingDesc": "Show saved groups in the layer list.",
     "enabled": "Enabled",
-    "showLegacyToolbarActions": "Show Save and Apply All in toolbar",
     "editing": "Editing",
     "editingDesc": "Controls that change editor behavior.",
     "themeList": "Theme list",
@@ -709,7 +721,8 @@
     "noBackupsFound": "No backups found.",
     "deviceNamePlaceholder": "Device name",
     "displayNameTooltip": "Display name",
-    "universalDisplayNameTooltip": "8.8 #{0} display name"
+    "universalDisplayNameTooltip": "8.8 #{0} display name",
+    "minimizeToTray": "Minimize to tray"
   },
   "window": {
     "minimize": "Minimize",
@@ -781,10 +794,11 @@
     "gallery": "Theme Gallery",
     "settings": "Settings",
     "diagnostics": "Diagnostics",
-    "about": "About",
+    "about": "About & Thanks",
     "thanks": "Thanks",
     "localThemes": "Installed Themes",
-    "convertFix": "Convert & Fix"
+    "convertFix": "Convert & Fix",
+    "phoneLink": "Phone Link"
   },
   "groups": {
     "name": "Group name",
@@ -887,7 +901,7 @@
     "rbuschyx": "Thank you for answering every test request without giving up, and for helping me improve the editor so much.",
     "sOncoreName": "S_Oncore",
     "sOncore": "Thank you for trusting me from the very beginning and for the early tests you ran.",
-    "testers88Name": "Wr3ck3r, uhf_Seven, Darcy",
+    "testers88Name": "Wr3ck3r, Darcy",
     "testers88": "Thank you for constantly testing the 8.8-inch Universal Screen support.",
     "mrDoName": "MrDo.LianLi",
     "mrDo": "Thank you for trying to help whenever you could, both at the start of development and later, despite your busy schedule.",
@@ -897,7 +911,9 @@
     "jimmy": "Thank you for doing everything you could to help, even though we are in different countries.",
     "hatikoName": "hatiko0953",
     "hatiko": "Thank you for helping with the Russian translations from the very beginning.",
-    "closing": "Thank you to everyone who believed in me and supported me on this path. I am glad you are here."
+    "closing": "Thank you to everyone who believed in me and supported me on this path. I am glad you are here.",
+    "uhfSevenName": "uhf_Seven",
+    "uhfSeven": "Thank you for believing in me at every stage, for trusting me, and for every kind of material and moral support."
   },
   "languages": {
     "en": "English",
@@ -983,5 +999,35 @@
   },
   "template": {
     "idFormat": "Template ID: {0}"
+  },
+  "phoneLink": {
+    "title": "Phone Link",
+    "description": "Mobile web control for L-Connect screens and wireless fans.",
+    "enable": "Phone Link",
+    "enableDesc": "Enable the integrated Phone Link settings. The server stays stopped until you start it.",
+    "startServer": "Start Server",
+    "stop": "Stop",
+    "serverRunning": "Server running",
+    "serverStopped": "Server stopped",
+    "access": "Access",
+    "accessDesc": "Choose the local port and optional PIN used by the phone web interface.",
+    "port": "Port",
+    "usePin": "Use PIN",
+    "pin": "PIN",
+    "saveSettings": "Save settings",
+    "openWebUi": "Open Web UI",
+    "phoneUrls": "Phone URLs",
+    "phoneUrlsDesc": "Open one of these addresses from your phone on the same network.",
+    "invalidPort": "Port must be between 1 and 65535.",
+    "pinRequired": "Enter a PIN or turn off Use PIN.",
+    "closeTitle": "Phone Link is running",
+    "closeMessage": "The Phone Link server is still running. To close the application, the server must be stopped first.",
+    "stopAndExit": "Stop server and exit"
+  },
+  "tray": {
+    "show": "Show Theme Editor",
+    "startPhoneLink": "Start Phone Link",
+    "stopPhoneLink": "Stop Phone Link",
+    "exit": "Exit"
   }
 }

@@ -3,6 +3,7 @@ bin/
 bin_build/
 obj/
 obj_build/
+.wix/
 release/
 artifacts/
 outputs/
@@ -35,6 +36,8 @@ tmp_*
 firmwares-*.json
 *.fw
 extracted_from_lianli88*.png
+tools/**/safe-probe-output.txt
+PhoneLinkWeb/wwwroot/styles.old.css
 
 # Logs and diagnostics
 *.log
