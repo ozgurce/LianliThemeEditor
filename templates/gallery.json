@@ -955,6 +955,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/crystals-182127-1d6de99a.png",
       "packageUrl": "packages/crystals-182127-1d6de99a.zip"
+    },
+    {
+      "id": "casio-hydroshift-c-3f6237c8",
+      "name": "Casio-Hydroshift-C",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/casio-hydroshift-c-3f6237c8.png",
+      "packageUrl": "packages/casio-hydroshift-c-3f6237c8.zip"
     }
   ]
 }
