@@ -1,6 +1,15 @@
 ﻿{
     "themes":  [
                    {
+                       "id":  "max1-d0a732c5",
+                       "name":  "Max1",
+                       "author":  "Digikrom",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8\" Universal Screen",
+                       "previewUrl":  "previews/max1-d0a732c5.png",
+                       "packageUrl":  "packages/max1-d0a732c5.lltheme"
+                   },
+                   {
                        "id":  "bluetech-animated-9e1cb2f4",
                        "name":  "BlueTech_Animated",
                        "author":  "Wr3ck3r",
@@ -59,6 +68,15 @@
                        "deviceName":  "8.8\" Universal Screen",
                        "previewUrl":  "previews/alien2-19d639fb.png",
                        "packageUrl":  "packages/alien2-19d639fb.zip"
+                   },
+                   {
+                       "id":  "btf-v1-vert-ba6b9e69",
+                       "name":  "BTF V1 VERT",
+                       "author":  "Galrim",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8\" Universal Screen",
+                       "previewUrl":  "previews/btf-v1-vert-ba6b9e69.png",
+                       "packageUrl":  "packages/btf-v1-vert-ba6b9e69.zip"
                    },
                    {
                        "id":  "btf-v2-15cd8a4f",
