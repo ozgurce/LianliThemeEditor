@@ -725,16 +725,6 @@
                        "packageUrl":  "packages/ghost-of-tsushima-1f644dd9.zip"
                    },
                    {
-                       "id":  "btf-v1-vert-ba6b9e69",
-                       "name":  "BTF V1 VERT",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/btf-v1-vert-ba6b9e69.png",
-                       "packageUrl":  "packages/btf-v1-vert-ba6b9e69.zip"
-                   },
-                   {
                        "id":  "alien2-19d639fb",
                        "name":  "Alien2",
                        "author":  "Galrim",
