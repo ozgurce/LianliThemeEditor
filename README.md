@@ -6,9 +6,9 @@ The app focuses on L-Connect 3 LCD devices such as HydroShift II LCD S/C, the 8.
 
 ## Current Version
 
-`2.5`
+`2.5.2`
 
-Version 2.5 adds integrated Phone Link, MSI-based install/update support, tray behavior, safer shutdown handling, About/Settings cleanup, and broad localization updates.
+Version 2.5.2 improves VM 9.2 handling, HydroShift background detection, gallery filtering, and L-Connect data source formatting.
 
 ## Main Features
 

@@ -32,7 +32,7 @@ public sealed class TemplateOption
             : System.Windows.Media.Stretch.UniformToFill;
 
     public string LocalAspectLabel => IsLocalWideDevice
-        ? (IsLocalPortraitWideDevice ? "480 x 1920" : "1920 x 480")
+        ? GetWideAspectLabel()
         : "480 x 480";
 
     public bool IsLocalWideDevice =>
@@ -44,6 +44,14 @@ public sealed class TemplateOption
         string.Equals(UniversalOrientation, "portrait", StringComparison.OrdinalIgnoreCase);
 
     public bool IsLocalLandscapeWideDevice => IsLocalWideDevice && !IsLocalPortraitWideDevice;
+
+    private string GetWideAspectLabel()
+    {
+        var isVm92 = string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
+        return IsLocalPortraitWideDevice
+            ? isVm92 ? "464 x 1920" : "480 x 1920"
+            : isVm92 ? "1920 x 464" : "1920 x 480";
+    }
 
     public override string ToString() => Id;
 }

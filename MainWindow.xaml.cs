@@ -9,6 +9,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Win32;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -273,6 +274,7 @@ public partial class MainWindow : Window
     private bool _isDraggingGaugeAngle;
     private bool _draggingGaugeEndAngle;
     private LayerRow? _gaugeAngleDragLayer;
+    private bool _hideEditorOnlyPreviewOverlays;
     private int _sensorPreviewRenderVersion;
     private CancellationTokenSource? _sensorPreviewRenderCts;
     private int _graphPreviewRenderVersion;
@@ -2586,8 +2588,7 @@ public partial class MainWindow : Window
                 if (result != null && !string.IsNullOrWhiteSpace(result.TemplatePath) && File.Exists(result.TemplatePath))
                 {
                     var fastBackground = ThemeEditorCSharp.Services.FastProfileReader.GetActiveTemplateBackground(deviceModel, result.TemplateId ?? activeTemplateId);
-                    if ((string.IsNullOrWhiteSpace(result.BackgroundPath) || !File.Exists(result.BackgroundPath)) &&
-                        !string.IsNullOrWhiteSpace(fastBackground) &&
+                    if (!string.IsNullOrWhiteSpace(fastBackground) &&
                         File.Exists(fastBackground))
                     {
                         result.BackgroundPath = fastBackground;
@@ -2690,7 +2691,7 @@ public partial class MainWindow : Window
             }
             SelectTemplateCombo(_currentTemplatePath);
             var templateOrientation = "";
-            if (IsWideScreenDeviceSelected())
+            if (SupportsOrientationSelectionSelected())
             {
                 templateOrientation = FirstNonEmpty(
                     TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
@@ -5864,7 +5865,14 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(imagePath))
             {
                 var angle = GetClockLayerAngle(layer);
-                return CreatePreviewLayerHitTarget(bounds, CreateClockPreviewImage(layer, imagePath, bounds.Width, bounds.Height, angle, selected));
+                return CreatePreviewLayerHitTarget(bounds, CreateClockPreviewImage(
+                    layer,
+                    imagePath,
+                    bounds.Width,
+                    bounds.Height,
+                    angle,
+                    selected,
+                    showEditorGaugeOverlay: !_hideEditorOnlyPreviewOverlays));
             }
         }
 
@@ -5917,7 +5925,14 @@ public partial class MainWindow : Window
         return host;
     }
 
-    private FrameworkElement CreateClockPreviewImage(LayerRow layer, string imagePath, double width, double height, double angle, bool selected)
+    private FrameworkElement CreateClockPreviewImage(
+        LayerRow layer,
+        string imagePath,
+        double width,
+        double height,
+        double angle,
+        bool selected,
+        bool showEditorGaugeOverlay)
     {
         var image = CreatePreviewImage(imagePath, width, height, selected: false, rotationText: "");
         var templateWidth = Math.Max(1.0, ToTemplate(width));
@@ -5937,7 +5952,10 @@ public partial class MainWindow : Window
             Height = height,
             Background = Brushes.Transparent
         };
-        host.Children.Add(CreateGaugeSweepPreview(layer, imagePath, width, height, templateWidth, templateHeight, offsetX, offsetY, originX, originY, selected));
+        if (showEditorGaugeOverlay)
+        {
+            host.Children.Add(CreateGaugeSweepPreview(layer, imagePath, width, height, templateWidth, templateHeight, offsetX, offsetY, originX, originY, selected));
+        }
         host.Children.Add(image);
         return host;
     }
@@ -11721,7 +11739,7 @@ public partial class MainWindow : Window
 
     private void UniversalOrientationCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_syncingUniversalOrientation || !IsLoaded)
+        if (_syncingUniversalOrientation || !IsLoaded || !SupportsOrientationSelectionSelected())
         {
             return;
         }
@@ -12032,11 +12050,17 @@ public partial class MainWindow : Window
         return IsWideScreenDeviceModel(deviceModel);
     }
 
+    private bool SupportsOrientationSelectionSelected() =>
+        string.Equals(GetSelectedDeviceModel(), UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase);
+
+    private static bool SupportsOrientationSelection(string deviceModel) =>
+        string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase);
+
     private static bool IsWideScreenDeviceModel(string deviceModel) =>
         string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
         string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase);
 
-    private bool CanDirectApplySelectedDevice() => IsOfflineMode || !IsVm92Selected();
+    private bool CanDirectApplySelectedDevice() => true;
 
     private void ShowDirectApplyUnsupportedMessage()
     {
@@ -12052,16 +12076,21 @@ public partial class MainWindow : Window
 
     private void UpdateDeviceCapabilityNotice()
     {
-        var showVm92Notice = IsVm92Selected();
+        var showVm92Notice = false;
         Vm92DirectApplyNotice.Visibility = showVm92Notice ? Visibility.Visible : Visibility.Collapsed;
-        SaveButton.IsEnabled = !showVm92Notice;
-        ApplyButton.IsEnabled = !showVm92Notice;
-        ApplyAllButton.IsEnabled = !showVm92Notice;
-        Convert88To92Button.IsEnabled = showVm92Notice;
+        SaveButton.IsEnabled = true;
+        ApplyButton.IsEnabled = true;
+        ApplyAllButton.IsEnabled = true;
+        Convert88To92Button.IsEnabled = IsVm92Selected();
     }
 
     private bool IsUniversalLandscape()
     {
+        if (!SupportsOrientationSelectionSelected())
+        {
+            return true;
+        }
+
         return !string.Equals(
             (UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString(),
             "portrait",
@@ -12075,6 +12104,11 @@ public partial class MainWindow : Window
 
     private void SetUniversalOrientation(string orientation, bool updateCanvas = true)
     {
+        if (!SupportsOrientationSelectionSelected())
+        {
+            return;
+        }
+
         orientation = NormalizeUniversalOrientation(orientation);
         if (string.IsNullOrWhiteSpace(orientation))
         {
@@ -12135,7 +12169,7 @@ public partial class MainWindow : Window
     {
         if (!string.Equals(deviceModel, GetSelectedDeviceModel(), StringComparison.OrdinalIgnoreCase))
         {
-            return IsWideScreenDeviceModel(deviceModel) ? (1920, 480) : (480, 480);
+            return GetDeviceCanvasPixels(deviceModel, "landscape");
         }
 
         return (
@@ -12143,18 +12177,45 @@ public partial class MainWindow : Window
             Math.Max(1, (int)Math.Round(_templateCanvasHeight)));
     }
 
+    private static (int Width, int Height) GetDeviceCanvasPixels(string deviceModel, string orientation = "")
+    {
+        var portrait = string.Equals(NormalizeUniversalOrientation(orientation), "portrait", StringComparison.OrdinalIgnoreCase);
+        if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return portrait ? (464, 1920) : (1920, 464);
+        }
+
+        if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return portrait ? (480, 1920) : (1920, 480);
+        }
+
+        return (480, 480);
+    }
+
+    private static (int Width, int Height) GetWideRuntimeH264Pixels(string deviceModel, string orientation = "")
+    {
+        var canvas = GetDeviceCanvasPixels(deviceModel, orientation);
+        return canvas.Width >= canvas.Height
+            ? (canvas.Height, canvas.Width)
+            : canvas;
+    }
+
     private void UpdateCanvasConfiguration(bool resetZoom)
     {
         var universal = IsWideScreenDeviceSelected();
-        UniversalOrientationPanel.Visibility = universal ? Visibility.Visible : Visibility.Collapsed;
+        UniversalOrientationPanel.Visibility = SupportsOrientationSelectionSelected() ? Visibility.Visible : Visibility.Collapsed;
 
         if (universal)
         {
             var landscape = IsUniversalLandscape();
-            _templateCanvasWidth = landscape ? 1920.0 : 480.0;
-            _templateCanvasHeight = landscape ? 480.0 : 1920.0;
+            var canvas = GetDeviceCanvasPixels(GetSelectedDeviceModel(), landscape ? "landscape" : "portrait");
+            _templateCanvasWidth = canvas.Width;
+            _templateCanvasHeight = canvas.Height;
             _previewCanvasWidth = landscape ? 480.0 : 120.0;
-            _previewCanvasHeight = landscape ? 120.0 : 480.0;
+            _previewCanvasHeight = landscape
+                ? Math.Round(_previewCanvasWidth * _templateCanvasHeight / _templateCanvasWidth)
+                : 480.0;
         }
         else
         {
@@ -12270,6 +12331,10 @@ public partial class MainWindow : Window
             var deviceModel = GetSelectedDeviceModel();
             var templateRoot = GetTemplateRoot(deviceModel);
             var decodeWidth = loadVisuals ? GetTemplateThumbnailDecodeWidth() : 0;
+            if (loadVisuals)
+            {
+                await EnsureTemplateThumbnailsExtractedAsync(deviceModel, templateRoot);
+            }
 
             var options = new List<TemplateOption>();
 
@@ -12284,7 +12349,7 @@ public partial class MainWindow : Window
                         var thumbnail = loadVisuals ? GetTemplateThumbnail(deviceModel, id, decodeWidth) : null;
                         if (thumbnail != null && thumbnail.CanFreeze) thumbnail.Freeze(); // Ensure safe cross-thread
 
-                        var orientation = IsWideScreenDeviceModel(deviceModel)
+                        var orientation = SupportsOrientationSelection(deviceModel)
                             ? loadVisuals ? InferLocalTemplateOrientation(deviceModel, id, path) : InferGalleryThemeOrientation(id, path)
                             : "";
 
@@ -12323,6 +12388,29 @@ public partial class MainWindow : Window
         _ = RefreshTemplateListAsync(selectFirstWhenMissing, loadVisuals);
     }
 
+    private async Task EnsureTemplateThumbnailsExtractedAsync(string deviceModel, string templateRoot)
+    {
+        if (string.IsNullOrWhiteSpace(deviceModel) ||
+            string.IsNullOrWhiteSpace(templateRoot) ||
+            !Directory.Exists(templateRoot))
+        {
+            return;
+        }
+
+        try
+        {
+            await _supporter.ExtractMissingPreviewsAsync(
+                deviceModel,
+                templateRoot,
+                GetEmbeddedThumbnailCacheRoot(deviceModel));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(
+                $"Template thumbnail extraction failed for {deviceModel}: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
     private static IReadOnlyList<string> GetSupportedLocalThemeDeviceModels() =>
         new[]
         {
@@ -12345,6 +12433,10 @@ public partial class MainWindow : Window
             var allowOfficialDelete = IsOfficialThemeDeleteAllowed();
             var decodeWidth = GetTemplateThumbnailDecodeWidth();
             var lConnectDeleteMap = await GetLConnectTemplateDeleteMapAsync(ownedDevices);
+            foreach (var deviceModel in GetSupportedLocalThemeDeviceModels().Where(ownedDevices.Contains))
+            {
+                await EnsureTemplateThumbnailsExtractedAsync(deviceModel, GetTemplateRoot(deviceModel));
+            }
             var options = await Task.Run(() =>
             {
                 var result = new List<TemplateOption>();
@@ -12381,7 +12473,7 @@ public partial class MainWindow : Window
                             DeviceModel = deviceModel,
                             DeviceName = GetDeviceDisplayName(deviceModel),
                             Thumbnail = thumbnail,
-                            UniversalOrientation = IsWideScreenDeviceModel(deviceModel)
+                            UniversalOrientation = SupportsOrientationSelection(deviceModel)
                                 ? InferLocalTemplateOrientation(deviceModel, id, path)
                                 : "",
                             IsOfficial = isOfficial,
@@ -13801,12 +13893,14 @@ public partial class MainWindow : Window
         object? selectedItem = null;
         var previousMediaOpacity = BackgroundMedia.Opacity;
         var previousImageOpacity = BackgroundImage.Opacity;
+        var previousHideEditorOnlyPreviewOverlays = _hideEditorOnlyPreviewOverlays;
         try
         {
             if (cleanEditorOverlay)
             {
                 selectedItem = LayerGrid.SelectedItem;
                 LayerGrid.SelectedItem = null;
+                _hideEditorOnlyPreviewOverlays = true;
                 DrawPreview();
             }
 
@@ -13845,6 +13939,7 @@ public partial class MainWindow : Window
 
             if (cleanEditorOverlay)
             {
+                _hideEditorOnlyPreviewOverlays = previousHideEditorOnlyPreviewOverlays;
                 LayerGrid.SelectedItem = selectedItem;
                 DrawPreview();
             }
@@ -13861,12 +13956,14 @@ public partial class MainWindow : Window
         }
 
         object? selectedItem = null;
+        var previousHideEditorOnlyPreviewOverlays = _hideEditorOnlyPreviewOverlays;
         try
         {
             if (cleanEditorOverlay)
             {
                 selectedItem = LayerGrid.SelectedItem;
                 LayerGrid.SelectedItem = null;
+                _hideEditorOnlyPreviewOverlays = true;
                 DrawPreview();
             }
 
@@ -13901,6 +13998,7 @@ public partial class MainWindow : Window
         {
             if (cleanEditorOverlay)
             {
+                _hideEditorOnlyPreviewOverlays = previousHideEditorOnlyPreviewOverlays;
                 LayerGrid.SelectedItem = selectedItem;
                 DrawPreview();
             }
@@ -14119,9 +14217,9 @@ public partial class MainWindow : Window
 
     private string GetUniversalOrientationForExport(string deviceModel, string backgroundPath)
     {
-        if (!string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (!SupportsOrientationSelection(deviceModel))
         {
-            return "";
+            return "landscape";
         }
 
         return FirstNonEmpty(
@@ -14280,11 +14378,17 @@ public partial class MainWindow : Window
         AddFlatPackageFile(archive, addedEntries, snapshot.BackgroundPath, backgroundEntryName);
 
         var backgroundExtension = Path.GetExtension(snapshot.BackgroundPath);
-        var companionExtension = backgroundExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
-            ? ".h264"
-            : backgroundExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
-                ? ".mp4"
-                : "";
+        var includeCompanionBackground = !string.Equals(
+            snapshot.DeviceModel,
+            Vm92DeviceModel,
+            StringComparison.OrdinalIgnoreCase);
+        var companionExtension = includeCompanionBackground
+            ? backgroundExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase)
+                ? ".h264"
+                : backgroundExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                    ? ".mp4"
+                    : ""
+            : "";
         if (!string.IsNullOrWhiteSpace(companionExtension))
         {
             var companionPath = Path.ChangeExtension(snapshot.BackgroundPath, companionExtension);
@@ -14649,11 +14753,7 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    var canvas = IsWideScreenDeviceModel(deviceModel)
-                    ? string.Equals(manifest.UniversalOrientation, "portrait", StringComparison.OrdinalIgnoreCase)
-                        ? (Width: 480, Height: 1920)
-                        : (Width: 1920, Height: 480)
-                    : GetTemplateCanvasPixels(deviceModel);
+                    var canvas = GetDeviceCanvasPixels(deviceModel, manifest.UniversalOrientation);
                     importedBackgroundPath = await _supporter.SetBackgroundMediaAsync(
                         deviceModel,
                         destinationTemplate,
@@ -15043,11 +15143,7 @@ public partial class MainWindow : Window
                 return backgroundPath;
             }
 
-            var canvas = IsWideScreenDeviceModel(deviceModel)
-                ? string.Equals(universalOrientation, "portrait", StringComparison.OrdinalIgnoreCase)
-                    ? (Width: 480, Height: 1920)
-                    : (Width: 1920, Height: 480)
-                : GetTemplateCanvasPixels(deviceModel);
+            var canvas = GetDeviceCanvasPixels(deviceModel, universalOrientation);
             var syncedBackgroundPath = await _supporter.SetBackgroundMediaAsync(
                 deviceModel,
                 templatePath,
@@ -15329,7 +15425,7 @@ public partial class MainWindow : Window
         IEnumerable<string> packageBackgroundBundle,
         bool preferLandscape)
     {
-        if (!string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+        if (!IsWideScreenDeviceModel(deviceModel) ||
             string.IsNullOrWhiteSpace(installedTemplatePath) ||
             !File.Exists(installedTemplatePath))
         {
@@ -15425,11 +15521,13 @@ public partial class MainWindow : Window
             }
 
             var h264Size = TryGetVideoPixelSize(runtimeBackgroundPath);
-            if (h264Size.Width != 480 || h264Size.Height != 1920)
+            var expectedH264 = GetWideRuntimeH264Pixels(deviceModel, preferLandscape ? "landscape" : "portrait");
+            if (h264Size.Width != expectedH264.Width || h264Size.Height != expectedH264.Height)
             {
                 AppLogger.Warning(
                     $"Imported L-Connect H264 background still has unexpected dimensions: " +
-                    $"{DescribeFileForLog(runtimeBackgroundPath)}; size={h264Size.Width}x{h264Size.Height}");
+                    $"{DescribeFileForLog(runtimeBackgroundPath)}; " +
+                    $"size={h264Size.Width}x{h264Size.Height}; expected={expectedH264.Width}x{expectedH264.Height}");
             }
 
             return runtimeBackgroundPath;
@@ -16157,14 +16255,12 @@ public partial class MainWindow : Window
 
     private (int Width, int Height) GetConvertFixBackgroundCanvas(string deviceModel, string orientation)
     {
-        if (!string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (!IsWideScreenDeviceModel(deviceModel))
         {
             return GetTemplateCanvasPixels(deviceModel);
         }
 
-        return string.Equals(NormalizeUniversalOrientation(orientation), "portrait", StringComparison.OrdinalIgnoreCase)
-            ? (480, 1920)
-            : (1920, 480);
+        return GetDeviceCanvasPixels(deviceModel, orientation);
     }
 
     private async Task ConvertLianLiSourceToTurzxThemeAsync(string sourcePath, string outputThemePath)
@@ -17759,7 +17855,7 @@ public partial class MainWindow : Window
 
         if (IsVisibleGalleryDeviceFilterChecked(GalleryFilterVm92Check))
         {
-            selected.Add(UniversalScreenDeviceModel);
+            selected.Add(Vm92DeviceModel);
         }
 
         return selected;
@@ -18742,12 +18838,33 @@ public partial class MainWindow : Window
         try
         {
             var json = await SharedHttpClient.GetStringAsync($"{apiBaseUrl.TrimEnd('/')}/themes/community").ConfigureAwait(false);
-            return _galleryManifestService.LoadThemesFromJson(json, apiBaseUrl.TrimEnd('/') + "/", isRemote: true);
+            return _galleryManifestService
+                .LoadThemesFromJson(json, apiBaseUrl.TrimEnd('/') + "/", isRemote: true)
+                .Where(IsApprovedCommunityGalleryTheme)
+                .ToList();
         }
         catch
         {
             return Array.Empty<GalleryThemeItem>();
         }
+    }
+
+    private static bool IsApprovedCommunityGalleryTheme(GalleryThemeItem item)
+    {
+        return IsApprovedCommunityGalleryAssetUrl(item.PackageUrl) ||
+               IsApprovedCommunityGalleryAssetUrl(item.PreviewUrl);
+    }
+
+    private static bool IsApprovedCommunityGalleryAssetUrl(string value)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            !uri.Host.Equals("lianli-theme-gallery.ozgurce.workers.dev", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var path = Uri.UnescapeDataString(uri.AbsolutePath);
+        return path.Contains("/approved/", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string GetOrCreateGalleryVoterKey()
@@ -20178,9 +20295,7 @@ public partial class MainWindow : Window
     {
         if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return string.Equals(NormalizeUniversalOrientation(universalOrientation), "portrait", StringComparison.OrdinalIgnoreCase)
-                ? (480, 1920)
-                : (1920, 480);
+            return GetDeviceCanvasPixels(deviceModel, universalOrientation);
         }
 
         return GetTemplateCanvasPixels(deviceModel);
@@ -20203,8 +20318,9 @@ public partial class MainWindow : Window
                 NormalizeUniversalOrientation(universalOrientation),
                 "portrait",
                 StringComparison.OrdinalIgnoreCase);
-            var previewWidth = preferLandscape ? 1920 : 480;
-            var previewHeight = preferLandscape ? 480 : 1920;
+            var previewCanvas = GetDeviceCanvasPixels(deviceModel, preferLandscape ? "landscape" : "portrait");
+            var previewWidth = previewCanvas.Width;
+            var previewHeight = previewCanvas.Height;
             var safeId = Regex.Replace(exportTemplateId, @"[^A-Za-z0-9_.-]", "_");
             var outputBase = Path.Combine(Path.GetTempPath(), $"{safeId}-hq-{Guid.NewGuid():N}");
             var canReuseSourceMp4 = Path.GetExtension(sourcePath).Equals(".mp4", StringComparison.OrdinalIgnoreCase) &&
@@ -20327,14 +20443,28 @@ public partial class MainWindow : Window
                 var sourceIsLandscape = sourceSize.Width > 0 &&
                                         sourceSize.Height > 0 &&
                                         sourceSize.Width >= sourceSize.Height;
-                var targetWidth = outputExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase) && preferLandscape
-                    ? 1920
-                    : 480;
-                var targetHeight = outputExtension.Equals(".mp4", StringComparison.OrdinalIgnoreCase) && preferLandscape
-                    ? 480
-                    : 1920;
+                var targetCanvas = GetDeviceCanvasPixels(deviceModel, preferLandscape ? "landscape" : "portrait");
+                var runtimeH264 = GetWideRuntimeH264Pixels(deviceModel, preferLandscape ? "landscape" : "portrait");
+                var targetWidth = outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                    ? runtimeH264.Width
+                    : targetCanvas.Width;
+                var targetHeight = outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+                    ? runtimeH264.Height
+                    : targetCanvas.Height;
                 var filters = new List<string>();
-                if (outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
+                var sourceIsRotatedWideRuntime =
+                    outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
+                    extension == ".h264" &&
+                    preferLandscape &&
+                    sourceSize.Width == 480 &&
+                    sourceSize.Height == 1920 &&
+                    runtimeH264.Width == 464 &&
+                    runtimeH264.Height == 1920;
+                if (sourceIsRotatedWideRuntime)
+                {
+                    filters.Add("crop=464:1920:8:0");
+                }
+                else if (outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
                 {
                     if (preferLandscape)
                     {
@@ -23905,7 +24035,7 @@ private static string CreateExportPackageBaseName(string templateId)
         AddLayerMenuPopup.IsOpen = true;
     }
 
-    private void AddLayerChoice_Click(object sender, RoutedEventArgs e)
+    private async void AddLayerChoice_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not Button button || button.Tag is not string type)
         {
@@ -23965,20 +24095,6 @@ private static string CreateExportPackageBaseName(string templateId)
             AddFormatOption(combo, "Weekday", "Day_en");
             SelectFormatOption(combo, box?.Text);
         }
-        else if (source is "HDDTEMP" or "HDDUSED")
-        {
-            combo.Visibility = box == null ? Visibility.Visible : Visibility.Collapsed;
-        }
-        else if (source is "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER")
-        {
-            combo.Visibility = Visibility.Visible;
-            AddFormatOption(combo, "1 decimal", "0.0");
-            if (box != null && !string.Equals(box.Text, "0.0", StringComparison.OrdinalIgnoreCase))
-            {
-                box.Text = "0.0";
-            }
-            combo.SelectedIndex = 0;
-        }
         else
         {
             combo.Visibility = Visibility.Collapsed;
@@ -24009,9 +24125,7 @@ private static string CreateExportPackageBaseName(string templateId)
     private static bool SupportsFormat(string dataSource)
     {
         var source = NormalizeDataSourceKey(dataSource);
-        return source is "TIME" or "DATE" or "DAY" or
-               "HDDTEMP" or "HDDUSED" or
-               "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER";
+        return source is "TIME" or "DATE" or "DAY";
     }
 
     private static string DefaultFormatForDataSource(string dataSource)
@@ -24021,8 +24135,6 @@ private static string CreateExportPackageBaseName(string templateId)
             "TIME" => "h:m",
             "DATE" => "Y-M-D",
             "DAY" => "Day_en",
-            "HDDTEMP" or "HDDUSED" => "",
-            "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" => "0.0",
             _ => ""
         };
     }
@@ -25311,8 +25423,8 @@ private static string CreateExportPackageBaseName(string templateId)
 
     private static string TryGetLatestAppliedTemplateIdFromLConnectLogs(string deviceModel)
     {
-        var tag = GetLConnectLogDeviceTag(deviceModel);
-        if (string.IsNullOrWhiteSpace(tag))
+        var tags = GetLConnectLogDeviceTags(deviceModel).ToList();
+        if (tags.Count == 0)
         {
             return "";
         }
@@ -25323,7 +25435,9 @@ private static string CreateExportPackageBaseName(string templateId)
             return "";
         }
 
-        var pattern = new Regex(@"\[" + Regex.Escape(tag) + @"\]\s+Template\s+'(?<id>[^']+)'\s+applied", RegexOptions.IgnoreCase);
+        var pattern = new Regex(
+            @"\[(?<tag>[^\]]+)\]\s+Template\s+'(?<id>[^']+)'\s+applied",
+            RegexOptions.IgnoreCase);
         foreach (var file in Directory.GetFiles(logDir, "L-Connect-Service-*.log")
                      .OrderByDescending(File.GetLastWriteTimeUtc)
                      .Take(5))
@@ -25341,7 +25455,8 @@ private static string CreateExportPackageBaseName(string templateId)
             for (var i = lines.Length - 1; i >= 0; i--)
             {
                 var match = pattern.Match(lines[i]);
-                if (match.Success)
+                if (match.Success &&
+                    tags.Any(tag => string.Equals(match.Groups["tag"].Value.Trim(), tag, StringComparison.OrdinalIgnoreCase)))
                 {
                     return match.Groups["id"].Value.Trim();
                 }
@@ -25364,29 +25479,35 @@ private static string CreateExportPackageBaseName(string templateId)
         return lines.ToArray();
     }
 
-    private static string GetLConnectLogDeviceTag(string deviceModel)
+    private static IEnumerable<string> GetLConnectLogDeviceTags(string deviceModel)
     {
         if (deviceModel.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase))
         {
-            return "HydroShift II LCD-S";
+            yield return "HydroShift II LCD-S";
+            yield break;
         }
 
         if (deviceModel.Equals("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase))
         {
-            return "HydroShift II LCD-C";
+            yield return "HydroShift II LCD-C";
+            yield break;
         }
 
         if (deviceModel.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return "Universal Screen";
+            yield return "Universal Screen 8.8 Inch";
+            yield return "Universal Screen";
+            yield break;
         }
 
         if (deviceModel.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return "8.8 inch";
+            yield return "VM 9.2";
+            yield return "VM 9.2 LCD";
+            yield return "9.2";
+            yield return "8.8 inch";
+            yield break;
         }
-
-        return "";
     }
 
     private static string ChooseBestActiveTemplateIdCandidate(string deviceModel, IEnumerable<string> candidates)
@@ -27665,44 +27786,51 @@ private static string CreateExportPackageBaseName(string templateId)
             return false;
         }
 
-        var isUniversalScreen = IsUniversalScreenSelected();
-        if (isUniversalScreen)
+        var isWideScreen = IsWideScreenDeviceModel(deviceModel);
+        if (isWideScreen)
         {
-            var universalAccepted = false;
-            var universalBackgroundPath = ResolveLConnectRuntimeBackgroundPath(backgroundPath, deviceModel);
-            var hasBackground = !string.IsNullOrWhiteSpace(universalBackgroundPath) && File.Exists(universalBackgroundPath);
+            var wideAccepted = false;
+            var wideBackgroundPath = ResolveLConnectRuntimeBackgroundPath(backgroundPath, deviceModel);
+            var hasBackground = !string.IsNullOrWhiteSpace(wideBackgroundPath) && File.Exists(wideBackgroundPath);
             if (hasBackground)
             {
                 var profileBackgroundPath = ResolveProfileBackgroundPathForLConnect(
                     deviceModel,
-                    universalBackgroundPath,
+                    wideBackgroundPath,
                     backgroundPath,
                     templateId);
                 await Task.Run(() =>
-                    TrySetUniversal88TemplateBackgroundProfile(templateId, profileBackgroundPath) ||
+                    (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+                     TrySetUniversal88TemplateBackgroundProfile(templateId, profileBackgroundPath)) ||
                     TrySetTemplateBackgroundProfileWithRetry(templateId, profileBackgroundPath, deviceModel));
             }
 
-            using var universalClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
-            var universalCandidateJson = JsonSerializer.Serialize(templateId);
+            await Task.Run(() => TrySetActiveTemplateProfile(templateId, deviceModel));
+            using var wideClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
+            var wideCandidateJson = JsonSerializer.Serialize(templateId);
             foreach (var path in GetLConnectDevicePaths())
             {
                 try
                 {
-                    universalAccepted |= await SendLConnectDeviceRequestAsync(
-                        universalClient,
+                    wideAccepted |= await SendLConnectDeviceRequestAsync(
+                        wideClient,
                         path,
                         "ApplyTemplate",
-                        universalCandidateJson);
-                    universalAccepted |= await SendLConnectDeviceRequestAsync(
-                        universalClient,
+                        wideCandidateJson);
+                    wideAccepted |= await SendLConnectDeviceRequestAsync(
+                        wideClient,
+                        path,
+                        "Apply2DTemplate",
+                        wideCandidateJson);
+                    wideAccepted |= await SendLConnectDeviceRequestAsync(
+                        wideClient,
                         path,
                         "SaveProfile",
                         "{}");
                     if (hasBackground)
                     {
-                        universalAccepted |= await SendLConnectDeviceRequestAsync(
-                            universalClient,
+                        wideAccepted |= await SendLConnectDeviceRequestAsync(
+                            wideClient,
                             path,
                             "ChangeTemplateBackground",
                             JsonSerializer.Serialize(new
@@ -27710,15 +27838,15 @@ private static string CreateExportPackageBaseName(string templateId)
                                 Id = templateId,
                                 TemplateId = templateId,
                                 ScreenType = 0,
-                                Path = universalBackgroundPath
+                                Path = wideBackgroundPath
                             }));
-                        universalAccepted |= await SendLConnectDeviceRequestAsync(
-                            universalClient,
+                        wideAccepted |= await SendLConnectDeviceRequestAsync(
+                            wideClient,
                             path,
                             "SaveProfile",
                             "{}");
-                        universalAccepted |= await SendLConnectDeviceRequestAsync(
-                            universalClient,
+                        wideAccepted |= await SendLConnectDeviceRequestAsync(
+                            wideClient,
                             path,
                             "ApplyScreenContent",
                             "{}");
@@ -27731,9 +27859,9 @@ private static string CreateExportPackageBaseName(string templateId)
 
             AppLogger.Info(
                 $"Fast L-Connect refresh completed in {stopwatch.ElapsedMilliseconds} ms. " +
-                $"device={deviceModel}; template={templateId}; universal=true; accepted={universalAccepted}; " +
-                $"background={DescribeFileForLog(universalBackgroundPath)}");
-            return universalAccepted;
+                $"device={deviceModel}; template={templateId}; wide=true; accepted={wideAccepted}; " +
+                $"background={DescribeFileForLog(wideBackgroundPath)}");
+            return wideAccepted;
         }
 
         var lConnectBackgroundPath = ResolveLConnectRuntimeBackgroundPath(backgroundPath, deviceModel);
@@ -30450,8 +30578,9 @@ private static string CreateExportPackageBaseName(string templateId)
             NormalizeUniversalOrientation(manifest.UniversalOrientation),
             "portrait",
             StringComparison.OrdinalIgnoreCase);
-        var targetWidth = portrait ? 480 : 1920;
-        var targetHeight = portrait ? 1920 : 480;
+        var targetCanvas = GetDeviceCanvasPixels(manifest.DeviceModel, portrait ? "portrait" : "landscape");
+        var targetWidth = targetCanvas.Width;
+        var targetHeight = targetCanvas.Height;
 
         try
         {

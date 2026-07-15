@@ -1,5 +1,21 @@
 # Changelog
 
+## V 2.5.2
+
+- Fixed HydroShift II LCD-S/C active theme background detection when L-Connect keeps a stale custom background path in the profile.
+- Fixed active HydroShift themes loading old profile background media instead of the currently applied `ApplyTemplate videoPath`.
+- Fixed `GraphAnimation` layers reporting empty `MediaPath` during template inspection.
+- Added background lookup for HydroShift `temp` folders and `uploaded/<device>/template-background` runtime folders.
+- Improved VM 9.2 support with real `1920x464` and `464x1920` canvas handling.
+- Reworked wide-screen canvas logic so Universal 8.8 and VM 9.2 no longer share the same hardcoded `1920x480` assumptions.
+- Added VM 9.2 runtime H.264 sizing/cropping logic, including `464x1920` portrait handling.
+- Enabled VM 9.2 direct apply/profile handling paths and added VM 9.2 L-Connect log tags for active template/background detection.
+- Fixed gallery/local filters so VM 9.2 themes stay classified as `vm-9.2-inch` instead of being folded into Universal 8.8.
+- Updated VM 9.2 aspect labels to show `1920 x 464` / `464 x 1920`.
+- Aligned data-source format support with decompiled L-Connect behavior, keeping format selection focused on sources L-Connect actually reads via `SubName`.
+- Improved gallery ordering and community-gallery asset URL filtering.
+- Added approved gallery themes after 2.5.1: `Crystals_182127`, `Casio-Hydroshift-C`, `Casio-Hydroshift-S`, and `BlueTech_Animated`.
+
 ## V 1.5
 
 - Fixed 8.8" Universal Screen gallery/import/apply targeting by using the actual L-Connect template endpoint (`vid_1cbe&pid_a088`) and excluding the wireless transmitter endpoint (`vid_0416&pid_8040`) from template operations.

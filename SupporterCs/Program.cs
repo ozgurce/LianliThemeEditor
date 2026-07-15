@@ -241,6 +241,15 @@ internal static class Program
                 Console.WriteLine("Updated: " + _templatePath);
                 return;
             }
+            if (_args.HasValue("AppendLayerClonesJson"))
+            {
+                AppendLayerClones(theme);
+                RepairDataMetadata(theme);
+                RepairFontMetadata(theme);
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
+                return;
+            }
             ApplyLegacyPrimaryFields(theme);
             ApplyAddOperation(theme);
             ApplyGroupingMetadata(theme);
@@ -367,9 +376,8 @@ internal static class Program
             {
                 layers.AddRange(profileModulars);
             }
-            var backgroundPath = string.IsNullOrWhiteSpace(profileBackground)
-                ? ResolveTemplateBackgroundPath(theme)
-                : profileBackground;
+            var templateBackground = ResolveTemplateBackgroundPath(theme);
+            var backgroundPath = ChooseBackgroundPath(profileBackground, templateBackground);
             if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
             {
                 backgroundPath = ResolveTemplatePreviewBackgroundPath(templateId);
@@ -378,6 +386,18 @@ internal static class Program
             {
                 ["TemplatePath"] = _templatePath,
                 ["TemplateId"] = templateId,
+                ["ThemeType"] = theme.GetType().FullName,
+                ["RootMembers"] = DescribeRootMembers(theme),
+                ["Width"] = Reflection.Get(theme, "width"),
+                ["Height"] = Reflection.Get(theme, "height"),
+                ["ZoomRate"] = Reflection.Get(theme, "ZoomRate"),
+                ["VideoName"] = Reflection.Get(theme, "videoName"),
+                ["VideoPath"] = Reflection.Get(theme, "videoPath"),
+                ["OVideoPath"] = Reflection.Get(theme, "o_videoPath"),
+                ["VideoPath2"] = Reflection.Get(theme, "videoPath2"),
+                ["VideoPath3"] = Reflection.Get(theme, "videoPath3"),
+                ["ThemePicWidth"] = Reflection.Get(theme, "themePic") is Image themePic ? themePic.Width : null,
+                ["ThemePicHeight"] = Reflection.Get(theme, "themePic") is Image themePic2 ? themePic2.Height : null,
                 ["Background"] = Path.GetFileName(backgroundPath),
                 ["BackgroundPath"] = backgroundPath,
                 ["Layers"] = layers,
@@ -390,6 +410,93 @@ internal static class Program
                 Console.WriteLine("TemplateId: " + Path.GetFileNameWithoutExtension(_templatePath));
                 foreach (var layer in layers) Console.WriteLine($"{layer["Index"],3} {layer["Type"],20} {layer["DataSource"],18}");
             }
+        }
+
+        private static string ChooseBackgroundPath(string profileBackground, string templateBackground)
+        {
+            if (string.IsNullOrWhiteSpace(profileBackground))
+            {
+                return templateBackground;
+            }
+
+            if (string.IsNullOrWhiteSpace(templateBackground))
+            {
+                return profileBackground;
+            }
+
+            if (!File.Exists(profileBackground))
+            {
+                return templateBackground;
+            }
+
+            if (!File.Exists(templateBackground))
+            {
+                return profileBackground;
+            }
+
+            var normalizedTemplate = Path.GetFullPath(templateBackground);
+            if (normalizedTemplate.IndexOf(
+                    Path.DirectorySeparatorChar + "temp" + Path.DirectorySeparatorChar,
+                    StringComparison.OrdinalIgnoreCase) >= 0 &&
+                File.GetLastWriteTimeUtc(templateBackground) >= File.GetLastWriteTimeUtc(profileBackground).AddMinutes(-5))
+            {
+                return templateBackground;
+            }
+
+            return profileBackground;
+        }
+
+        private static List<Dictionary<string, object?>> DescribeRootMembers(object theme)
+        {
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            return theme.GetType()
+                .GetMembers(flags)
+                .Where(member => member.MemberType is MemberTypes.Property or MemberTypes.Field)
+                .Select(member =>
+                {
+                    object? value = null;
+                    Type? type = null;
+                    try
+                    {
+                        if (member is PropertyInfo property && property.GetIndexParameters().Length == 0)
+                        {
+                            type = property.PropertyType;
+                            value = property.GetValue(theme);
+                        }
+                        else if (member is FieldInfo field)
+                        {
+                            type = field.FieldType;
+                            value = field.GetValue(theme);
+                        }
+                    }
+                    catch
+                    {
+                    }
+
+                    return new Dictionary<string, object?>
+                    {
+                        ["Name"] = member.Name,
+                        ["Kind"] = member.MemberType.ToString(),
+                        ["Type"] = type?.FullName ?? "",
+                        ["Value"] = DescribeRootMemberValue(value)
+                    };
+                })
+                .OrderBy(item => item["Name"]?.ToString(), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static object? DescribeRootMemberValue(object? value)
+        {
+            if (value == null) return null;
+            if (value is Image image) return $"{image.Width}x{image.Height}";
+            if (value is string or bool or int or long or float or double or decimal) return value;
+            if (value is IEnumerable enumerable && value is not string)
+            {
+                var count = 0;
+                foreach (var _ in enumerable) count++;
+                return $"Count={count}";
+            }
+            return value.GetType().FullName;
         }
 
         private void InspectBitmaps(object theme)
@@ -1772,6 +1879,44 @@ internal static class Program
             }
         }
 
+        private void AppendLayerClones(object theme)
+        {
+            var path = _args.Get("AppendLayerClonesJson");
+            if (!File.Exists(path)) throw new FileNotFoundException("Layer clone file not found.", path);
+            if (new FileInfo(path).Length > MaxJsonLength) throw new InvalidDataException("Layer clone file is too large.");
+
+            var rows = Json.Deserialize<List<Dictionary<string, object>>>(File.ReadAllText(path, Encoding.UTF8))
+                       ?? new List<Dictionary<string, object>>();
+            var targetList = Graphs(theme);
+            foreach (var row in rows)
+            {
+                var sourcePath = GetCloneString(row, "SourceTemplatePath");
+                var layerIndex = GetCloneInt(row, "LayerIndex");
+                if (!File.Exists(sourcePath)) throw new FileNotFoundException("Source template not found.", sourcePath);
+
+                var sourceTheme = TemplateSerializer.Load(sourcePath);
+                var sourceList = Graphs(sourceTheme);
+                ValidateIndex(sourceList, layerIndex);
+                var clone = TemplateSerializer.Clone(sourceList[layerIndex]!);
+                if (row.TryGetValue("Format", out var formatValue))
+                {
+                    SetDataFormat(clone, formatValue?.ToString() ?? "");
+                }
+                targetList.Add(clone);
+            }
+        }
+
+        private static string GetCloneString(Dictionary<string, object> row, string key)
+        {
+            return row.TryGetValue(key, out var value) ? value?.ToString() ?? "" : "";
+        }
+
+        private static int GetCloneInt(Dictionary<string, object> row, string key)
+        {
+            if (!row.TryGetValue(key, out var value)) throw new InvalidDataException(key + " is required.");
+            return Convert.ToInt32(value, CultureInfo.InvariantCulture);
+        }
+
         private static string DescribeLayerForError(object layer)
         {
             var data = Reflection.Get(layer, "m_data");
@@ -2061,6 +2206,17 @@ internal static class Program
                 return Activator.CreateInstance(ThemeType("ThemeEngine.GraphDynamicBar"), mData)
                        ?? throw new InvalidOperationException("GraphDynamicBar could not be created.");
             }
+            if (code.StartsWith("MODPATH::", StringComparison.OrdinalIgnoreCase))
+            {
+                var pathParts = code.Split(new[] { "::" }, StringSplitOptions.None);
+                if (pathParts.Length < 3) throw new InvalidOperationException("Invalid graph style: " + code);
+                var path = DecodePath(pathParts[1]);
+                if (!File.Exists(path)) throw new FileNotFoundException("Modular graph not found: " + path);
+                var modular = TemplateSerializer.Load(path);
+                var graph = Graphs(modular).Cast<object>().FirstOrDefault(x => x.GetType().Name == pathParts[2]);
+                if (graph != null) return TemplateSerializer.Clone(graph);
+                throw new InvalidOperationException("Modular graph type not found: " + pathParts[2]);
+            }
             if (!code.StartsWith("MOD::", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Unsupported graph style: " + code);
             var parts = code.Split(new[] { "::" }, StringSplitOptions.None);
@@ -2074,6 +2230,40 @@ internal static class Program
                 if (graph != null) return TemplateSerializer.Clone(graph);
             }
             throw new FileNotFoundException("Modular graph not found: " + parts[1]);
+        }
+
+        private static string GetModularNameFromStyleCode(string code)
+        {
+            try
+            {
+                if (code.StartsWith("MODPATH::", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = code.Split(new[] { "::" }, StringSplitOptions.None);
+                    if (parts.Length >= 2) return Path.GetFileNameWithoutExtension(DecodePath(parts[1]));
+                }
+                if (code.StartsWith("MOD::", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = code.Split(new[] { "::" }, StringSplitOptions.None);
+                    if (parts.Length >= 2) return Path.GetFileNameWithoutExtension(parts[1]);
+                }
+            }
+            catch { }
+            return "Modular";
+        }
+
+        private static string EncodePath(string path)
+        {
+            return Convert.ToBase64String(Encoding.UTF8.GetBytes(path))
+                .TrimEnd('=')
+                .Replace('+', '-')
+                .Replace('/', '_');
+        }
+
+        private static string DecodePath(string encoded)
+        {
+            var value = encoded.Replace('-', '+').Replace('_', '/');
+            value = value.PadRight(value.Length + (4 - value.Length % 4) % 4, '=');
+            return Encoding.UTF8.GetString(Convert.FromBase64String(value));
         }
 
         private object? FindSampleGraph(object theme, string type) =>
@@ -2958,6 +3148,7 @@ internal static class Program
                 roots.Add(Path.Combine(DefaultProgramData, model, "video"));
                 roots.Add(Path.Combine(DefaultProgramData, model, "image"));
                 roots.Add(Path.Combine(DefaultProgramData, model, "theme"));
+                roots.Add(Path.Combine(DefaultProgramData, "uploaded", model, "template-background"));
                 roots.Add(Path.Combine(_lConnectDir, "Assets", model, "video"));
                 roots.Add(Path.Combine(_lConnectDir, "Assets", model, "image"));
                 roots.Add(Path.Combine(_lConnectDir, "Assets", model, "theme"));
@@ -3089,6 +3280,7 @@ internal static class Program
             var canvasWidth = GetCanvasDimension("CanvasWidth", 480);
             var canvasHeight = GetCanvasDimension("CanvasHeight", 480);
             var isUniversal88 = string.Equals(deviceName, "universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase);
+            var isVm92 = string.Equals(deviceName, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
             var autoRotation = rotationDegrees == 0
                 ? GetAutoBackgroundRotationDegrees(ffmpeg, sourcePath, canvasWidth, canvasHeight)
                 : 0;
@@ -3113,6 +3305,10 @@ internal static class Program
                 ? canvasWidth >= canvasHeight
                     ? "transpose=clock,scale=480:1920,setsar=1"
                     : "scale=480:1920,setsar=1"
+                : isVm92
+                    ? canvasWidth >= canvasHeight
+                        ? "transpose=clock,scale=464:1920,setsar=1"
+                        : "scale=464:1920,setsar=1"
                 : filter;
             var encoder = isUniversal88
                 ? new[]
@@ -3130,7 +3326,20 @@ internal static class Program
             var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
             try
             {
-                if (extension == ".h264")
+                if (extension == ".h264" &&
+                    isVm92 &&
+                    canvasWidth >= canvasHeight &&
+                    TryGetMediaDimensions(ffmpeg, sourcePath, out var h264InputWidth, out var h264InputHeight) &&
+                    h264InputWidth == 480 &&
+                    h264InputHeight == 1920)
+                {
+                    var cropFilter = "crop=464:1920:8:0,setsar=1,fps=30,format=yuv420p";
+                    var previewFilter = "crop=464:1920:8:0,transpose=cclock,setsar=1,fps=30,format=yuv420p";
+                    RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", previewFilter }).Concat(encoder).Concat(new[] { "-movflags", "+faststart", tempMp4 }));
+                    RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", cropFilter }).Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
+                    RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", previewFilter, "-frames:v", "1", tempPreview }));
+                }
+                else if (extension == ".h264")
                 {
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", filter }).Concat(encoder).Concat(new[] { "-movflags", "+faststart", tempMp4 }));
                     RunFfmpeg(ffmpeg, new[] { "-y", "-i", tempMp4, "-vf", h264Filter }.Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
@@ -3423,7 +3632,8 @@ internal static class Program
                 ["MediaPath"] = type == "GraphSensor"
                     ? SensorImagePath(graph, templatePath)
                     : IsGraphLayer(graph) ? GraphPreviewPath(graph, templatePath)
-                    : type != "GraphAnimation" ? ImagePath(graph, templatePath) : "",
+                    : type == "GraphAnimation" ? AnimationMediaPath(graph, templatePath)
+                    : ImagePath(graph, templatePath),
                 ["Width"] = Reflection.Get(graph, "width"), ["Height"] = Reflection.Get(graph, "height"),
                 ["Radius"] = Reflection.Get(graph, "radius"), ["Diameter"] = Reflection.Get(graph, "diameter"),
                 ["Thickness"] = Reflection.Get(graph, "archWidth"),
@@ -3464,6 +3674,60 @@ internal static class Program
                 ["SensorZoomRate"] = Reflection.Get(graph, "styleInfo") is { } styleInfo8 ? Reflection.Get(styleInfo8, "ZoomRate") : "",
                 ["WritableProperties"] = Reflection.WritableNames(graph), ["WritableFontProperties"] = Reflection.WritableNames(font)
             };
+        }
+
+        private static string AnimationMediaPath(object graph, string templatePath)
+        {
+            foreach (var value in new[]
+                     {
+                         Reflection.GetString(graph, "FilePath"),
+                         Reflection.GetString(graph, "videoPath"),
+                         Reflection.GetString(graph, "o_videoPath"),
+                         Reflection.GetString(graph, "ImgName"),
+                         Reflection.GetString(graph, "videoName")
+                     })
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                if (File.Exists(value))
+                {
+                    return value;
+                }
+
+                var fileName = Path.GetFileName(value);
+                if (string.IsNullOrWhiteSpace(fileName))
+                {
+                    continue;
+                }
+
+                var deviceRoot = Path.GetDirectoryName(Path.GetDirectoryName(templatePath)!)!;
+                var programDataRoot = Path.GetDirectoryName(deviceRoot) ?? "";
+                var deviceName = Path.GetFileName(deviceRoot);
+                foreach (var mediaRoot in new[]
+                         {
+                             Path.Combine(deviceRoot, "video"),
+                             Path.Combine(deviceRoot, "temp"),
+                             Path.Combine(programDataRoot, "uploaded", deviceName, "template-background")
+                         })
+                {
+                    var candidate = Path.Combine(mediaRoot, fileName);
+                    if (File.Exists(candidate))
+                    {
+                        return candidate;
+                    }
+
+                    var h264Candidate = Path.ChangeExtension(candidate, ".h264");
+                    if (File.Exists(h264Candidate))
+                    {
+                        return h264Candidate;
+                    }
+                }
+            }
+
+            return "";
         }
 
         private static string ImagePath(object graph, string templatePath)

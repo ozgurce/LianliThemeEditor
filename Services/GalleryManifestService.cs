@@ -118,13 +118,11 @@ public sealed class GalleryManifestService : IGalleryManifestService
         }
 
         var result = new List<GalleryThemeItem>();
+        var galleryOrder = 0;
         foreach (var element in themesElement.EnumerateArray())
         {
+            galleryOrder++;
             var deviceModel = GalleryDeviceModelNormalizer.Normalize(GetJsonString(element, "deviceModel"));
-            if (string.Equals(deviceModel, GalleryDeviceModelNormalizer.Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
-            {
-                deviceModel = GalleryDeviceModelNormalizer.UniversalScreenDeviceModel;
-            }
             if (deviceModel is not ("hydroshift-ii-lcd-s" or "hydroshift-ii-lcd-c" or GalleryDeviceModelNormalizer.UniversalScreenDeviceModel or GalleryDeviceModelNormalizer.Vm92DeviceModel))
             {
                 continue;
@@ -169,7 +167,8 @@ public sealed class GalleryManifestService : IGalleryManifestService
                 Orientation = GetGalleryThemeOrientation(element, packageUrl, previewUrl, id, name, deviceName, description),
                 PackageUrl = packageUrl,
                 PreviewUrl = previewUrl,
-                GallerySortTimeUtc = GetGalleryThemeSortTimeUtc(element)
+                GallerySortTimeUtc = GetGalleryThemeSortTimeUtc(element),
+                GalleryOrder = galleryOrder
             });
         }
 
@@ -209,6 +208,7 @@ public sealed class GalleryManifestService : IGalleryManifestService
 
         return uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
                uri.Host.Equals("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.Equals("lianli-theme-gallery.ozgurce.workers.dev", StringComparison.OrdinalIgnoreCase) ||
                uri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase);
     }
 

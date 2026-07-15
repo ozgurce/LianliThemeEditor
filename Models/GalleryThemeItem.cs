@@ -41,6 +41,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     public string PackageUrl { get; set; } = "";
     public string PreviewUrl { get; set; } = "";
     public DateTime GallerySortTimeUtc { get; set; } = DateTime.MinValue;
+    public int GalleryOrder { get; set; }
     public ImageSource? Preview
     {
         get => _preview;
@@ -50,7 +51,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     public double CardHeight => IsLandscapeWideDevice ? 286 : 402;
     public double PreviewHeight => IsLandscapeWideDevice ? 132 : 260;
     public string AspectLabel => IsWideDevice
-        ? (IsPortraitWideDevice ? "480 x 1920" : "1920 x 480")
+        ? GetWideAspectLabel()
         : "480 x 480";
     public Stretch PreviewStretch => IsWideDevice ? Stretch.Uniform : Stretch.UniformToFill;
     public string InstallBadgeText => IsInstalled ? _installedLabel : "";
@@ -89,6 +90,14 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
 
     private bool IsLandscapeWideDevice =>
         IsWideDevice && !IsPortraitWideDevice;
+
+    private string GetWideAspectLabel()
+    {
+        var isVm92 = string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
+        return IsPortraitWideDevice
+            ? isVm92 ? "464 x 1920" : "480 x 1920"
+            : isVm92 ? "1920 x 464" : "1920 x 480";
+    }
 
     public bool IsBusy
     {

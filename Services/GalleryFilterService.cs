@@ -33,6 +33,7 @@ public sealed class GalleryFilterService : IGalleryFilterService
                 .OrderBy(theme => theme.Name, StringComparer.OrdinalIgnoreCase),
             "newest" => filteredThemes
                 .OrderByDescending(theme => theme.GallerySortTimeUtc)
+                .ThenByDescending(theme => theme.GalleryOrder)
                 .ThenBy(theme => theme.Name, StringComparer.OrdinalIgnoreCase),
             _ => filteredThemes
         };

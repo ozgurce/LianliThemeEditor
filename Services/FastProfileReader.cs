@@ -356,6 +356,9 @@ public static class FastProfileReader
         }
         else if (deviceModel.Equals("vm-9.2-inch", StringComparison.OrdinalIgnoreCase))
         {
+            yield return "VM 9.2";
+            yield return "VM 9.2 LCD";
+            yield return "9.2";
             yield return "8.8 inch";
         }
     }
@@ -420,6 +423,7 @@ public static class FastProfileReader
     private static bool IsUniversalDevice(string deviceModel) =>
         deviceModel.Equals("universal-88", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase) ||
+        deviceModel.Equals("vm-9.2-inch", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase);
 }
