@@ -975,6 +975,16 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/casio-hydroshift-s-f0ff4357.png",
       "packageUrl": "packages/casio-hydroshift-s-f0ff4357.zip"
+    },
+    {
+      "id": "bluetech-animated-9e1cb2f4",
+      "name": "BlueTech_Animated",
+      "author": "Wr3ck3r",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/bluetech-animated-9e1cb2f4.png",
+      "packageUrl": "packages/bluetech-animated-9e1cb2f4.zip"
     }
   ]
 }
