@@ -976,6 +976,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/crystals-182127-805110d2.png",
       "packageUrl": "packages/crystals-182127-805110d2.zip"
+    },
+    {
+      "id": "crystals-182127-lconnect-vm92-d97530a7",
+      "name": "Crystals_182127-LConnect-VM92",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "vm-9.2-inch",
+      "deviceName": "VM 9.2 LCD",
+      "previewUrl": "previews/crystals-182127-lconnect-vm92-d97530a7.png",
+      "packageUrl": "packages/crystals-182127-lconnect-vm92-d97530a7.zip"
     }
   ]
 }
