@@ -1025,7 +1025,8 @@
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/memento-mori-v2-d8897b0c.png",
-      "packageUrl": "packages/memento-mori-v2-d8897b0c.zip"
+      "packageUrl": "packages/memento-mori-v2-d8897b0c.zip",
+      "orientation": "portrait"
     },
     {
       "id": "memento-mori-v1-97f382b2",
@@ -1035,7 +1036,8 @@
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/memento-mori-v1-97f382b2.png",
-      "packageUrl": "packages/memento-mori-v1-97f382b2.zip"
+      "packageUrl": "packages/memento-mori-v1-97f382b2.zip",
+      "orientation": "portrait"
     }
   ]
 }

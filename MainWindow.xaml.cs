@@ -14735,6 +14735,13 @@ public partial class MainWindow : Window
 
                 packagePreviewTemp = Path.Combine(packageBackgroundStage, Path.GetFileName(previewEntry.FullName));
                 ExtractPackageEntry(previewEntry, packagePreviewTemp);
+                var previewOrientation = IsWideScreenDeviceModel(deviceModel)
+                    ? TryInferUniversalOrientationFromBackgroundPath(packagePreviewTemp)
+                    : "";
+                if (!string.IsNullOrWhiteSpace(previewOrientation))
+                {
+                    manifest.UniversalOrientation = previewOrientation;
+                }
             }
         }
 
@@ -17514,7 +17521,7 @@ public partial class MainWindow : Window
             _ = LoadVisibleGalleryPreviewsAsync();
             _ = LoadCommunityGalleryThemesAndMergeAsync();
             _ = LoadGalleryStatsAndRefreshAsync();
-            SetMissingGalleryOrientationsFromMetadata(themes);
+            _ = EnrichGalleryThemeOrientationsAndRefreshAsync(themes);
         }
         catch (Exception ex)
         {
@@ -17603,7 +17610,7 @@ public partial class MainWindow : Window
 
             GallerySourceText.Text = FormatLanguageText("gallery.sourceWithCount", "GitHub gallery ({0} themes)", GalleryThemes.Count);
             RefreshGalleryLocalizedText();
-            SetMissingGalleryOrientationsFromMetadata(communityThemes);
+            _ = EnrichGalleryThemeOrientationsAndRefreshAsync(communityThemes);
             ApplyGalleryFilter();
             _ = LoadVisibleGalleryPreviewsAsync();
         }, System.Windows.Threading.DispatcherPriority.Background);
@@ -17615,15 +17622,13 @@ public partial class MainWindow : Window
                      string.IsNullOrWhiteSpace(theme.Orientation) &&
                      IsWideScreenDeviceModel(theme.DeviceModel)))
         {
-            theme.Orientation = FirstNonEmpty(
-                InferGalleryThemeOrientation(
-                    theme.Id,
-                    theme.Name,
-                    theme.DeviceName,
-                    theme.Description,
-                    theme.PackageUrl,
-                    theme.PreviewUrl),
-                "landscape");
+            theme.Orientation = InferGalleryThemeOrientation(
+                theme.Id,
+                theme.Name,
+                theme.DeviceName,
+                theme.Description,
+                theme.PackageUrl,
+                theme.PreviewUrl);
         }
     }
 
@@ -17874,6 +17879,8 @@ public partial class MainWindow : Window
 
     private async Task EnrichGalleryThemeOrientationsAsync(IReadOnlyList<GalleryThemeItem> themes)
     {
+        SetMissingGalleryOrientationsFromMetadata(themes);
+
         var targets = themes
             .Where(theme =>
                 string.IsNullOrWhiteSpace(theme.Orientation) &&
@@ -30323,6 +30330,7 @@ private static string CreateExportPackageBaseName(string templateId)
                 safeId = "theme";
             }
 
+            ApplyGallerySubmissionPreviewOrientation(previewPath, manifest);
             normalizedPreviewPath = NormalizeGallerySubmissionPreviewImage(previewPath, manifest);
             var effectivePreviewPath = string.IsNullOrWhiteSpace(normalizedPreviewPath)
                 ? previewPath
@@ -30636,6 +30644,22 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             AppLogger.Warning($"Gallery submission preview could not be normalized: {ex.Message}");
             return "";
+        }
+    }
+
+    private static void ApplyGallerySubmissionPreviewOrientation(
+        string previewPath,
+        ThemePackageManifest manifest)
+    {
+        if (!IsWideScreenDeviceModel(manifest.DeviceModel))
+        {
+            return;
+        }
+
+        var previewOrientation = TryInferUniversalOrientationFromBackgroundPath(previewPath);
+        if (!string.IsNullOrWhiteSpace(previewOrientation))
+        {
+            manifest.UniversalOrientation = previewOrientation;
         }
     }
 
