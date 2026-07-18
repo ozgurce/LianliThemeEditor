@@ -11,12 +11,12 @@ public sealed class ThemePackageValidationService : IThemePackageValidationServi
 {
     private static readonly HashSet<string> SupportedDevices = new(StringComparer.OrdinalIgnoreCase)
     {
-        "hydroshift-ii-lcd-s", "hydroshift-ii-lcd-c", "universal-screen-8.8-inch", "vm-9.2-inch"
+        "hydroshift-ii-lcd-s", "hydroshift-ii-lcd-c", "universal-screen-8.8-inch", "vm-9.2-inch", "hydroshift-ii-oled-curve"
     };
 
     private static readonly HashSet<string> MediaExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".mp4", ".gif", ".jpg", ".jpeg", ".png", ".h264", ".webp"
+        ".mp4", ".mov", ".gif", ".jpg", ".jpeg", ".png", ".h264", ".webp"
     };
 
     public ThemeValidationResult Validate(

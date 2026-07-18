@@ -394,7 +394,7 @@ public static class FastProfileReader
     {
         if (string.IsNullOrWhiteSpace(path)) return false;
 
-        var match = Regex.Match(path, @"hydroshift-ii-lcd-[sc]|universal-screen-8\.8-inch|vm-9\.2-inch", RegexOptions.IgnoreCase);
+        var match = Regex.Match(path, @"hydroshift-ii-lcd-[sc]|universal-screen-8\.8-inch|vm-9\.2-inch|hydroshift-ii-oled-curve", RegexOptions.IgnoreCase);
         if (match.Success)
         {
             return DeviceModelsShareBackgroundPool(match.Value, deviceModel);
@@ -424,6 +424,7 @@ public static class FastProfileReader
         deviceModel.Equals("universal-88", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("vm-9.2-inch", StringComparison.OrdinalIgnoreCase) ||
+        deviceModel.Equals("hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase) ||
         deviceModel.Equals("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase);
 }

@@ -1,6 +1,6 @@
 ﻿#define MyAppName "Lian Li LCD Template Editor"
 #ifndef MyAppVersion
-  #define MyAppVersion "2.5"
+  #define MyAppVersion "2.5.8"
 #endif
 #define MyAppPublisher "Ozgur Yalcin"
 #define MyAppURL "https://github.com/ozgurce/LianliThemeEditor"

@@ -1,5 +1,51 @@
 # Changelog
 
+## V 2.5.8
+
+- Added OLED Curve D3 text layer creation support with theme-specific 3D text preset selection.
+- Added editing support for existing OLED Curve D3 text layers, including preset selection for the cached 3D glyphs used by the active template.
+- Improved OLED Curve D3 cache discovery so the editor can find matching `.cache` files from the active template folder, ProgramData template folder, and L-Connect asset template folder.
+- Hid the normal size control for OLED Curve D3 text layers because ThemeEngine renders those glyphs from fixed cached bitmap assets instead of normal font size values.
+- Investigated normal text rotation support and confirmed ThemeEngine `GraphItem` text layers do not expose a native rotation property accepted by L-Connect; true rotated text would require converting text to an image-based layer.
+- Fixed Universal 8.8" `GraphImage` inspection so image layers with empty ThemeEngine `width`/`height` fields now inherit their real PNG dimensions from the resolved media file.
+- Added template-load diagnostics that log total layer count, image layer count, and background layer count to make missing 8.8" image-layer cases easier to verify.
+
+## V 2.5.7
+
+- Fixed active theme font loading on startup.
+- Fixed embedded PNG/background detection for templates that store images inside the `.template` file instead of as separate PNG files.
+- Fixed `themePic` export/preview generation so off-canvas/wide layers no longer collapse the preview into a vertical stripe.
+- Fixed background detection so `themePic` is no longer treated as the real background when a template has separate background media.
+- Fixed editor text preview data rendering to match L-Connect more closely: dynamic data layers now render only the value, while `%`, `GB`, `RPM`, `°C`, and similar unit labels remain separate static text layers.
+- Fixed text alignment preview behavior so left, center, and right aligned text positions are closer to L-Connect/ThemeEngine output.
+- Added release notes display to the update dialog with a scrollable notes area.
+- Added export buttons for image/background layer media.
+- Added Change Orientation flow for saving an orientation-converted copy of a theme and applying it without making normal Apply pay the conversion cost.
+- Fixed installer/update behavior for non-default installation folders. The MSI now detects an existing install location from registry and app-driven updates pass the current install directory to `msiexec`, so updates no longer default back to the standard install path.
+- Added proper major-upgrade handling to the WiX MSI so newer versions replace existing installs instead of behaving like a separate default-location install.
+- Improved L-Connect 3 path detection for custom installs. The editor, integrated phone control, and template worker now resolve L-Connect from `LIANLI_LCONNECT_DIR`, registry uninstall entries, service image paths, then the default Program Files fallback.
+- Removed remaining runtime hardcoded L-Connect asset/font/app paths from the main editor flow and passed the resolved L-Connect directory into the TemplateWorker.
+
+## V 2.5.6
+
+- Added alpha testing support for the HydroShift II OLED Curve 8.2" device.
+- Added OLED Curve device selection, device icon, gallery/local filters, owned-device settings, and an editor beta warning to remind testers to back up before editing or applying.
+- Added OLED Curve template discovery for `hydroshift-ii-oled-curve` ProgramData/asset folders and grouped handling for dual/triple split factory templates.
+- Added OLED Curve preview mode controls for full, dual split, and triple split layouts, with split guide rendering and clipped preview slots to prevent split templates from bleeding into each other.
+- Temporarily hid OLED Curve dual/triple split template parts from the normal template list while keeping grouped apply logic available internally.
+- Added OLED Curve apply command handling that sends grouped split templates with the correct OLED Curve screen mode hints.
+- Added OLED Curve nested theme/layer index support (`theme:x:y`) so layers inside split/3D templates can be edited without corrupting normal layer numbering.
+- Fixed OLED Curve multi-layer delete and stale `LayerIndex` handling so repeated delete/apply operations skip synthetic/non-persisted layers instead of failing on shifted indices.
+- Improved OLED Curve background detection to prefer real `videoPath`/media files over `themePic`, including fallback lookup by template id in the OLED Curve video folder.
+- Added `.mov` media support for OLED Curve official templates, package validation, media selection, preview path resolution, and export/import compatibility.
+- Added 2288x1080 OLED Curve full-screen sizing support for background preparation and preview scaling.
+- Added OLED Curve D3 cache text preview support by reading ThemeEngine `.cache` glyph dictionaries through the template worker and drawing cached 3D text/number glyphs in the editor preview.
+- Added template-worker inspection fields for `RenderMode` and `ThemeMode`, allowing OLED Curve D3/static/dynamic layers to be detected instead of being treated as plain text.
+- Improved OLED Curve text preview anchoring and bounds calculations so cached D3 text/data layers line up closer to L-Connect's ThemeEngine output without runtime render passes.
+- Improved OLED Curve status/progress graph preview handling, including curved/status bar layer metadata and split/gap controls.
+- Improved OLED Curve export/package validation paths for new media extensions and OLED Curve device ids.
+- Kept the OLED Curve changes scoped to the OLED Curve device path so existing HydroShift II LCD S/C, Universal 8.8, and VM 9.2 behavior is not intentionally changed.
+
 ## V 2.5.2
 
 - Fixed HydroShift II LCD-S/C active theme background detection when L-Connect keeps a stale custom background path in the profile.

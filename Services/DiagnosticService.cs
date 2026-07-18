@@ -1,5 +1,6 @@
 using System.IO.Compression;
 using System.IO;
+using ThemeEditorCSharp.Services;
 
 namespace ThemeEditorCSharp.Services;
 
@@ -32,13 +33,87 @@ public sealed class DiagnosticService
             catch (Exception ex) { AppLogger.Error($"Diagnostic text entry could not be added: {name}", ex); }
         }
 
-        foreach (var path in additionalFiles.Concat(Directory.Exists(AppLogger.LogDirectory)
-                      ? Directory.EnumerateFiles(AppLogger.LogDirectory, "*.log").TakeLast(5)
-                     : Array.Empty<string>()).Where(File.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var path in additionalFiles
+                     .Concat(EnumerateAppLogs())
+                     .Concat(EnumerateLConnectDiagnosticsFiles())
+                     .Where(File.Exists)
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            try { archive.CreateEntryFromFile(path, Path.Combine("files", Path.GetFileName(path)), CompressionLevel.Optimal); }
+            try
+            {
+                archive.CreateEntryFromFile(
+                    path,
+                    Path.Combine("files", GetDiagnosticEntryName(path)),
+                    CompressionLevel.Optimal);
+            }
             catch (Exception ex) { AppLogger.Error($"Diagnostic file could not be added: {path}", ex); }
         }
         return outputPath;
+    }
+
+    private static IEnumerable<string> EnumerateAppLogs() =>
+        Directory.Exists(AppLogger.LogDirectory)
+            ? Directory.EnumerateFiles(AppLogger.LogDirectory, "*.log").TakeLast(5)
+            : Array.Empty<string>();
+
+    private static IEnumerable<string> EnumerateLConnectDiagnosticsFiles()
+    {
+        var root = LConnectPaths.ProgramDataRoot;
+        foreach (var file in EnumerateRecentFiles(Path.Combine(root, "logs"), "*.log", 12))
+        {
+            yield return file;
+        }
+
+        foreach (var file in EnumerateRecentFiles(Path.Combine(root, "profile"), "*", 12))
+        {
+            yield return file;
+        }
+
+        foreach (var subdir in new[] { "template", "preview", "video", "temp" })
+        {
+            foreach (var file in EnumerateRecentFiles(Path.Combine(root, "vm-9.2-inch", subdir), "*", 20))
+            {
+                yield return file;
+            }
+        }
+
+        foreach (var file in EnumerateRecentFiles(Path.Combine(root, "uploaded", "vm-9.2-inch"), "*", 20))
+        {
+            yield return file;
+        }
+
+        var phoneLinkLog = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            "Lian-Li Phone Link",
+            "diagnostics.log");
+        if (File.Exists(phoneLinkLog))
+        {
+            yield return phoneLinkLog;
+        }
+    }
+
+    private static IEnumerable<string> EnumerateRecentFiles(string directory, string pattern, int count) =>
+        Directory.Exists(directory)
+            ? Directory.EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
+                .Take(count)
+            : Array.Empty<string>();
+
+    private static string GetDiagnosticEntryName(string path)
+    {
+        var lConnectRoot = LConnectPaths.ProgramDataRoot;
+        if (path.StartsWith(lConnectRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine(
+                "l-connect",
+                Path.GetRelativePath(lConnectRoot, path));
+        }
+
+        if (path.StartsWith(AppLogger.LogDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            return Path.Combine("app", Path.GetFileName(path));
+        }
+
+        return Path.GetFileName(path);
     }
 }

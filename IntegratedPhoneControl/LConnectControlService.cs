@@ -12,6 +12,7 @@ public sealed class LConnectControlService
 {
     private const string UniversalScreenDeviceModel = "universal-screen-8.8-inch";
     private const string Vm92DeviceModel = "vm-9.2-inch";
+    private const string OledCurveDeviceModel = "hydroshift-ii-oled-curve";
     private const string WirelessFanDeviceId = "wireless-fans";
     private const string WirelessFansModel = "l-wireless-fans";
     private const string Tlv2MergeFansModel = "tl-wireless-fans-merge";
@@ -235,7 +236,28 @@ public sealed class LConnectControlService
         var tried = new List<string>();
         await SendDeviceCommandAsync(client, device.Path, "ReloadAssets", "{}", cancellationToken);
 
-        foreach (var command in new[] { "ApplyTemplate", "SetTemplate", "Apply2DTemplate" })
+        if (device.Model.Equals(OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var command in GuessOledCurveApplyCommands(themeId))
+            {
+                tried.Add(command.Name);
+                if (!await SendDeviceCommandAsync(client, device.Path, command.Name, command.Body, cancellationToken))
+                {
+                    continue;
+                }
+
+                await SendDeviceCommandAsync(client, device.Path, "SaveProfile", "{}", cancellationToken);
+                await SendDeviceCommandAsync(client, device.Path, "ApplyScreenContent", "{}", cancellationToken);
+                return new CommandResult(true, "Theme applied.", command.Name, tried);
+            }
+
+            return new CommandResult(false, "L-Connect did not confirm the selected OLED Curve theme.", null, tried);
+        }
+
+        var commands = device.Model.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase)
+            ? new[] { "ApplyTemplate", "SetTemplate" }
+            : new[] { "ApplyTemplate", "SetTemplate", "Apply2DTemplate" };
+        foreach (var command in commands)
         {
             tried.Add(command);
             var result = await SendDeviceCommandAsync(client, device.Path, command, JsonSerializer.Serialize(themeId), cancellationToken);
@@ -247,12 +269,44 @@ public sealed class LConnectControlService
             if (await WaitForSelectedTemplateAsync(client, device.Path, themeId, cancellationToken))
             {
                 await SendDeviceCommandAsync(client, device.Path, "SaveProfile", "{}", cancellationToken);
-                await SendDeviceCommandAsync(client, device.Path, "ApplyScreenContent", "{}", cancellationToken);
+                if (!device.Model.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+                {
+                    await SendDeviceCommandAsync(client, device.Path, "ApplyScreenContent", "{}", cancellationToken);
+                }
                 return new CommandResult(true, "Theme applied.", command, tried);
             }
         }
 
         return new CommandResult(false, "L-Connect did not confirm the selected theme.", null, tried);
+    }
+
+    private static IReadOnlyList<(string Name, string Body)> GuessOledCurveApplyCommands(string themeId)
+    {
+        var quotedId = JsonSerializer.Serialize(themeId);
+        var screenType = GuessOledCurveScreenType(themeId);
+        var applyTemplateBody = JsonSerializer.Serialize(new { ScreenType = screenType, TemplateId = themeId });
+
+        if (themeId.StartsWith("3D", StringComparison.OrdinalIgnoreCase))
+        {
+            return new[] { ("Apply3DTemplate", quotedId), ("SetFullScreen3DSelectedTemplateId", quotedId) };
+        }
+
+        if (screenType == 0)
+        {
+            return new[] { ("Apply2DTemplate", quotedId), ("Apply2DTemplateEditMode", applyTemplateBody) };
+        }
+
+        return new[] { ("ApplyTemplate", applyTemplateBody), ("Apply2DTemplateEditMode", applyTemplateBody) };
+    }
+
+    private static int GuessOledCurveScreenType(string themeId)
+    {
+        if (themeId.StartsWith("dualleft", StringComparison.OrdinalIgnoreCase)) return 1;
+        if (themeId.StartsWith("dualright", StringComparison.OrdinalIgnoreCase)) return 2;
+        if (themeId.StartsWith("tripleleft", StringComparison.OrdinalIgnoreCase)) return 3;
+        if (themeId.StartsWith("triplemiddle", StringComparison.OrdinalIgnoreCase)) return 4;
+        if (themeId.StartsWith("tripleright", StringComparison.OrdinalIgnoreCase)) return 5;
+        return 0;
     }
 
     public async Task<CommandResult> SetBrightnessAsync(string deviceId, int value, CancellationToken cancellationToken)
@@ -299,7 +353,8 @@ public sealed class LConnectControlService
         };
 
         var tried = new List<string>();
-        if (device.Model.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (device.Model.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            device.Model.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
             var command = "SetScreenBrightness";
             tried.Add(command);
@@ -448,9 +503,10 @@ public sealed class LConnectControlService
             JsonSerializer.Serialize(new { ledBrightness = value })
         };
 
-        if (device.Model.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (device.Model.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            device.Model.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            var result = await ApplyUniversalLightingAsync(client, device.Path, "meteor", value, "#ff6b6b", null, 3, 0, tried, cancellationToken);
+            var result = await ApplyUniversalLightingAsync(client, device.Path, "meteor", value, "#ff6b6b", null, 3, 0, tried, cancellationToken, device.Model);
             if (result.Success)
             {
                 return result with { Message = $"LED brightness set to {value}." };
@@ -500,9 +556,10 @@ public sealed class LConnectControlService
         using var client = CreateClient(TimeSpan.FromSeconds(8));
         var tried = new List<string>();
         var normalizedColor = NormalizeColor(color, GetEffectAccent(normalizedEffect));
-        if (device.Model.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (device.Model.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            device.Model.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return await ApplyUniversalLightingAsync(client, device.Path, normalizedEffect, Math.Clamp(brightness, 0, 100), normalizedColor, colors, speed, direction, tried, cancellationToken);
+            return await ApplyUniversalLightingAsync(client, device.Path, normalizedEffect, Math.Clamp(brightness, 0, 100), normalizedColor, colors, speed, direction, tried, cancellationToken, device.Model);
         }
 
         if (device.Model.Equals("hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase))
@@ -614,7 +671,8 @@ public sealed class LConnectControlService
         int speed,
         int direction,
         List<string> tried,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string deviceModel = UniversalScreenDeviceModel)
     {
         var mode = ToUniversalLightingMode(effect);
         var colorCounts = await GetUniversalScreenLightingColorCountsAsync(devicePath, cancellationToken);
@@ -630,7 +688,10 @@ public sealed class LConnectControlService
                 if (await SendDeviceCommandAsync(client, devicePath, command, body, cancellationToken, acceptEmptyResponse: command is "SetLightingEffectSetting"))
                 {
                     await SendDeviceCommandAsync(client, devicePath, "SaveProfile", "{}", cancellationToken);
-                    await SendDeviceCommandAsync(client, devicePath, "ApplyScreenContent", "{}", cancellationToken);
+                    if (!deviceModel.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+                    {
+                        await SendDeviceCommandAsync(client, devicePath, "ApplyScreenContent", "{}", cancellationToken);
+                    }
                     return new CommandResult(true, $"Lighting effect set to {ToEffectDisplayName(effect)}.", command, tried);
                 }
             }
@@ -1261,7 +1322,7 @@ public sealed class LConnectControlService
 
                 if (LooksLikeUniversalScreenProfile(root))
                 {
-                    Add(UniversalScreenDeviceModel, root["Name"]?.GetValue<string>() ?? "");
+                    Add(InferWideScreenProfileModel(root), root["Name"]?.GetValue<string>() ?? "");
                 }
 
                 foreach (var device in root["DeviceList"]?.AsArray().OfType<JsonObject>() ?? Enumerable.Empty<JsonObject>())
@@ -1290,6 +1351,18 @@ public sealed class LConnectControlService
         (root.ContainsKey("LightingSettings") ||
          root.ContainsKey("LightingMode") ||
          root.ContainsKey("Brightness"));
+
+    private static string InferWideScreenProfileModel(JsonObject root)
+    {
+        var text = root.ToJsonString();
+        return text.Contains(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("VM 9.2", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("pid_a092", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("\"Height\":464", StringComparison.OrdinalIgnoreCase) ||
+               text.Contains("\"height\":464", StringComparison.OrdinalIgnoreCase)
+            ? Vm92DeviceModel
+            : UniversalScreenDeviceModel;
+    }
 
     private static void AddHydroShiftNamesFromDeviceSettings(Dictionary<string, Queue<string>> names)
     {
@@ -1374,7 +1447,7 @@ public sealed class LConnectControlService
 
                 if (LooksLikeUniversalScreenProfile(root))
                 {
-                    Add(UniversalScreenDeviceModel, ReadNodeInt(root["Brightness"]));
+                    Add(InferWideScreenProfileModel(root), ReadNodeInt(root["Brightness"]));
                 }
 
                 if (root.ContainsKey("ScreenBrightness") &&
@@ -1986,7 +2059,8 @@ public sealed class LConnectControlService
 
     private static IEnumerable<LConnectEffect> EffectsForTarget(string targetModel)
     {
-        if (targetModel.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (targetModel.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            targetModel.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
             return ReadEnumEffects(
                 "LConnectCore.Products.UniversalScreen8p8Inch.UniversalScreen8p8InchLightingMode",
@@ -2261,7 +2335,8 @@ public sealed class LConnectControlService
 
     private static int ColorCountForTarget(LConnectEffect effect, string targetModel)
     {
-        if (targetModel.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (targetModel.Equals(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            targetModel.Equals(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
             return effect.Id switch
             {
@@ -2730,7 +2805,8 @@ public sealed class LConnectControlService
             return "";
         }
 
-        if (path.Contains("vm", StringComparison.OrdinalIgnoreCase) ||
+        if (IsVm92TemplateControllerPath(path) ||
+            path.Contains("vm", StringComparison.OrdinalIgnoreCase) ||
             path.Contains("9.2", StringComparison.OrdinalIgnoreCase))
         {
             return Vm92DeviceModel;
@@ -2742,6 +2818,13 @@ public sealed class LConnectControlService
             path.Contains("8.8", StringComparison.OrdinalIgnoreCase))
         {
             return UniversalScreenDeviceModel;
+        }
+
+        if (IsOledCurveControllerPath(path) ||
+            path.Contains("oled", StringComparison.OrdinalIgnoreCase) ||
+            path.Contains("curve", StringComparison.OrdinalIgnoreCase))
+        {
+            return OledCurveDeviceModel;
         }
 
         if (path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
@@ -2756,6 +2839,14 @@ public sealed class LConnectControlService
     private static bool IsUniversal88TemplateControllerPath(string path) =>
         path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
         path.Contains("pid_a088", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsVm92TemplateControllerPath(string path) =>
+        path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
+        path.Contains("pid_a092", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOledCurveControllerPath(string path) =>
+        path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
+        path.Contains("pid_a068", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsWirelessTransmitterControllerPath(string path) =>
         path.Contains("vid_0416", StringComparison.OrdinalIgnoreCase) &&
@@ -2789,6 +2880,7 @@ public sealed class LConnectControlService
         "hydroshift-ii-lcd-c" => instance > 1 ? $"HydroShift II LCD-C #{instance}" : "HydroShift II LCD-C",
         UniversalScreenDeviceModel => instance > 1 ? $"8.8\" Universal Screen #{instance}" : "8.8\" Universal Screen",
         Vm92DeviceModel => instance > 1 ? $"VM 9.2 LCD #{instance}" : "VM 9.2 LCD",
+        OledCurveDeviceModel => instance > 1 ? $"HydroShift II OLED Curve #{instance}" : "HydroShift II OLED Curve",
         _ => instance > 1 ? $"LCD Device #{instance}" : "LCD Device"
     };
 

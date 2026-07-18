@@ -459,7 +459,8 @@ public sealed class SupporterBridge : ISupporterBridge
         {
             "TIME" or "DATE" or "DAY" or
             "HDDTEMP" or "HDDUSED" or
-            "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" => true,
+            "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" or
+            "RAMLOAD" or "DRVLOAD" => true,
             _ => false
         };
     }
@@ -480,6 +481,7 @@ public sealed class SupporterBridge : ISupporterBridge
             "DAY" => "Day_en",
             "HDDTEMP" or "HDDUSED" => "",
             "CPUPWR" or "CPUPOWER" or "GPUPWR" or "GPUPOWER" => "0",
+            "RAMLOAD" or "DRVLOAD" => "1",
             _ => ""
         };
     }
@@ -769,6 +771,7 @@ public sealed class SupporterBridge : ISupporterBridge
     {
         return new List<string>
         {
+            "-LConnectDir", LConnectPaths.ProgramFilesRoot,
             "-DeviceModel", deviceModel,
             "-TemplatePath", templatePath
         };
@@ -941,7 +944,9 @@ public sealed class SupporterBridge : ISupporterBridge
             TemplateId = GetValue(root, "TemplateId"),
             TemplatePath = GetValue(root, "TemplatePath"),
             Background = GetValue(root, "Background"),
-            BackgroundPath = GetValue(root, "BackgroundPath")
+            BackgroundPath = GetValue(root, "BackgroundPath"),
+            Width = GetIntValue(root, "Width"),
+            Height = GetIntValue(root, "Height")
         };
 
         if (root.TryGetProperty("Layers", out var layers) && layers.ValueKind == JsonValueKind.Array)
@@ -1024,6 +1029,8 @@ public sealed class SupporterBridge : ISupporterBridge
                     Round = GetValue(layer, "Round"),
                     TypeName = GetValue(layer, "TypeName"),
                     SubTypeName = GetValue(layer, "SubTypeName"),
+                    RenderMode = GetValue(layer, "RenderMode"),
+                    ThemeMode = GetValue(layer, "ThemeMode"),
                     SensorStyle = GetValue(layer, "SensorStyle"),
                     SensorType = GetValue(layer, "SensorType"),
                     SensorColor1 = GetValue(layer, "SensorColor1"),
@@ -1067,6 +1074,14 @@ public sealed class SupporterBridge : ISupporterBridge
 
     private static string GetLayerDisplayType(LayerRow layer)
     {
+        if (string.Equals(layer.RenderMode, "D3", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase)
+                ? "3D Text"
+                : "3D Data";
+        }
+
         return (layer.Type ?? "") switch
         {
             "GraphAnimation" => "Background",
@@ -1156,6 +1171,14 @@ public sealed class SupporterBridge : ISupporterBridge
             JsonValueKind.Undefined => "",
             _ => property.ToString()
         };
+    }
+
+    private static int GetIntValue(JsonElement element, string propertyName)
+    {
+        var value = GetValue(element, propertyName);
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : 0;
     }
 
     private static string GetColorAlpha(string color)

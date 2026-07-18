@@ -16,17 +16,19 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
+using Microsoft.Win32;
 
 namespace ThemeEditorSupporter;
 
 internal static class Program
 {
-    private const string DefaultLConnectDir = @"C:\Program Files\Lian-Li\L-Connect 3";
+    private static readonly string DefaultLConnectDir = ResolveDefaultLConnectDir();
     private const int MaxJsonLength = 16 * 1024 * 1024;
     private const int MaxCanvasDimension = 4096;
     private static readonly string DefaultProgramData = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Lian-Li", "L-Connect 3");
     private static readonly JavaScriptSerializer Json = new() { MaxJsonLength = MaxJsonLength, RecursionLimit = 256 };
     private static readonly System.Drawing.Text.PrivateFontCollection PrivateFonts = new();
+    private static readonly Dictionary<string, FontFamily> ThemeEngineFontCache = new(StringComparer.OrdinalIgnoreCase);
     private static Assembly? _themeAssembly;
 
     [STAThread]
@@ -105,6 +107,90 @@ internal static class Program
         return ex;
     }
 
+    private static string ResolveDefaultLConnectDir()
+    {
+        var fallback = @"C:\Program Files\Lian-Li\L-Connect 3";
+        foreach (var candidate in EnumerateLConnectInstallCandidates(fallback))
+        {
+            try
+            {
+                var path = Path.GetFullPath(Environment.ExpandEnvironmentVariables(candidate.Trim().Trim('"')));
+                if (File.Exists(Path.Combine(path, "L-Connect 3.exe")) ||
+                    File.Exists(Path.Combine(path, "lianli.ThemeEngine.dll")))
+                {
+                    return path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return fallback;
+    }
+
+    private static IEnumerable<string> EnumerateLConnectInstallCandidates(string fallback)
+    {
+        var env = Environment.GetEnvironmentVariable("LIANLI_LCONNECT_DIR");
+        if (!string.IsNullOrWhiteSpace(env)) yield return env;
+
+        foreach (var value in ReadLConnectRegistryInstallLocations())
+        {
+            yield return value;
+        }
+
+        foreach (var imagePath in ReadLConnectServiceImagePaths())
+        {
+            var directory = TryGetExecutableDirectory(imagePath);
+            if (!string.IsNullOrWhiteSpace(directory)) yield return directory!;
+        }
+
+        yield return fallback;
+    }
+
+    private static IEnumerable<string> ReadLConnectRegistryInstallLocations()
+    {
+        var keys = new[]
+        {
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\L-Connect 3",
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Lian Li L-Connect 3",
+            @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Lian-Li L-Connect 3",
+            @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\L-Connect 3",
+            @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Lian Li L-Connect 3",
+            @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Lian-Li L-Connect 3"
+        };
+
+        foreach (var hive in new[] { Registry.CurrentUser, Registry.LocalMachine })
+        {
+            foreach (var key in keys)
+            {
+                using var subKey = hive.OpenSubKey(key);
+                var value = subKey?.GetValue("InstallLocation") as string;
+                if (!string.IsNullOrWhiteSpace(value)) yield return value!;
+            }
+        }
+    }
+
+    private static IEnumerable<string> ReadLConnectServiceImagePaths()
+    {
+        foreach (var serviceName in new[] { "LConnectService", "LConnectServiceWatcher" })
+        {
+            using var key = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{serviceName}");
+            var value = key?.GetValue("ImagePath") as string;
+            if (!string.IsNullOrWhiteSpace(value)) yield return value!;
+        }
+    }
+
+    private static string? TryGetExecutableDirectory(string imagePath)
+    {
+        var expanded = Environment.ExpandEnvironmentVariables(imagePath.Trim());
+        var match = Regex.Match(expanded, "^\"([^\"]+\\.exe)\"", RegexOptions.IgnoreCase);
+        var exe = match.Success
+            ? match.Groups[1].Value
+            : expanded.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(part => part.EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+        return string.IsNullOrWhiteSpace(exe) ? null : Path.GetDirectoryName(exe);
+    }
+
     private sealed class SupporterApplication
     {
         private Arguments _args;
@@ -169,6 +255,12 @@ internal static class Program
                 return;
             }
 
+            if (_args.Has("ExtractD3CacheManifest"))
+            {
+                ExtractD3CacheManifest();
+                return;
+            }
+
             if (_args.HasValue("ExportTurzxTheme"))
             {
                 ExportTurzxTheme(theme, _args.Get("ExportTurzxTheme"), _args.Get("TurzxBackground"));
@@ -183,19 +275,29 @@ internal static class Program
 
             if (_args.Has("RenderGraphPreview"))
             {
+                RepairFontMetadata(theme);
                 RenderGraphPreview(theme);
                 return;
             }
 
             if (_args.Has("RenderLayerCanvas"))
             {
+                RepairFontMetadata(theme);
                 RenderLayerCanvas(theme);
                 return;
             }
 
             if (_args.Has("RenderClockCanvas"))
             {
+                RepairFontMetadata(theme);
                 RenderClockCanvas(theme);
+                return;
+            }
+
+            if (_args.Has("RenderThemeCanvas"))
+            {
+                RepairFontMetadata(theme);
+                RenderThemeCanvas(theme);
                 return;
             }
 
@@ -227,6 +329,22 @@ internal static class Program
             if (_args.Has("EnsureBackgroundLayer"))
             {
                 EnsureBackgroundLayer(theme, resetMedia: true);
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
+                return;
+            }
+
+            if (_args.HasValue("SetAlphaMedia"))
+            {
+                SetAlphaMedia(theme, _args.Get("SetAlphaMedia"));
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
+                return;
+            }
+
+            if (_args.HasValue("AddAnimation"))
+            {
+                AddAnimation(theme, _args.Get("AddAnimation"));
                 TemplateSerializer.Save(theme, _templatePath);
                 Console.WriteLine("Updated: " + _templatePath);
                 return;
@@ -368,7 +486,10 @@ internal static class Program
 
         private void WriteTemplate(object theme)
         {
-            var layers = Graphs(theme).Cast<object>().Select((graph, index) => LayerInspector.Read(theme, graph, index, _templatePath)).ToList();
+            var layers = EnumerateLayerTargets(theme)
+                .Where(ShouldExposeLayerTarget)
+                .Select(ReadLayerTarget)
+                .ToList();
             var templateId = Path.GetFileNameWithoutExtension(_templatePath);
             var profileBackground = ProfileStore.GetTemplateBackground(_profileDir, templateId, _deviceModel);
             var profileModulars = ProfileStore.GetActiveUniversal88CustomLayers(_profileDir, templateId, _deviceModel).ToList();
@@ -378,10 +499,6 @@ internal static class Program
             }
             var templateBackground = ResolveTemplateBackgroundPath(theme);
             var backgroundPath = ChooseBackgroundPath(profileBackground, templateBackground);
-            if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
-            {
-                backgroundPath = ResolveTemplatePreviewBackgroundPath(templateId);
-            }
             var result = new Dictionary<string, object?>
             {
                 ["TemplatePath"] = _templatePath,
@@ -401,14 +518,15 @@ internal static class Program
                 ["Background"] = Path.GetFileName(backgroundPath),
                 ["BackgroundPath"] = backgroundPath,
                 ["Layers"] = layers,
-                ["ProfileModulars"] = profileModulars
+                ["ProfileModulars"] = profileModulars,
+                ["NestedThemes"] = DescribeNestedThemes(theme)
             };
             if (_args.Has("Json")) Console.WriteLine(Json.Serialize(result));
             else
             {
                 Console.WriteLine("TemplatePath: " + _templatePath);
                 Console.WriteLine("TemplateId: " + Path.GetFileNameWithoutExtension(_templatePath));
-                foreach (var layer in layers) Console.WriteLine($"{layer["Index"],3} {layer["Type"],20} {layer["DataSource"],18}");
+                foreach (var layer in layers) Console.WriteLine($"{layer["Index"],10} {layer["Type"],20} {layer["DataSource"],18}");
             }
         }
 
@@ -489,6 +607,7 @@ internal static class Program
         {
             if (value == null) return null;
             if (value is Image image) return $"{image.Width}x{image.Height}";
+            if (value is Enum) return value.ToString();
             if (value is string or bool or int or long or float or double or decimal) return value;
             if (value is IEnumerable enumerable && value is not string)
             {
@@ -971,6 +1090,11 @@ internal static class Program
             var result = value;
             foreach (var oldId in oldIds)
             {
+                if (TemplateIdentityAlreadyNormalized(result, oldId, newId))
+                {
+                    continue;
+                }
+
                 if (string.Equals(result, oldId, StringComparison.OrdinalIgnoreCase))
                 {
                     result = newId;
@@ -1003,6 +1127,22 @@ internal static class Program
             }
 
             return result;
+        }
+
+        private static bool TemplateIdentityAlreadyNormalized(string value, string oldId, string newId)
+        {
+            if (string.IsNullOrWhiteSpace(value) ||
+                string.IsNullOrWhiteSpace(oldId) ||
+                string.IsNullOrWhiteSpace(newId) ||
+                !newId.StartsWith(oldId, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return Regex.IsMatch(
+                value,
+                $@"(?<![A-Za-z0-9_.-]){Regex.Escape(newId)}(?=\.turtheme|\.template|(?:[-_][A-Za-z0-9][A-Za-z0-9_.-]*)?\.(?:mp4|h264|png|jpe?g|gif|webp)|[-_]\d|$)",
+                RegexOptions.IgnoreCase);
         }
 
         private static bool IsLeafType(Type type) =>
@@ -1066,7 +1206,7 @@ internal static class Program
             if (File.Exists(source))
             {
                 var extension = Path.GetExtension(source).ToLowerInvariant();
-                var allowed = new[] { ".mp4", ".gif", ".h264", ".png", ".jpg", ".jpeg" };
+                var allowed = new[] { ".mp4", ".mov", ".gif", ".h264", ".png", ".jpg", ".jpeg" };
                 if (!allowed.Contains(extension)) throw new InvalidOperationException("Unsupported background media type: " + extension);
                 var videoDir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "video");
                 Directory.CreateDirectory(videoDir);
@@ -1105,6 +1245,39 @@ internal static class Program
             }
             SetThemeZoomRate(theme, 1.0);
             Console.WriteLine("BackgroundPath: " + path);
+        }
+
+        private void SetAlphaMedia(object theme, string source)
+        {
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                Reflection.TrySet(theme, "videoPathAlpha", "");
+                Console.WriteLine("AlphaMediaPath: ");
+                return;
+            }
+
+            if (!File.Exists(source))
+            {
+                throw new FileNotFoundException("Alpha media not found: " + source);
+            }
+
+            var extension = Path.GetExtension(source).ToLowerInvariant();
+            if (extension is not (".mov" or ".mp4" or ".h264"))
+            {
+                throw new InvalidOperationException("Unsupported alpha media type: " + extension);
+            }
+
+            var videoDir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "video");
+            Directory.CreateDirectory(videoDir);
+            var target = Path.Combine(videoDir, Path.GetFileName(source));
+            if (!Path.GetFullPath(source).Equals(Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+            {
+                CopyWithRetry(source, target);
+            }
+
+            Reflection.TrySet(theme, "videoPathAlpha", target);
+            Reflection.TrySet(theme, "isAidaTransparent", true);
+            Console.WriteLine("AlphaMediaPath: " + target);
         }
 
         private List<object> EnsureBackgroundLayer(object theme, bool resetMedia)
@@ -1178,16 +1351,20 @@ internal static class Program
         {
             var addText = _args.HasValue("AddText");
             var addImage = _args.HasValue("AddImage");
+            var addAnimation = _args.HasValue("AddAnimation");
             var addClock = _args.Has("AddClock");
             var addGraph = _args.HasValue("AddProgressBar");
             var addSensor = _args.Has("AddSensor");
             var addData = _args.HasValue("AddDataSource") && !addGraph && !addClock && !addSensor;
-            if (new[] { addText, addData, addImage, addClock, addGraph, addSensor }.Count(x => x) > 1)
+            if (new[] { addText, addData, addImage, addAnimation, addClock, addGraph, addSensor }.Count(x => x) > 1)
                 throw new InvalidOperationException("Only one layer can be added per operation.");
 
             if (addText || addData)
             {
-                var sample = FindSampleGraph(theme, "GraphItem") ?? throw new InvalidOperationException("No GraphItem sample exists.");
+                var targetList = FindAddGraphList(theme, "GraphItem");
+                var sample = targetList.Cast<object>().FirstOrDefault(x => x.GetType().Name == "GraphItem")
+                             ?? FindSampleGraph(theme, "GraphItem")
+                             ?? throw new InvalidOperationException("No GraphItem sample exists.");
                 var layer = TemplateSerializer.Clone(sample);
                 Reflection.TrySet(layer, "posX", _args.GetInt("AddX", 240));
                 Reflection.TrySet(layer, "posY", _args.GetInt("AddY", 240));
@@ -1213,7 +1390,7 @@ internal static class Program
                     if (_args.HasValue("AddFormat")) SetDataFormat(layer, _args.Get("AddFormat"));
                     Reflection.TrySet(layer, "TypeName", "Data");
                 }
-                Graphs(theme).Add(layer);
+                targetList.Add(layer);
             }
             else if (addGraph)
             {
@@ -1227,6 +1404,10 @@ internal static class Program
             else if (addImage)
             {
                 AddImage(theme, _args.Get("AddImage"));
+            }
+            else if (addAnimation)
+            {
+                AddAnimation(theme, _args.Get("AddAnimation"));
             }
             else if (addClock)
             {
@@ -1362,10 +1543,8 @@ internal static class Program
         private void RenderGraphPreview(object theme)
         {
             ApplyLayerEdit(theme);
-            var list = Graphs(theme);
-            var index = _args.GetInt("LayerIndex");
-            ValidateIndex(list, index);
-            var layer = list[index]!;
+            var target = ResolveLayerTarget(theme, _args.Get("LayerIndex"));
+            var layer = target.Layer;
             if (!IsGraphLayer(layer))
             {
                 throw new InvalidOperationException("Layer is not a ThemeEngine graph layer.");
@@ -1397,10 +1576,8 @@ internal static class Program
 
         private void RenderLayerCanvas(object theme)
         {
-            var list = Graphs(theme);
-            var index = _args.GetInt("LayerIndex");
-            ValidateIndex(list, index);
-            var layer = TemplateSerializer.Clone(list[index]!);
+            var target = ResolveLayerTarget(theme, _args.Get("LayerIndex"));
+            var layer = TemplateSerializer.Clone(target.Layer);
             ApplyRawLayerEdit(layer);
 
             var width = GetCanvasDimension("CanvasWidth", 1920);
@@ -1548,6 +1725,332 @@ internal static class Program
             Console.WriteLine(output);
         }
 
+        private void RenderThemeCanvas(object theme)
+        {
+            var width = GetCanvasDimension("CanvasWidth", Reflection.GetInt(theme, "width", 480));
+            var height = GetCanvasDimension("CanvasHeight", Reflection.GetInt(theme, "height", 480));
+            var output = _args.Get(
+                "Output",
+                Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "theme-engine-canvas.png"));
+
+            using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            using (var graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(Color.Transparent);
+                graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+
+                if (!_args.Has("NoBackground"))
+                {
+                    DrawThemeBackground(graphics, theme, width, height);
+                }
+
+                var d3Cache = TryLoadD3Cache(theme);
+                var d3Name = Path.GetFileNameWithoutExtension(_templatePath);
+                RenderGraphList(graphics, Graphs(theme), "", d3Cache, d3Name);
+
+                if (IsOledCurveDevice())
+                {
+                    var themes = ThemeList(theme);
+                    if (themes != null)
+                    {
+                        for (var themeIndex = 0; themeIndex < themes.Count; themeIndex++)
+                        {
+                            var child = themes[themeIndex];
+                            var childList = TryGraphs(child);
+                            if (child == null || childList == null)
+                            {
+                                continue;
+                            }
+
+                            var state = graphics.Save();
+                            graphics.TranslateTransform(
+                                (float)GetThemeCoordinate(child, "X"),
+                                (float)GetThemeCoordinate(child, "Y"));
+                            var zoom = (float)GetThemeZoom(child);
+                            if (Math.Abs(zoom - 1.0f) > 0.0001f)
+                            {
+                                graphics.ScaleTransform(zoom, zoom);
+                            }
+
+                            RenderGraphList(graphics, childList, "theme:" + themeIndex.ToString(CultureInfo.InvariantCulture) + ":", d3Cache, d3Name);
+                            graphics.Restore(state);
+                        }
+                    }
+                }
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(output)!);
+            bitmap.SetResolution(96f, 96f);
+            bitmap.Save(output, ImageFormat.Png);
+            Console.WriteLine(output);
+        }
+
+        private void RenderGraphList(Graphics graphics, IList list, string pathPrefix, object? d3Cache = null, string d3Name = "")
+        {
+            for (var index = 0; index < list.Count; index++)
+            {
+                var layer = list[index];
+                if (layer == null || Reflection.GetBool(layer, "hide"))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    SetThemeEnginePreviewData(layer);
+                    if (d3Cache != null)
+                    {
+                        var render3D = layer.GetType().GetMethod("Render3D", new[] { typeof(Graphics), d3Cache.GetType(), typeof(string) });
+                        if (render3D != null)
+                        {
+                            render3D.Invoke(layer, new object[] { graphics, d3Cache, d3Name });
+                            continue;
+                        }
+                    }
+
+                    var render = layer.GetType().GetMethod("Render", new[] { typeof(Graphics), typeof(bool), typeof(bool), typeof(bool) });
+                    render?.Invoke(layer, new object[] { graphics, true, true, false });
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine(
+                        "ThemeRenderLayerFailed: " + pathPrefix + index.ToString(CultureInfo.InvariantCulture) +
+                        " " + layer.GetType().Name + " - " + (ex.InnerException?.Message ?? ex.Message));
+                }
+            }
+        }
+
+        private static void SetThemeEnginePreviewData(object layer)
+        {
+            var data = Reflection.Get(layer, "m_data");
+            if (data == null)
+            {
+                return;
+            }
+
+            var dataName = Reflection.GetString(data, "DataName");
+            if (string.Equals(dataName, "StaticText", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var value = Reflection.GetString(data, "Value");
+            if (string.IsNullOrWhiteSpace(value) || value == "0")
+            {
+                SetDataValue(layer, SamplePreviewValue(dataName));
+            }
+        }
+
+        private static string SamplePreviewValue(string dataName)
+        {
+            return (dataName ?? "").ToUpperInvariant() switch
+            {
+                "CPULOAD" or "GPULOAD" or "RAMLOAD" or "DRVLOAD" => "58",
+                "CPUTEMP" or "GPUTEMP" or "HDDTEMP" or "WATERTEMP" => "52",
+                "CPUCLOCK_G" or "GPUCLOCK_G" => "5.2",
+                "CPUPWR" or "CPUPOWER" => "65.0",
+                "GPUPWR" or "GPUPOWER" => "175.0",
+                "RAMUSED" or "RAMUSAGE" => "13.4",
+                "UPSPEED" => "8.5",
+                "DOWNDSPEED" => "45.2",
+                _ => "88"
+            };
+        }
+
+        private object? TryLoadD3Cache(object theme)
+        {
+            if (!string.Equals(Reflection.Get(theme, "RenderMode")?.ToString(), "D3", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var templateDirectory = Path.GetDirectoryName(_templatePath) ?? "";
+            var templateId = Path.GetFileNameWithoutExtension(_templatePath);
+            var cachePath = Path.Combine(templateDirectory, templateId + ".cache");
+            if (!File.Exists(cachePath))
+            {
+                return null;
+            }
+
+            try
+            {
+                var modularPath = Path.Combine(Path.GetDirectoryName(templateDirectory) ?? "", "modulars");
+                var dateCachePath = Path.Combine(modularPath, "Date3DCache.cache");
+                if (File.Exists(dateCachePath))
+                {
+                    SetStaticMember(ThemeType("ThemeEngine.GraphItem"), "Date3DCache", TemplateSerializer.Load(dateCachePath));
+                }
+
+                return TemplateSerializer.Load(cachePath);
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("D3CacheLoadFailed: " + cachePath + " - " + ex.Message);
+                return null;
+            }
+        }
+
+        private void ExtractD3CacheManifest()
+        {
+            var templateDirectory = Path.GetDirectoryName(_templatePath) ?? "";
+            var templateId = Path.GetFileNameWithoutExtension(_templatePath);
+            var cachePath = Path.Combine(templateDirectory, templateId + ".cache");
+            var outputDir = _args.Get(
+                "OutputDir",
+                Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "d3-cache", SanitizeFileName(templateId)));
+            Directory.CreateDirectory(outputDir);
+
+            var result = new Dictionary<string, object?>
+            {
+                ["TemplateId"] = templateId,
+                ["CachePath"] = cachePath,
+                ["OutputDir"] = outputDir,
+                ["Text"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                ["Num3"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                ["Num4"] = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            };
+
+            if (!File.Exists(cachePath))
+            {
+                Console.WriteLine(Json.Serialize(result));
+                return;
+            }
+
+            var cache = TemplateSerializer.Load(cachePath);
+            ExportD3BitmapDictionary(cache, "D3TextCache", outputDir, "text", (Dictionary<string, string>)result["Text"]!);
+            ExportD3BitmapDictionary(cache, "D3Num3BitCache", outputDir, "num3", (Dictionary<string, string>)result["Num3"]!);
+            ExportD3BitmapDictionary(cache, "D3Num4BitCache", outputDir, "num4", (Dictionary<string, string>)result["Num4"]!);
+            Console.WriteLine(Json.Serialize(result));
+        }
+
+        private static void ExportD3BitmapDictionary(
+            object cache,
+            string propertyName,
+            string outputDir,
+            string prefix,
+            Dictionary<string, string> result)
+        {
+            var dictionary = Reflection.Get(cache, propertyName) as IEnumerable;
+            if (dictionary == null)
+            {
+                return;
+            }
+
+            foreach (var entry in dictionary)
+            {
+                var key = entry.GetType().GetProperty("Key")?.GetValue(entry)?.ToString();
+                var bitmap = entry.GetType().GetProperty("Value")?.GetValue(entry) as Bitmap;
+                if (string.IsNullOrWhiteSpace(key) || bitmap == null)
+                {
+                    continue;
+                }
+
+                var safeKey = key!;
+                var outputPath = Path.Combine(outputDir, $"{prefix}-{SanitizeFileName(safeKey)}.png");
+                using var copy = new Bitmap(bitmap);
+                copy.Save(outputPath, ImageFormat.Png);
+                result[safeKey] = outputPath;
+            }
+        }
+
+        private static string SanitizeFileName(string value)
+        {
+            var invalid = Path.GetInvalidFileNameChars();
+            var builder = new StringBuilder((value ?? "").Length);
+            foreach (var ch in value ?? "")
+            {
+                builder.Append(invalid.Contains(ch) ? '_' : ch);
+            }
+
+            var sanitized = builder.ToString().Trim();
+            return string.IsNullOrWhiteSpace(sanitized) ? "item" : sanitized;
+        }
+
+        private static void SetStaticMember(Type type, string name, object value)
+        {
+            const BindingFlags flags = BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
+            var property = type.GetProperty(name, flags);
+            if (property != null)
+            {
+                property.SetValue(null, value);
+                return;
+            }
+
+            var field = type.GetField(name, flags);
+            if (field != null)
+            {
+                field.SetValue(null, value);
+            }
+        }
+
+        private void DrawThemeBackground(Graphics graphics, object theme, int width, int height)
+        {
+            var backgroundPath = ResolveTemplateBackgroundPath(theme);
+            if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
+            {
+                return;
+            }
+
+            var framePath = PrepareThemeRenderBackgroundFrame(backgroundPath, width, height);
+            if (string.IsNullOrWhiteSpace(framePath) || !File.Exists(framePath))
+            {
+                return;
+            }
+
+            try
+            {
+                using var image = Image.FromFile(framePath);
+                graphics.DrawImage(image, new Rectangle(0, 0, width, height));
+            }
+            finally
+            {
+                if (!string.Equals(framePath, backgroundPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    try { File.Delete(framePath); } catch { }
+                }
+            }
+        }
+
+        private string PrepareThemeRenderBackgroundFrame(string backgroundPath, int width, int height)
+        {
+            var extension = Path.GetExtension(backgroundPath).ToLowerInvariant();
+            if (extension is ".png" or ".jpg" or ".jpeg" or ".bmp")
+            {
+                return backgroundPath;
+            }
+
+            var ffmpeg = Path.Combine(_lConnectDir, "x64", "ffmpeg.exe");
+            if (!File.Exists(ffmpeg)) ffmpeg = "ffmpeg";
+            var output = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".png");
+            var args = new List<string> { "-y" };
+            if (extension == ".h264")
+            {
+                args.AddRange(new[] { "-f", "h264" });
+            }
+
+            args.AddRange(new[]
+            {
+                "-i", backgroundPath,
+                "-frames:v", "1",
+                "-vf", "scale=" + width.ToString(CultureInfo.InvariantCulture) + ":" + height.ToString(CultureInfo.InvariantCulture) +
+                       ":force_original_aspect_ratio=increase,crop=" + width.ToString(CultureInfo.InvariantCulture) + ":" +
+                       height.ToString(CultureInfo.InvariantCulture),
+                output
+            });
+            try
+            {
+                RunFfmpeg(ffmpeg, args);
+                return output;
+            }
+            catch
+            {
+                try { if (File.Exists(output)) File.Delete(output); } catch { }
+                return "";
+            }
+        }
+
         private object NewSensorLayer(
             string styleName,
             string sensorName,
@@ -1631,6 +2134,47 @@ internal static class Program
             Graphs(theme).Add(layer);
         }
 
+        private void AddAnimation(object theme, string sourcePath)
+        {
+            if (!File.Exists(sourcePath)) throw new FileNotFoundException("Animation not found: " + sourcePath);
+            var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
+            if (extension is not (".mov" or ".mp4" or ".h264"))
+            {
+                throw new InvalidOperationException("Unsupported animation media type: " + extension);
+            }
+
+            var sample = FindSampleAcrossTemplates("GraphAnimation")
+                         ?? throw new InvalidOperationException("No GraphAnimation sample exists.");
+            var layer = TemplateSerializer.Clone(sample);
+            var videoDir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "video");
+            Directory.CreateDirectory(videoDir);
+            var target = Path.Combine(videoDir, Path.GetFileName(sourcePath));
+            if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(target), StringComparison.OrdinalIgnoreCase))
+            {
+                CopyWithRetry(sourcePath, target);
+            }
+
+            var fileName = Path.GetFileName(target);
+            Reflection.TrySet(layer, "posX", _args.GetInt("AddX", 0));
+            Reflection.TrySet(layer, "posY", _args.GetInt("AddY", 0));
+            Reflection.TrySet(layer, "ImgName", fileName);
+            Reflection.TrySet(layer, "videoName", fileName);
+            Reflection.TrySet(layer, "FilePath", target);
+            Reflection.TrySet(layer, "Path", target);
+            Reflection.TrySet(layer, "ImagePath", target);
+            Reflection.TrySet(layer, "hide", false);
+            Reflection.TrySet(layer, "enabled", true);
+            Reflection.TrySet(layer, "TypeName", "Animation");
+            Reflection.TrySet(layer, "zoom_rate", _args.GetDouble("AddZoom", 1.0));
+            Reflection.TrySet(layer, "ZoomRate", _args.GetDouble("AddZoom", 1.0));
+            Reflection.TrySet(layer, "direction", _args.GetInt("AddDirection", 0));
+            Reflection.TrySet(layer, "ration", 1);
+            Reflection.TrySet(layer, "SWith", 0);
+            Reflection.TrySet(layer, "SHeight", 0);
+            Graphs(theme).Add(layer);
+            Console.WriteLine("AnimationLayerPath: " + target);
+        }
+
         private void AddClock(object theme, string sourcePath)
         {
             if (!File.Exists(sourcePath)) throw new FileNotFoundException("Clock hand image not found: " + sourcePath);
@@ -1670,19 +2214,20 @@ internal static class Program
 
         private void ApplyRemoveDuplicateMove(object theme)
         {
-            var list = Graphs(theme);
             if (_args.HasValue("RemoveLayerIndex"))
             {
-                var index = _args.GetInt("RemoveLayerIndex");
-                ValidateIndex(list, index);
+                var target = ResolveLayerTarget(theme, _args.Get("RemoveLayerIndex"));
+                var list = target.List;
+                var index = target.Index;
                 if (list[index]!.GetType().Name == "GraphAnimation" && !_args.Has("ForceRemoveBaseLayer"))
                     throw new InvalidOperationException("Background animation layer cannot be removed.");
                 list.RemoveAt(index);
             }
             if (_args.HasValue("DuplicateLayerIndex"))
             {
-                var index = _args.GetInt("DuplicateLayerIndex");
-                ValidateIndex(list, index);
+                var target = ResolveLayerTarget(theme, _args.Get("DuplicateLayerIndex"));
+                var list = target.List;
+                var index = target.Index;
                 var clone = TemplateSerializer.Clone(list[index]!);
                 Reflection.TrySet(clone, "posX", Reflection.GetInt(clone, "posX") + 10);
                 Reflection.TrySet(clone, "posY", Reflection.GetInt(clone, "posY") + 10);
@@ -1690,8 +2235,9 @@ internal static class Program
             }
             if (_args.HasValue("MoveLayerIndex"))
             {
-                var index = _args.GetInt("MoveLayerIndex");
-                ValidateIndex(list, index);
+                var targetLayer = ResolveLayerTarget(theme, _args.Get("MoveLayerIndex"));
+                var list = targetLayer.List;
+                var index = targetLayer.Index;
                 var target = _args.Get("MoveLayerDirection").Equals("Up", StringComparison.OrdinalIgnoreCase) ? index - 1 : index + 1;
                 ValidateIndex(list, target);
                 if (list[index]!.GetType().Name == "GraphAnimation" || list[target]!.GetType().Name == "GraphAnimation")
@@ -1705,9 +2251,10 @@ internal static class Program
         private void ApplyLayerEdit(object theme)
         {
             if (!_args.HasValue("LayerIndex")) return;
-            var list = Graphs(theme);
-            var index = _args.GetInt("LayerIndex");
-            ValidateIndex(list, index);
+            var target = ResolveLayerTarget(theme, _args.Get("LayerIndex"));
+            ApplyOledNestedEditTransform(target);
+            var list = target.List;
+            var index = target.Index;
             var layer = list[index]!;
 
             if (_args.HasValue("LayerGraphStyle"))
@@ -1845,10 +2392,11 @@ internal static class Program
                     object? before = null;
                     IList? list = null;
                     var index = -1;
-                    if (int.TryParse(indexText, NumberStyles.Integer, CultureInfo.InvariantCulture, out index))
+                    if (!string.IsNullOrWhiteSpace(indexText))
                     {
-                        list = Graphs(theme);
-                        ValidateIndex(list, index);
+                        var target = ResolveLayerTarget(theme, indexText);
+                        list = target.List;
+                        index = target.Index;
                         before = TemplateSerializer.Clone(list[index]!);
                     }
 
@@ -2269,6 +2817,44 @@ internal static class Program
         private object? FindSampleGraph(object theme, string type) =>
             Graphs(theme).Cast<object>().FirstOrDefault(x => x.GetType().Name == type) ?? FindSampleAcrossTemplates(type);
 
+        private IList FindAddGraphList(object theme, string sampleType)
+        {
+            var root = Graphs(theme);
+            if (root.Cast<object>().Any(item => item.GetType().Name == sampleType) || !IsOledCurveDevice())
+            {
+                return root;
+            }
+
+            var themes = ThemeList(theme);
+            if (themes != null)
+            {
+                foreach (var child in themes.Cast<object?>())
+                {
+                    var childList = TryGraphs(child);
+                    if (childList == null)
+                    {
+                        continue;
+                    }
+
+                    if (childList.Cast<object>().Any(item => item.GetType().Name == sampleType))
+                    {
+                        return childList;
+                    }
+                }
+
+                foreach (var child in themes.Cast<object?>())
+                {
+                    var childList = TryGraphs(child);
+                    if (childList != null)
+                    {
+                        return childList;
+                    }
+                }
+            }
+
+            return root;
+        }
+
         private object? FindSampleAcrossTemplates(string type)
         {
             foreach (var root in new[] { _templateRoot, Path.Combine(_lConnectDir, "Assets", _deviceModel, "template") })
@@ -2329,14 +2915,29 @@ internal static class Program
             if (font == null || string.IsNullOrWhiteSpace(name)) return;
 
             var family = ResolveFontFamily(name);
-            Reflection.TrySet(font, "name", family?.Name ?? name);
-            if (family != null) Reflection.TrySet(font, "font", family);
+            Reflection.TrySet(font, "name", name);
+            if (family != null)
+            {
+                Reflection.TrySet(font, "font", family);
+                Reflection.TrySet(font, "_font", family);
+                Reflection.TrySet(layer, "font", family);
+                Reflection.TrySet(layer, "cachedFont", family);
+            }
             Reflection.TrySet(font, "uninstalled", false);
-            AddNeededFont(theme, family?.Name ?? name);
+            AddNeededFont(theme, name);
         }
 
         private static FontFamily? ResolveFontFamily(string name)
         {
+            foreach (var candidate in FontNameCandidates(name))
+            {
+                if (ThemeEngineFontCache.TryGetValue(candidate, out var cached) ||
+                    ThemeEngineFontCache.TryGetValue(NormalizeFontName(candidate), out cached))
+                {
+                    return cached;
+                }
+            }
+
             foreach (var candidate in FontNameCandidates(name))
             {
                 try
@@ -2372,11 +2973,23 @@ internal static class Program
         private static IEnumerable<string> FontNameCandidates(string name)
         {
             yield return name;
+            if (string.Equals(name?.Trim(), "微软雅黑", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "Microsoft YaHei";
+                yield return "Microsoft YaHei UI";
+            }
+
             var clean = Regex.Replace(name, @"\.[0-9a-f]{6,}$", "", RegexOptions.IgnoreCase);
             if (!clean.Equals(name, StringComparison.OrdinalIgnoreCase)) yield return clean;
             clean = clean.Replace('_', ' ').Replace('-', ' ');
             yield return clean;
-            clean = Regex.Replace(clean, @"\b(it|italic|regular|bold|medium|light)\b", "", RegexOptions.IgnoreCase);
+            if (string.Equals(clean.Trim(), "微软雅黑", StringComparison.OrdinalIgnoreCase))
+            {
+                yield return "Microsoft YaHei";
+                yield return "Microsoft YaHei UI";
+            }
+
+            clean = Regex.Replace(clean, @"\b(it|italic|regular|bold|medium|light|heavy|demi|semibold|condensed|wide)\b", "", RegexOptions.IgnoreCase);
             clean = Regex.Replace(clean, @"\s+", " ").Trim();
             if (!string.IsNullOrWhiteSpace(clean)) yield return clean;
         }
@@ -2384,9 +2997,39 @@ internal static class Program
         private static string NormalizeFontName(string name)
         {
             var value = Regex.Replace(name ?? "", @"\.[0-9a-f]{6,}$", "", RegexOptions.IgnoreCase);
-            value = Regex.Replace(value, @"\b(it|italic|regular|bold|medium|light)\b", "", RegexOptions.IgnoreCase);
+            value = Regex.Replace(value, @"\b(it|italic|regular|bold|medium|light|heavy|demi|semibold|condensed|wide)\b", "", RegexOptions.IgnoreCase);
             value = Regex.Replace(value, @"[^a-z0-9]+", "", RegexOptions.IgnoreCase);
             return value.ToLowerInvariant();
+        }
+
+        internal static void RegisterThemeEngineFontCache()
+        {
+            try
+            {
+                var engineType = _themeAssembly?.GetType("ThemeEngine.ThemeEngine", false);
+                engineType?.GetMethod("Init", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, null);
+                var cacheField = engineType?.GetField("FontFamilyCaches", BindingFlags.Public | BindingFlags.Static);
+                if (cacheField?.GetValue(null) is not IDictionary cache)
+                {
+                    return;
+                }
+
+                foreach (DictionaryEntry entry in cache)
+                {
+                    if (entry.Key is not string name || entry.Value is not FontFamily family)
+                    {
+                        continue;
+                    }
+
+                    ThemeEngineFontCache[name] = family;
+                    ThemeEngineFontCache[NormalizeFontName(name)] = family;
+                    ThemeEngineFontCache[family.Name] = family;
+                    ThemeEngineFontCache[NormalizeFontName(family.Name)] = family;
+                }
+            }
+            catch
+            {
+            }
         }
 
         private static IEnumerable<string> LConnectFontFiles()
@@ -2446,8 +3089,28 @@ internal static class Program
         {
             var data = Reflection.Get(layer, "m_data");
             if (data == null) return;
+            value = NormalizeDynamicDataValue(Reflection.GetString(data, "DataName"), value);
             Reflection.TrySet(data, "Value", value);
             Reflection.TrySet(data, "ValueWithUnit", value);
+        }
+
+        private static string NormalizeDynamicDataValue(string dataSource, string value)
+        {
+            value ??= "";
+            if (string.IsNullOrWhiteSpace(dataSource) ||
+                string.Equals(dataSource, "StaticText", StringComparison.OrdinalIgnoreCase))
+            {
+                return value;
+            }
+
+            var source = dataSource.Trim().ToUpperInvariant();
+            if (source is "TIME" or "DATE" or "DAY" or "APM" or "CPUMODEL" or "GPUMODEL" or "RAMMODEL")
+            {
+                return value;
+            }
+
+            var match = Regex.Match(value.Trim(), @"[-+]?\d+(?:[.,]\d+)?");
+            return match.Success ? match.Value.Replace(',', '.') : value;
         }
 
         private static void SetDataFormat(object layer, string format)
@@ -2509,6 +3172,9 @@ internal static class Program
                 if (family == null) continue;
                 Reflection.TrySet(font, "name", family.Name);
                 Reflection.TrySet(font, "font", family);
+                Reflection.TrySet(font, "_font", family);
+                Reflection.TrySet(graph, "font", family);
+                Reflection.TrySet(graph, "cachedFont", family);
                 Reflection.TrySet(font, "uninstalled", false);
                 AddNeededFont(theme, family.Name);
             }
@@ -2516,6 +3182,301 @@ internal static class Program
 
         private static IList Graphs(object theme) =>
             Reflection.Get(theme, "GraphList") as IList ?? throw new InvalidOperationException("Theme GraphList not found.");
+
+        private static IList? TryGraphs(object? theme) => Reflection.Get(theme, "GraphList") as IList;
+
+        private static IList? ThemeList(object? theme) => Reflection.Get(theme, "ThemeList") as IList;
+
+        private static List<Dictionary<string, object?>> DescribeNestedThemes(object theme)
+        {
+            var themes = ThemeList(theme);
+            if (themes == null)
+            {
+                return new List<Dictionary<string, object?>>();
+            }
+
+            var result = new List<Dictionary<string, object?>>();
+            for (var index = 0; index < themes.Count; index++)
+            {
+                var child = themes[index];
+                var graphs = TryGraphs(child);
+                result.Add(new Dictionary<string, object?>
+                {
+                    ["Index"] = index,
+                    ["Type"] = child?.GetType().FullName,
+                    ["Name"] = Reflection.GetString(child, "name"),
+                    ["Width"] = Reflection.Get(child, "width"),
+                    ["Height"] = Reflection.Get(child, "height"),
+                    ["X"] = Reflection.Get(child, "posX"),
+                    ["Y"] = Reflection.Get(child, "posY"),
+                    ["Left"] = Reflection.Get(child, "left"),
+                    ["Top"] = Reflection.Get(child, "top"),
+                    ["ZoomRate"] = Reflection.Get(child, "ZoomRate"),
+                    ["GraphCount"] = graphs?.Count ?? 0,
+                    ["VideoName"] = Reflection.GetString(child, "videoName"),
+                    ["VideoPath"] = Reflection.GetString(child, "videoPath"),
+                    ["Members"] = child == null ? new List<Dictionary<string, object?>>() : DescribeRootMembers(child)
+                });
+            }
+
+            return result;
+        }
+
+        private IEnumerable<LayerTarget> EnumerateLayerTargets(object theme)
+        {
+            var displayIndex = 0;
+            var rootList = Graphs(theme);
+            for (var index = 0; index < rootList.Count; index++)
+            {
+                yield return new LayerTarget(rootList, index, index.ToString(CultureInfo.InvariantCulture), displayIndex++, theme);
+            }
+
+            if (!IsOledCurveDevice())
+            {
+                yield break;
+            }
+
+            var themeList = ThemeList(theme);
+            if (themeList == null)
+            {
+                yield break;
+            }
+
+            for (var themeIndex = 0; themeIndex < themeList.Count; themeIndex++)
+            {
+                var childList = TryGraphs(themeList[themeIndex]);
+                if (childList == null)
+                {
+                    continue;
+                }
+
+                for (var layerIndex = 0; layerIndex < childList.Count; layerIndex++)
+                {
+                    var child = themeList[themeIndex];
+                    yield return new LayerTarget(
+                        childList,
+                        layerIndex,
+                        $"theme:{themeIndex.ToString(CultureInfo.InvariantCulture)}:{layerIndex.ToString(CultureInfo.InvariantCulture)}",
+                        displayIndex++,
+                        child,
+                        GetThemeCoordinate(child, "X"),
+                        GetThemeCoordinate(child, "Y"),
+                        GetThemeZoom(child),
+                        GetThemeCoordinate(child, "width"),
+                        GetThemeCoordinate(child, "height"));
+                }
+            }
+        }
+
+        private bool IsOledCurveDevice() =>
+            _deviceModel.Equals("hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase);
+
+        private void ApplyOledNestedEditTransform(LayerTarget target)
+        {
+            if (!target.IsNested || !IsOledCurveDevice())
+            {
+                return;
+            }
+
+            InvertOledNestedPosition("LayerX", target.ParentX, target.ParentZoom);
+            InvertOledNestedPosition("LayerY", target.ParentY, target.ParentZoom);
+            foreach (var name in new[]
+                     {
+                         "LayerSize", "LayerWidth", "LayerHeight", "LayerRadius", "LayerDiameter",
+                         "LayerThickness", "LayerLineWidth", "LayerColumnWidth", "LayerBorderWidth",
+                         "LayerInnerCircleRadius", "LayerSplitBlockWidth", "LayerSplitBlankWidth"
+                     })
+            {
+                InvertOledNestedScale(name, target.ParentZoom);
+            }
+        }
+
+        private void InvertOledNestedPosition(string argName, double offset, double zoom)
+        {
+            if (!_args.HasValue(argName) ||
+                !double.TryParse(_args.Get(argName), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            {
+                return;
+            }
+
+            _args.Set(argName, FormatNumber((value - offset) / zoom));
+        }
+
+        private void InvertOledNestedScale(string argName, double zoom)
+        {
+            if (Math.Abs(zoom - 1.0) < 0.0001 ||
+                !_args.HasValue(argName) ||
+                !double.TryParse(_args.Get(argName), NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+            {
+                return;
+            }
+
+            _args.Set(argName, FormatNumber(value / zoom));
+        }
+
+        private static bool ShouldExposeLayerTarget(LayerTarget target)
+        {
+            if (!target.IsNested || !target.Layer.GetType().Name.Equals("GraphImage", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            var x = Reflection.GetDouble(target.Layer, "posX");
+            var y = Reflection.GetDouble(target.Layer, "posY");
+            var width = target.ParentWidth <= 0 ? 1 : target.ParentWidth;
+            var height = target.ParentHeight <= 0 ? 1 : target.ParentHeight;
+            return x >= -width && y >= -height && x <= width * 2 && y <= height * 2;
+        }
+
+        private Dictionary<string, object?> ReadLayerTarget(LayerTarget target)
+        {
+            var row = LayerInspector.Read(target.ParentTheme, target.Layer, target.Path, target.DisplayIndex, _templatePath);
+            if (target.IsNested)
+            {
+                ApplyOledNestedDisplayTransform(row, target);
+            }
+
+            return row;
+        }
+
+        private static void ApplyOledNestedDisplayTransform(Dictionary<string, object?> row, LayerTarget target)
+        {
+            TransformOledNestedPosition(row, "X", target.ParentX, target.ParentZoom);
+            TransformOledNestedPosition(row, "Y", target.ParentY, target.ParentZoom);
+            foreach (var key in new[]
+                     {
+                         "Size", "FontOrgSize", "FontWidth", "LineHeight",
+                         "Width", "Height", "Radius", "Diameter", "Thickness",
+                         "LineWidth", "ColumnWidth", "BorderWidth", "InnerCircleRadius",
+                         "SplitBlockWidth", "SplitBlankWidth"
+                     })
+            {
+                TransformOledNestedScale(row, key, target.ParentZoom);
+            }
+        }
+
+        private static void TransformOledNestedPosition(Dictionary<string, object?> row, string key, double offset, double zoom)
+        {
+            if (!TryGetNumeric(row.TryGetValue(key, out var value) ? value : null, out var numeric))
+            {
+                return;
+            }
+
+            row[key] = FormatNumber(offset + numeric * zoom);
+        }
+
+        private static void TransformOledNestedScale(Dictionary<string, object?> row, string key, double zoom)
+        {
+            if (Math.Abs(zoom - 1.0) < 0.0001 ||
+                !TryGetNumeric(row.TryGetValue(key, out var value) ? value : null, out var numeric))
+            {
+                return;
+            }
+
+            row[key] = FormatNumber(numeric * zoom);
+        }
+
+        private static bool TryGetNumeric(object? value, out double numeric)
+        {
+            numeric = 0;
+            if (value == null)
+            {
+                return false;
+            }
+
+            return double.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out numeric);
+        }
+
+        private static string FormatNumber(double value) =>
+            Math.Abs(value - Math.Round(value)) < 0.0001
+                ? Math.Round(value).ToString(CultureInfo.InvariantCulture)
+                : value.ToString("0.###", CultureInfo.InvariantCulture);
+
+        private static double GetThemeCoordinate(object? theme, string name) =>
+            Reflection.GetDouble(theme, name, Reflection.GetDouble(theme, name.Equals("X", StringComparison.OrdinalIgnoreCase) ? "posX" : name.Equals("Y", StringComparison.OrdinalIgnoreCase) ? "posY" : name));
+
+        private static double GetThemeZoom(object? theme)
+        {
+            var zoom = Reflection.GetDouble(theme, "ZoomRate", 1.0);
+            return zoom > 0.0001 ? zoom : 1.0;
+        }
+
+        private static LayerTarget ResolveLayerTarget(object theme, string layerIndex)
+        {
+            var normalizedLayerIndex = layerIndex ?? "";
+            if (int.TryParse(normalizedLayerIndex, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rootIndex))
+            {
+                var rootList = Graphs(theme);
+                ValidateIndex(rootList, rootIndex);
+                return new LayerTarget(rootList, rootIndex, rootIndex.ToString(CultureInfo.InvariantCulture), rootIndex);
+            }
+
+            var parts = normalizedLayerIndex.Split(':');
+            if (parts.Length == 3 &&
+                parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
+                int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childLayerIndex))
+            {
+                var themes = ThemeList(theme) ?? throw new InvalidOperationException("ThemeList not found.");
+                ValidateIndex(themes, themeIndex);
+                var childList = TryGraphs(themes[themeIndex]) ?? throw new InvalidOperationException($"ThemeList[{themeIndex}] GraphList not found.");
+                ValidateIndex(childList, childLayerIndex);
+                var child = themes[themeIndex];
+                return new LayerTarget(
+                    childList,
+                    childLayerIndex,
+                    normalizedLayerIndex,
+                    childLayerIndex,
+                    child,
+                    GetThemeCoordinate(child, "X"),
+                    GetThemeCoordinate(child, "Y"),
+                    GetThemeZoom(child),
+                    GetThemeCoordinate(child, "width"),
+                    GetThemeCoordinate(child, "height"));
+            }
+
+            throw new InvalidOperationException("LayerIndex is invalid: " + normalizedLayerIndex);
+        }
+
+        private sealed class LayerTarget
+        {
+            public LayerTarget(
+                IList list,
+                int index,
+                string path,
+                int displayIndex,
+                object? parentTheme = null,
+                double parentX = 0,
+                double parentY = 0,
+                double parentZoom = 1,
+                double parentWidth = 0,
+                double parentHeight = 0)
+            {
+                List = list;
+                Index = index;
+                Path = path;
+                DisplayIndex = displayIndex;
+                ParentTheme = parentTheme;
+                ParentX = parentX;
+                ParentY = parentY;
+                ParentZoom = parentZoom <= 0.0001 ? 1 : parentZoom;
+                ParentWidth = parentWidth;
+                ParentHeight = parentHeight;
+            }
+
+            public IList List { get; }
+            public int Index { get; }
+            public string Path { get; }
+            public int DisplayIndex { get; }
+            public object? ParentTheme { get; }
+            public bool IsNested => Path.StartsWith("theme:", StringComparison.OrdinalIgnoreCase);
+            public double ParentX { get; }
+            public double ParentY { get; }
+            public double ParentZoom { get; }
+            public double ParentWidth { get; }
+            public double ParentHeight { get; }
+            public object Layer => List[Index]!;
+        }
 
         private static void ExportTurzxTheme(object sourceTheme, string outputPath, string backgroundPath)
         {
@@ -2606,7 +3567,7 @@ internal static class Program
                     return ResizeBitmapForTurzxPreview(image, width, height);
                 }
 
-                if (extension is not (".mp4" or ".h264" or ".gif"))
+                if (extension is not (".mp4" or ".mov" or ".h264" or ".gif"))
                 {
                     return null;
                 }
@@ -2998,6 +3959,12 @@ internal static class Program
                 return graphAnimationBackground;
             }
 
+            var templateIdBackground = ResolveTemplateMediaPath(Path.GetFileNameWithoutExtension(_templatePath));
+            if (!string.IsNullOrWhiteSpace(templateIdBackground) && File.Exists(templateIdBackground))
+            {
+                return templateIdBackground;
+            }
+
             var embeddedBackground = ExtractEmbeddedBackgroundImage(theme);
             if (!string.IsNullOrWhiteSpace(embeddedBackground))
             {
@@ -3005,7 +3972,60 @@ internal static class Program
             }
 
             var resolvedMedia = ResolveTemplateMediaPath(backgroundPath);
-            return string.IsNullOrWhiteSpace(resolvedMedia) ? backgroundPath : resolvedMedia;
+            if (!string.IsNullOrWhiteSpace(resolvedMedia))
+            {
+                return resolvedMedia;
+            }
+
+            var oledCurveBackground = ResolveOledCurveDefaultBackgroundPath();
+            if (!string.IsNullOrWhiteSpace(oledCurveBackground))
+            {
+                return oledCurveBackground;
+            }
+
+            return backgroundPath;
+        }
+
+        private string ResolveOledCurveDefaultBackgroundPath()
+        {
+            if (!IsOledCurveDevice())
+            {
+                return "";
+            }
+
+            var templateId = Path.GetFileNameWithoutExtension(_templatePath);
+            if (string.IsNullOrWhiteSpace(templateId))
+            {
+                return "";
+            }
+
+            var backgroundNames = new List<string> { templateId + "_background.png" };
+            if (templateId.StartsWith("triple", StringComparison.OrdinalIgnoreCase))
+            {
+                backgroundNames.Add("triple_default_background.png");
+            }
+
+            var roots = new[]
+            {
+                Path.Combine(DefaultProgramData, _deviceModel, "default"),
+                Path.Combine(_lConnectDir, "Assets", _deviceModel, "default"),
+                Path.Combine(_lConnectDir, "assets", _deviceModel, "default"),
+                Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetFullPath(_templatePath))!)!, "default")
+            };
+
+            foreach (var root in roots.Where(Directory.Exists).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                foreach (var name in backgroundNames.Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    var path = Path.Combine(root, name);
+                    if (File.Exists(path))
+                    {
+                        return path;
+                    }
+                }
+            }
+
+            return "";
         }
 
         private string ResolveTemplatePreviewBackgroundPath(string templateId)
@@ -3194,9 +4214,8 @@ internal static class Program
 
         private string ExtractEmbeddedBackgroundImage(object theme)
         {
-            if (Reflection.Get(theme, "BgImg") is not Bitmap bitmap ||
-                bitmap.Width < 64 ||
-                bitmap.Height < 64)
+            var bitmap = FindEmbeddedBackgroundBitmap(theme);
+            if (bitmap == null)
             {
                 return "";
             }
@@ -3205,10 +4224,21 @@ internal static class Program
             {
                 var directory = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "embedded-backgrounds");
                 Directory.CreateDirectory(directory);
+                var key = string.Join("-",
+                    Path.GetFileNameWithoutExtension(_templatePath),
+                    bitmap.Width,
+                    bitmap.Height,
+                    LayerInspector.BitmapContentHash(bitmap));
                 var output = Path.Combine(
                     directory,
-                    Path.GetFileNameWithoutExtension(_templatePath) + "-background.png");
+                    LayerInspector.SafeFilePart(key) + "-background.png");
+                if (File.Exists(output))
+                {
+                    File.Delete(output);
+                }
+
                 using var copy = new Bitmap(bitmap);
+                copy.SetResolution(96f, 96f);
                 copy.Save(output, ImageFormat.Png);
                 return output;
             }
@@ -3218,8 +4248,62 @@ internal static class Program
             }
         }
 
+        private static bool IsStaticTheme(object theme)
+        {
+            var themeMode = Reflection.Get(theme, "ThemeMode")?.ToString() ?? "";
+            return themeMode.Equals("Static", StringComparison.OrdinalIgnoreCase) ||
+                   themeMode.Length == 0;
+        }
+
+        private static Bitmap? FindEmbeddedBackgroundBitmap(object theme)
+        {
+            var themePicHash = Reflection.Get(theme, "themePic") is Bitmap themePic
+                ? LayerInspector.BitmapContentHash(themePic)
+                : "";
+
+            foreach (var name in new[] { "BgImg", "VideoPic", "bitmap", "O_bitmap", "S_bitmap" })
+            {
+                if (Reflection.Get(theme, name) is Bitmap bitmap &&
+                    IsUsableEmbeddedBackgroundBitmap(bitmap, themePicHash))
+                {
+                    return bitmap;
+                }
+            }
+
+            foreach (var graph in Graphs(theme).Cast<object>())
+            {
+                if (graph.GetType().Name != "GraphAnimation")
+                {
+                    continue;
+                }
+
+                foreach (var name in new[] { "O_bitmap", "bitmap", "S_bitmap" })
+                {
+                    if (Reflection.Get(graph, name) is Bitmap bitmap &&
+                        IsUsableEmbeddedBackgroundBitmap(bitmap, themePicHash))
+                    {
+                        return bitmap;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsUsableEmbeddedBackgroundBitmap(Bitmap bitmap, string themePicHash)
+        {
+            if (bitmap.Width < 64 || bitmap.Height < 64)
+            {
+                return false;
+            }
+
+            return string.IsNullOrWhiteSpace(themePicHash) ||
+                   !string.Equals(LayerInspector.BitmapContentHash(bitmap), themePicHash, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsSupportedBackgroundMediaFile(string path) =>
             path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+            path.EndsWith(".mov", StringComparison.OrdinalIgnoreCase) ||
             path.EndsWith(".h264", StringComparison.OrdinalIgnoreCase) ||
             path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
             path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
@@ -3604,12 +4688,20 @@ internal static class Program
 
     private static class LayerInspector
     {
-        public static Dictionary<string, object?> Read(object theme, object graph, int index, string templatePath)
+        public static Dictionary<string, object?> Read(object? theme, object graph, string index, int rotationIndex, string templatePath)
         {
             var data = Reflection.Get(graph, "m_data");
             var font = Reflection.Get(graph, "fontConfig");
             var alignment = font == null ? null : Reflection.Get(font, "alignment");
             var type = graph.GetType().Name;
+            var mediaPath = type == "GraphSensor"
+                ? SensorImagePath(graph, templatePath)
+                : IsGraphLayer(graph) ? GraphPreviewPath(graph, templatePath)
+                : type == "GraphAnimation" ? AnimationMediaPath(graph, templatePath)
+                : ImagePath(graph, templatePath, index);
+            object? width = Reflection.Get(graph, "width");
+            object? height = Reflection.Get(graph, "height");
+            FillImageDimensionsFromMedia(type, mediaPath, ref width, ref height);
             return new Dictionary<string, object?>
             {
                 ["Index"] = index, ["Type"] = type,
@@ -3629,12 +4721,8 @@ internal static class Program
                 ["LineHeight"] = Reflection.Get(graph, "LineHeight"), ["Color"] = Reflection.Get(font, "color")?.ToString() ?? "",
                 ["Media"] = First(Reflection.GetString(graph, "ImgName"), Reflection.GetString(graph, "videoName"),
                     Path.GetFileName(Reflection.GetString(graph, "FilePath"))),
-                ["MediaPath"] = type == "GraphSensor"
-                    ? SensorImagePath(graph, templatePath)
-                    : IsGraphLayer(graph) ? GraphPreviewPath(graph, templatePath)
-                    : type == "GraphAnimation" ? AnimationMediaPath(graph, templatePath)
-                    : ImagePath(graph, templatePath),
-                ["Width"] = Reflection.Get(graph, "width"), ["Height"] = Reflection.Get(graph, "height"),
+                ["MediaPath"] = mediaPath,
+                ["Width"] = width, ["Height"] = height,
                 ["Radius"] = Reflection.Get(graph, "radius"), ["Diameter"] = Reflection.Get(graph, "diameter"),
                 ["Thickness"] = Reflection.Get(graph, "archWidth"),
                 ["FrontColor"] = First(Reflection.Get(graph, "FrontColor")?.ToString(), Reflection.Get(graph, "LineColor")?.ToString()),
@@ -3644,7 +4732,7 @@ internal static class Program
                 ["BorderColor"] = Reflection.Get(graph, "BorderColor")?.ToString() ?? "",
                 ["UseGradient"] = Reflection.GetBool(graph, "useGradient"),
                 ["GradientColor"] = Reflection.Get(graph, "GradientColor")?.ToString() ?? "",
-                ["ZoomRate"] = GetZoomRate(theme, graph), ["Rotate"] = GetRotation(graph, index, templatePath),
+                ["ZoomRate"] = GetZoomRate(theme, graph), ["Rotate"] = GetRotation(graph, rotationIndex, templatePath),
                 ["ClockCenterX"] = Reflection.Get(graph, "centerX"), ["ClockCenterY"] = Reflection.Get(graph, "centerY"),
                 ["ClockAngle"] = Reflection.Get(graph, "angle"), ["ClockEndAngle"] = Reflection.Get(graph, "endAngle"),
                 ["ClockOffset"] = Reflection.Get(graph, "offset"), ["ClockRateOffset"] = null, ["ClockMoveOrigin"] = Reflection.GetBool(graph, "moveOpoint"),
@@ -3662,6 +4750,8 @@ internal static class Program
                 ["UseBlock"] = Reflection.GetBool(graph, "useBlock"), ["RingBorder"] = Reflection.GetBool(graph, "HasRingBorder"),
                 ["Round"] = Reflection.GetBool(graph, "round"), ["SubTypeName"] = Reflection.GetString(graph, "SubTypeName"),
                 ["TypeName"] = Reflection.GetString(graph, "TypeName"), ["GraphStyle"] = Reflection.GetString(graph, "DisplayName"),
+                ["RenderMode"] = Reflection.Get(theme, "RenderMode")?.ToString() ?? "",
+                ["ThemeMode"] = Reflection.Get(theme, "ThemeMode")?.ToString() ?? "",
                 ["SensorStyle"] = Reflection.GetString(graph, "styleType"),
                 ["SensorType"] = Reflection.GetString(graph, "senSorType"),
                 ["SensorColor1"] = Reflection.Get(graph, "styleInfo") is { } styleInfo1 ? Reflection.Get(styleInfo1, "Color1")?.ToString() ?? "" : "",
@@ -3674,6 +4764,37 @@ internal static class Program
                 ["SensorZoomRate"] = Reflection.Get(graph, "styleInfo") is { } styleInfo8 ? Reflection.Get(styleInfo8, "ZoomRate") : "",
                 ["WritableProperties"] = Reflection.WritableNames(graph), ["WritableFontProperties"] = Reflection.WritableNames(font)
             };
+        }
+
+        private static void FillImageDimensionsFromMedia(string type, string mediaPath, ref object? width, ref object? height)
+        {
+            if (!type.Equals("GraphImage", StringComparison.OrdinalIgnoreCase) ||
+                (HasPositiveNumber(width) && HasPositiveNumber(height)) ||
+                string.IsNullOrWhiteSpace(mediaPath) ||
+                !File.Exists(mediaPath))
+            {
+                return;
+            }
+
+            try
+            {
+                using var image = Image.FromFile(mediaPath);
+                width = image.Width;
+                height = image.Height;
+            }
+            catch
+            {
+            }
+        }
+
+        private static bool HasPositiveNumber(object? value)
+        {
+            return double.TryParse(
+                       Convert.ToString(value, CultureInfo.InvariantCulture),
+                       NumberStyles.Float,
+                       CultureInfo.InvariantCulture,
+                       out var number) &&
+                   number > 0;
         }
 
         private static string AnimationMediaPath(object graph, string templatePath)
@@ -3730,7 +4851,7 @@ internal static class Program
             return "";
         }
 
-        private static string ImagePath(object graph, string templatePath)
+        private static string ImagePath(object graph, string templatePath, string index)
         {
             var direct = First(Reflection.GetString(graph, "FilePath"), Reflection.GetString(graph, "Path"), Reflection.GetString(graph, "ImagePath"));
             if (File.Exists(direct)) return direct;
@@ -3748,13 +4869,21 @@ internal static class Program
                         Reflection.GetString(graph, "ImgName"),
                         Reflection.GetString(graph, "videoName"),
                         graph.GetType().Name);
-                    var preview = Path.Combine(
-                        directory,
-                        Path.GetFileNameWithoutExtension(templatePath) + "-" +
-                        Path.GetFileNameWithoutExtension(mediaName) + "-" +
-                        Reflection.GetInt(graph, "posX") + "-" +
-                        Reflection.GetInt(graph, "posY") + ".png");
+                    var key = string.Join("-",
+                        Path.GetFileNameWithoutExtension(templatePath),
+                        index,
+                        graph.GetType().Name,
+                        Path.GetFileNameWithoutExtension(mediaName),
+                        property,
+                        Reflection.GetInt(graph, "posX"),
+                        Reflection.GetInt(graph, "posY"),
+                        bitmap.Width,
+                        bitmap.Height,
+                        BitmapContentHash(bitmap));
+                    var preview = Path.Combine(directory, SafeFilePart(key) + ".png");
+                    if (File.Exists(preview)) File.Delete(preview);
                     using var copy = new Bitmap(bitmap);
+                    copy.SetResolution(96f, 96f);
                     copy.Save(preview, ImageFormat.Png);
                     return preview;
                 }
@@ -3940,6 +5069,21 @@ internal static class Program
             catch
             {
                 return "";
+            }
+        }
+
+        public static string BitmapContentHash(Bitmap bitmap)
+        {
+            try
+            {
+                using var stream = new MemoryStream();
+                bitmap.Save(stream, ImageFormat.Png);
+                using var sha = SHA256.Create();
+                return BitConverter.ToString(sha.ComputeHash(stream.ToArray())).Replace("-", "").Substring(0, 12);
+            }
+            catch
+            {
+                return Math.Abs(bitmap.GetHashCode()).ToString(CultureInfo.InvariantCulture);
             }
         }
 
@@ -4142,14 +5286,14 @@ internal static class Program
             _themeAssembly?.GetType(name, throwOnError: true)
             ?? throw new InvalidOperationException($"ThemeEngine type was not found: {name}");
 
-        private static string SafeFilePart(string value)
+        public static string SafeFilePart(string value)
         {
             var invalid = Path.GetInvalidFileNameChars();
             var safe = new string((value ?? "").Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
             return safe.Length <= 180 ? safe : safe.Substring(0, 180) + "-" + Math.Abs(safe.GetHashCode()).ToString(CultureInfo.InvariantCulture);
         }
 
-        private static object GetZoomRate(object theme, object graph)
+        private static object GetZoomRate(object? theme, object graph)
         {
             if (graph.GetType().Name == "GraphAnimation")
             {
@@ -4499,6 +5643,7 @@ internal static class Program
         public bool Has(string name) => _values.ContainsKey(name);
         public bool HasValue(string name) => _values.TryGetValue(name, out var value) && value != null;
         public string Get(string name, string fallback = "") => _values.TryGetValue(name, out var value) && value != null ? value : fallback;
+        public void Set(string name, string value) => _values[name] = value;
         public int GetInt(string name, int fallback = 0) => int.TryParse(Get(name), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) ? value : fallback;
         public double GetDouble(string name, double fallback = 0) => double.TryParse(Get(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : fallback;
         public bool GetBool(string name, bool fallback = false) => bool.TryParse(Get(name), out var value) ? value : fallback;
@@ -5113,6 +6258,7 @@ internal static class Program
             return File.Exists(candidate) ? Assembly.LoadFrom(candidate) : null;
         };
         if (File.Exists(lcdPath)) Assembly.LoadFrom(lcdPath);
+        SupporterApplication.RegisterThemeEngineFontCache();
     }
 
     private static void EnsureDeviceWorkspace(string model, string lConnectDir)

@@ -5,6 +5,10 @@ public sealed class TemplateOption
     public string Id { get; set; } = "";
     public string LConnectId { get; set; } = "";
     public string Path { get; set; } = "";
+    public List<string> GroupedTemplatePaths { get; set; } = new();
+    public List<string> GroupedTemplateIds { get; set; } = new();
+    public string OledCurveGroupKind { get; set; } = "";
+    public bool IsOledCurveGroup => GroupedTemplatePaths.Count > 1;
     public string BackgroundPath { get; set; } = "";
     public string DeviceModel { get; set; } = "";
     public string DeviceName { get; set; } = "";
@@ -37,7 +41,8 @@ public sealed class TemplateOption
 
     public bool IsLocalWideDevice =>
         string.Equals(DeviceModel, "universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
+        string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(DeviceModel, "hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase);
 
     public bool IsLocalPortraitWideDevice =>
         IsLocalWideDevice &&
@@ -47,6 +52,11 @@ public sealed class TemplateOption
 
     private string GetWideAspectLabel()
     {
+        if (string.Equals(DeviceModel, "hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase))
+        {
+            return "2288 x 1080";
+        }
+
         var isVm92 = string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
         return IsLocalPortraitWideDevice
             ? isVm92 ? "464 x 1920" : "480 x 1920"

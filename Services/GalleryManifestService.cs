@@ -123,7 +123,7 @@ public sealed class GalleryManifestService : IGalleryManifestService
         {
             galleryOrder++;
             var deviceModel = GalleryDeviceModelNormalizer.Normalize(GetJsonString(element, "deviceModel"));
-            if (deviceModel is not ("hydroshift-ii-lcd-s" or "hydroshift-ii-lcd-c" or GalleryDeviceModelNormalizer.UniversalScreenDeviceModel or GalleryDeviceModelNormalizer.Vm92DeviceModel))
+            if (deviceModel is not ("hydroshift-ii-lcd-s" or "hydroshift-ii-lcd-c" or GalleryDeviceModelNormalizer.UniversalScreenDeviceModel or GalleryDeviceModelNormalizer.Vm92DeviceModel or GalleryDeviceModelNormalizer.OledCurveDeviceModel))
             {
                 continue;
             }

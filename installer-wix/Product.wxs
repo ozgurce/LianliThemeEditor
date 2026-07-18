@@ -11,7 +11,34 @@
 
     <SummaryInformation Description="Lian Li LCD Template Editor installer" Manufacturer="Ozgur Yalcin" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="none" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Lian Li LCD Template Editor is already installed." />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="INSTALLFOLDER">
+      <RegistrySearch
+        Id="ExistingPerUserMsiInstallLocation"
+        Root="HKCU"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+        Name="InstallLocation"
+        Type="raw" />
+      <RegistrySearch
+        Id="ExistingPerMachineMsiInstallLocation"
+        Root="HKLM"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+        Name="InstallLocation"
+        Type="raw" />
+      <RegistrySearch
+        Id="ExistingPerUserInnoInstallLocation"
+        Root="HKCU"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\{5E2A5D54-E8B6-4E25-8BBE-9A2EA2FA3781}_is1"
+        Name="InstallLocation"
+        Type="raw" />
+      <RegistrySearch
+        Id="ExistingPerMachineInnoInstallLocation"
+        Root="HKLM"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\{5E2A5D54-E8B6-4E25-8BBE-9A2EA2FA3781}_is1"
+        Name="InstallLocation"
+        Type="raw" />
+    </Property>
     <Property Id="DISABLEADVTSHORTCUTS" Value="1" />
     <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/ozgurce/LianliThemeEditor" />

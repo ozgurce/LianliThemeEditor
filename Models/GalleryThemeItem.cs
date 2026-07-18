@@ -82,7 +82,8 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
 
     private bool IsWideDevice =>
         string.Equals(DeviceModel, "universal-screen-8.8-inch", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
+        string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(DeviceModel, "hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase);
 
     private bool IsPortraitWideDevice =>
         IsWideDevice &&
@@ -93,6 +94,11 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
 
     private string GetWideAspectLabel()
     {
+        if (string.Equals(DeviceModel, "hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase))
+        {
+            return "2288 x 1080";
+        }
+
         var isVm92 = string.Equals(DeviceModel, "vm-9.2-inch", StringComparison.OrdinalIgnoreCase);
         return IsPortraitWideDevice
             ? isVm92 ? "464 x 1920" : "480 x 1920"

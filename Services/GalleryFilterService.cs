@@ -60,14 +60,18 @@ public sealed class GalleryFilterService : IGalleryFilterService
             return false;
         }
 
+        if (string.Equals(theme.DeviceModel, GalleryDeviceModelNormalizer.Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return selectedOrientations.Contains("landscape");
+        }
+
         var orientation = (theme.Orientation ?? "").Trim();
         if (!string.IsNullOrWhiteSpace(orientation))
         {
             return selectedOrientations.Contains(orientation);
         }
 
-        if (string.Equals(theme.DeviceModel, GalleryDeviceModelNormalizer.UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(theme.DeviceModel, GalleryDeviceModelNormalizer.Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(theme.DeviceModel, GalleryDeviceModelNormalizer.UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
             return selectedOrientations.Contains("landscape");
         }

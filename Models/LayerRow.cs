@@ -18,6 +18,14 @@ public sealed class LayerRow : INotifyPropertyChanged
     private string _groupColor = "#246FF2";
 
     public string Index { get; set; } = "";
+    [JsonIgnore]
+    public string SourceLayerIndex { get; set; } = "";
+    [JsonIgnore]
+    public string SourceTemplatePath { get; set; } = "";
+    [JsonIgnore]
+    public string SourceTemplateId { get; set; } = "";
+    [JsonIgnore]
+    public double SourceOffsetX { get; set; }
     public string Type { get; set; } = "";
     public string DataSource { get; set; } = "";
     public string DataSourceDisplay { get; set; } = "";
@@ -203,6 +211,8 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string Round { get; set; } = "";
     public string TypeName { get; set; } = "";
     public string SubTypeName { get; set; } = "";
+    public string RenderMode { get; set; } = "";
+    public string ThemeMode { get; set; } = "";
     public string SensorStyle { get; set; } = "";
     public string SensorType { get; set; } = "";
     public string SensorColor1 { get; set; } = "";

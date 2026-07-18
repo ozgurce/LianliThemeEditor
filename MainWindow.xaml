@@ -2303,11 +2303,18 @@
                           IsChecked="True" Checked="UseActiveCheck_Changed"
                           Visibility="Collapsed"
                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <CheckBox x:Name="OfflineModeCheck" Grid.Column="10" Content="Offline"
-                          ToolTip="Work on a local copy without sending changes to L-Connect"
-                          Checked="OfflineModeCheck_Changed" Unchecked="OfflineModeCheck_Changed"
-                          VerticalAlignment="Center" HorizontalAlignment="Right"
-                          Margin="0,0,10,0"/>
+                <StackPanel Grid.Column="10" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
+                    <CheckBox x:Name="OfflineModeCheck" Content="Offline"
+                              ToolTip="Work on a local copy without sending changes to L-Connect"
+                              Checked="OfflineModeCheck_Changed" Unchecked="OfflineModeCheck_Changed"
+                              VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <Button x:Name="ApplyOrientationButton" Content="Change Orientation"
+                            Tag="M4,3 H10 V15 H4 Z M6,5 V13 M10,7 C13,7 15,9 16,12 M16,12 L14,10 M16,12 L18,10 M10,15 H18 V19 H10 Z M12,17 H16"
+                            Style="{DynamicResource ToolbarIconButton}"
+                            Visibility="Collapsed"
+                            Click="ApplyOrientationButton_Click"
+                            ToolTip="Save as a new theme with the selected orientation"/>
+                </StackPanel>
 
                 <!-- RIGHT ACTION BUTTONS -->
                 <StackPanel Grid.Column="11" Orientation="Horizontal" VerticalAlignment="Center">
@@ -3001,6 +3008,10 @@
                                 <Border Background="Transparent" BorderThickness="0" Padding="14" Margin="0">
                                     <StackPanel>
                                         <TextBox x:Name="TextBox" Margin="0,0,0,8" MinHeight="30" AcceptsReturn="False" TextWrapping="NoWrap"/>
+                                        <StackPanel x:Name="D3EditTextPresetPanel" Margin="0,0,0,8" Visibility="Collapsed">
+                                            <Label Content="D3 PRESET" Margin="0,0,0,6"/>
+                                            <ComboBox x:Name="D3EditTextPresetCombo" SelectionChanged="D3EditTextPresetCombo_SelectionChanged"/>
+                                        </StackPanel>
                                         <UniformGrid Columns="2" Margin="0,0,0,8">
                                             <StackPanel Margin="0,0,4,0"><Label x:Name="FontLabel" Content="FONT"/><ComboBox x:Name="FontCombo" IsEditable="True" IsTextSearchEnabled="True"/></StackPanel>
                                             <StackPanel Margin="4,0,0,0"><Label x:Name="ColorLabel" Content="COLOR"/><Grid x:Name="ColorPanel"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/></Grid.ColumnDefinitions><TextBox x:Name="ColorBox"/><Button x:Name="ColorPickButton" Grid.Column="1" Margin="4,0,0,0" Style="{DynamicResource ColorPickerButtonFixed}" Click="ColorPickButton_Click"/></Grid></StackPanel>
@@ -3271,9 +3282,11 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBox x:Name="ImageFileBox" Grid.Column="0" IsReadOnly="True" ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
                                     <Button x:Name="ChangeImageButton" Content="Change..." Style="{DynamicResource BtnGhost}" Grid.Column="1" Margin="4,0,0,0" Click="ChangeImageButton_Click"/>
+                                    <Button x:Name="ExportLayerMediaButton" Content="Export..." Style="{DynamicResource BtnGhost}" Grid.Column="2" Margin="4,0,0,0" Click="ExportLayerMediaButton_Click"/>
                                 </Grid>
                                 <Label x:Name="ImageRotateLabel" Grid.Row="1" Grid.Column="0" Content="ROTATE" Margin="0,8,0,0"/>
                                 <ComboBox x:Name="ImageRotateCombo" Grid.Row="1" Grid.Column="1" Margin="0,8,0,0">
@@ -3397,7 +3410,11 @@
                                 <WrapPanel>
                                     <StackPanel x:Name="AddTextPanel" Width="430" Margin="0,0,24,10">
                                         <Label x:Name="AddTextLabel" Content="TEXT" Margin="0,0,0,6"/>
-                                        <TextBox x:Name="AddTextBox"/>
+                                        <ComboBox x:Name="AddTextBox" IsEditable="True" IsTextSearchEnabled="True"/>
+                                    </StackPanel>
+                                    <StackPanel x:Name="D3AddTextPresetPanel" Width="280" Margin="0,0,24,10" Visibility="Collapsed">
+                                        <Label Content="D3 PRESET" Margin="0,0,0,6"/>
+                                        <ComboBox x:Name="D3AddTextPresetCombo" SelectionChanged="D3AddTextPresetCombo_SelectionChanged"/>
                                     </StackPanel>
                                     <StackPanel x:Name="AddDataPanel" Width="330" Margin="0,0,24,10" Visibility="Collapsed">
                                         <Label x:Name="AddDataLabel" Content="DATA" Margin="0,0,0,6"/>
@@ -3473,6 +3490,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="48"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <Grid Grid.Row="0">
@@ -3509,6 +3527,24 @@
                             <Button x:Name="PreviewGuidesButton" Style="{DynamicResource BtnNudge}" Margin="0,0,8,0" ToolTip="Show / hide preview guides" Click="PreviewGuidesButton_Click">
                                 <Path x:Name="PreviewGuidesIcon" Data="M4,4 H16 M4,10 H16 M4,16 H16 M4,4 V16 M10,4 V16 M16,4 V16" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.35" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Width="16" Height="16" Stretch="Uniform"/>
                             </Button>
+                            <StackPanel x:Name="OledCurvePreviewModePanel" Orientation="Horizontal" Visibility="Collapsed" Margin="0,0,8,0">
+                                <Button x:Name="OledCurvePreviewFullButton" Tag="full" Style="{DynamicResource BtnNudge}" Margin="0,0,3,0" ToolTip="Full screen preview" Click="OledCurvePreviewModeButton_Click">
+                                    <Rectangle Width="18" Height="12" RadiusX="1" RadiusY="1" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.7"/>
+                                </Button>
+                                <Button x:Name="OledCurvePreviewDualButton" Tag="dual" Style="{DynamicResource BtnNudge}" Margin="0,0,3,0" ToolTip="Dual split preview" Click="OledCurvePreviewModeButton_Click">
+                                    <Grid Width="20" Height="12">
+                                        <Rectangle RadiusX="1" RadiusY="1" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.7"/>
+                                        <Line X1="13" X2="13" Y1="0" Y2="12" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.5"/>
+                                    </Grid>
+                                </Button>
+                                <Button x:Name="OledCurvePreviewTripleButton" Tag="triple" Style="{DynamicResource BtnNudge}" ToolTip="Triple split preview" Click="OledCurvePreviewModeButton_Click">
+                                    <Grid Width="20" Height="12">
+                                        <Rectangle RadiusX="1" RadiusY="1" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.7"/>
+                                        <Line X1="6.7" X2="6.7" Y1="0" Y2="12" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.5"/>
+                                        <Line X1="13.4" X2="13.4" Y1="0" Y2="12" Stroke="{DynamicResource BrTextPrimary}" StrokeThickness="1.5"/>
+                                    </Grid>
+                                </Button>
+                            </StackPanel>
                             <Button Content="-" Style="{DynamicResource BtnNudge}" Click="CanvasZoomMinus_Click"/>
                             <Border Background="{DynamicResource BrField}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1"
                                     Padding="14,8" Margin="6,0" CornerRadius="6">
@@ -3565,7 +3601,22 @@
                                     Foreground="#5DE4D0"/>
                         </StackPanel>
                     </Border>
-                    <ScrollViewer x:Name="PreviewScrollViewer" Grid.Row="2"
+                    <Border x:Name="OledCurveBetaNotice" Grid.Row="2"
+                            Visibility="Collapsed"
+                            Margin="0,2,0,8"
+                            Padding="12,8"
+                            CornerRadius="5"
+                            Background="#221E90FF"
+                            BorderBrush="#661E90FF"
+                            BorderThickness="1">
+                        <TextBlock x:Name="OledCurveBetaNoticeText"
+                                   Text="OLED Curve support is in beta. Back up your theme files before editing or applying changes."
+                                   Foreground="#BFE6FF"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap"/>
+                    </Border>
+                    <ScrollViewer x:Name="PreviewScrollViewer" Grid.Row="3"
                                   HorizontalScrollBarVisibility="Auto"
                                   VerticalScrollBarVisibility="Auto"
                                   HorizontalContentAlignment="Center"
@@ -3581,6 +3632,7 @@
                                 <Grid.Clip>
                                     <RectangleGeometry x:Name="PreviewClipGeometry" Rect="0,0,240,240"/>
                                 </Grid.Clip>
+                                <Canvas x:Name="OledCurveSplitBackgroundCanvas" Width="240" Height="240" IsHitTestVisible="False" Visibility="Collapsed"/>
                                 <MediaElement x:Name="BackgroundMedia" Width="240" Height="240" Stretch="Fill" LoadedBehavior="Manual" UnloadedBehavior="Manual" Visibility="Collapsed" MediaEnded="BackgroundMedia_MediaEnded"/>
                                 <Image x:Name="BackgroundImage" Width="240" Height="240" Stretch="Fill" Visibility="Collapsed"/>
                                 <Rectangle Fill="#08000000"/>
@@ -3679,7 +3731,8 @@
                                     <CheckBox x:Name="GalleryFilterHydroshiftSCheck" Content="Hydroshift II LCD-S" IsChecked="True" Margin="0,0,0,6" Checked="GalleryFilter_Changed" Unchecked="GalleryFilter_Changed"/>
                                     <CheckBox x:Name="GalleryFilterHydroshiftCCheck" Content="Hydroshift II LCD-C" IsChecked="True" Margin="0,0,0,6" Checked="GalleryFilter_Changed" Unchecked="GalleryFilter_Changed"/>
                                     <CheckBox x:Name="GalleryFilterUniversal88Check" Content="8.8&quot; Universal Screen" IsChecked="True" Margin="0,0,0,6" Checked="GalleryFilter_Changed" Unchecked="GalleryFilter_Changed"/>
-                                    <CheckBox x:Name="GalleryFilterVm92Check" Content="VM 9.2 LCD" IsChecked="True" Margin="0,0,0,16" Checked="GalleryFilter_Changed" Unchecked="GalleryFilter_Changed"/>
+                                    <CheckBox x:Name="GalleryFilterVm92Check" Content="VM 9.2 LCD" IsChecked="True" Margin="0,0,0,6" Checked="GalleryFilter_Changed" Unchecked="GalleryFilter_Changed"/>
+                                    <CheckBox x:Name="GalleryFilterOledCurveCheck" Content="HydroShift II OLED Curve" IsChecked="True" Margin="0,0,0,16" Checked="GalleryFilter_Changed" Unchecked="GalleryFilter_Changed"/>
 
                                     <TextBlock x:Name="LocalThemesOrientationFilterText" Text="Orientation"
                                                FontSize="12"
@@ -4000,7 +4053,8 @@
                                     <CheckBox x:Name="LocalFilterHydroshiftSCheck" Content="Hydroshift II LCD-S" IsChecked="True" Margin="0,0,0,6" Checked="LocalThemeFilter_Changed" Unchecked="LocalThemeFilter_Changed"/>
                                     <CheckBox x:Name="LocalFilterHydroshiftCCheck" Content="Hydroshift II LCD-C" IsChecked="True" Margin="0,0,0,6" Checked="LocalThemeFilter_Changed" Unchecked="LocalThemeFilter_Changed"/>
                                     <CheckBox x:Name="LocalFilterUniversal88Check" Content="8.8&quot; Universal Screen" IsChecked="True" Margin="0,0,0,6" Checked="LocalThemeFilter_Changed" Unchecked="LocalThemeFilter_Changed"/>
-                                    <CheckBox x:Name="LocalFilterVm92Check" Content="VM 9.2 LCD" IsChecked="True" Margin="0,0,0,16" Checked="LocalThemeFilter_Changed" Unchecked="LocalThemeFilter_Changed"/>
+                                    <CheckBox x:Name="LocalFilterVm92Check" Content="VM 9.2 LCD" IsChecked="True" Margin="0,0,0,6" Checked="LocalThemeFilter_Changed" Unchecked="LocalThemeFilter_Changed"/>
+                                    <CheckBox x:Name="LocalFilterOledCurveCheck" Content="HydroShift II OLED Curve" IsChecked="True" Margin="0,0,0,16" Checked="LocalThemeFilter_Changed" Unchecked="LocalThemeFilter_Changed"/>
 
                                     <TextBlock Text="Orientation"
                                                FontSize="12"
@@ -4299,6 +4353,24 @@
                                         </ListBox>
                                     </StackPanel>
                                 </Border>
+                                <Border Background="#2426515C" BorderBrush="#7D4FD1C5" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock x:Name="ConvertFix88To92TitleText" Text="8.8 to VM 9.2" FontSize="14" FontWeight="SemiBold" Foreground="#D9FFF8"/>
+                                            <Border Background="#334FD1C5" BorderBrush="#884FD1C5" BorderThickness="1" CornerRadius="2" Padding="6,2" Margin="8,0,0,0">
+                                                <TextBlock x:Name="ConvertFix88To92BetaText" Text="BETA" FontSize="10" FontWeight="Bold" Foreground="#BFFFF8"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock x:Name="ConvertFix88To92DescText"
+                                                   Text="Import an 8.8 L-Connect ZIP and export a VM 9.2 ZIP that can be imported from L-Connect. This beta path rewrites canvas metadata and converts the background to 9.2 H.264."
+                                                   Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#B8DCD8" FontSize="11.5"/>
+                                        <TextBlock x:Name="ConvertFix88To92WarningText"
+                                                   Text="Only the landscape/horizontal themes are supported."
+                                                   Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#FFFF5A5A" FontSize="11.5" FontWeight="SemiBold"/>
+                                        <Button x:Name="ConvertFix88To92Button" Content="Convert 8.8 ZIP to VM 9.2 ZIP" Height="30" Padding="12,0" Margin="0,12,0,0" HorizontalAlignment="Left" Style="{DynamicResource BtnPrimary}" Click="ConvertFix88To92Button_Click"/>
+                                        <TextBlock x:Name="ConvertFix88To92StatusText" Text="Beta converter. Test the output in L-Connect before sharing." Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#93C9C3" FontSize="11"/>
+                                    </StackPanel>
+                                </Border>
                                 <Border Background="{DynamicResource BrSurface2}" BorderBrush="{DynamicResource BrBorder}" BorderThickness="1" CornerRadius="2" Padding="14" Margin="0,0,12,12">
                                     <StackPanel>
                                             <TextBlock x:Name="ConvertFixTurzxToLianLiTitleText" Text="Turzx to Lian Li" FontSize="14" FontWeight="SemiBold"/>
@@ -4514,6 +4586,8 @@
                                                     </StackPanel>
                                                     <CheckBox x:Name="OwnedVm92Check" Content="VM 9.2 LCD" IsChecked="True" Margin="0,7,0,0" Checked="OwnedDevices_Changed" Unchecked="OwnedDevices_Changed"/>
                                                     <TextBox x:Name="Vm92NameBox" Margin="22,4,0,6" Tag="Device name" ToolTip="Display name" Style="{StaticResource DeviceNameTextBoxStyle}" TextChanged="DeviceNameBox_TextChanged"/>
+                                                    <CheckBox x:Name="OwnedOledCurveCheck" Content="HydroShift II OLED Curve" IsChecked="True" Margin="0,7,0,0" Checked="OwnedDevices_Changed" Unchecked="OwnedDevices_Changed"/>
+                                                    <TextBox x:Name="OledCurveNameBox" Margin="22,4,0,6" Tag="Device name" ToolTip="Display name" Style="{StaticResource DeviceNameTextBoxStyle}" TextChanged="DeviceNameBox_TextChanged"/>
                                                     <Button x:Name="SaveSettingsButton" Content="Save settings" HorizontalAlignment="Left" Margin="0,14,0,0" Padding="14,7" Style="{DynamicResource BtnPrimary}" Click="SaveSettingsButton_Click"/>
                                                 </StackPanel>
                                             </Border>

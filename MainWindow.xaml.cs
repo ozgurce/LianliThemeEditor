@@ -50,6 +50,7 @@ public partial class MainWindow : Window
     {
         public string LatestTag { get; init; } = "";
         public string LatestName { get; init; } = "";
+        public string ReleaseNotes { get; init; } = "";
         public string ReleaseUrl { get; init; } = GitHubReleasesUrl;
         public string? InstallerUrl { get; init; }
     }
@@ -57,6 +58,11 @@ public partial class MainWindow : Window
     private const int WmGetMinMaxInfo = 0x0024;
     private const string UniversalScreenDeviceModel = "universal-screen-8.8-inch";
     private const string Vm92DeviceModel = "vm-9.2-inch";
+    private const string OledCurveDeviceModel = "hydroshift-ii-oled-curve";
+    private const string OledCurveSyntheticBackgroundLayerIndex = "__oled_curve_background";
+    private const int OledCurveCanvasWidth = 2288;
+    private const int OledCurveCanvasHeight = 1080;
+    private const int OledCurveSplitGap = 16;
     private const string GroupMetadataMarker = "__LIAN_EDITOR_GROUPS_V1__";
     private const string EditorSettingsFileName = "theme_editor_settings.json";
     private const string GalleryManifestUrl = "https://raw.githubusercontent.com/ozgurce/LianliThemeEditor/main/templates/gallery.json";
@@ -236,6 +242,14 @@ public partial class MainWindow : Window
     private readonly ISupporterBridge _supporter;
     private string _currentTemplatePath = "";
     private string _currentTemplateId = "";
+    private int _currentTemplatePixelWidth;
+    private int _currentTemplatePixelHeight;
+    private string _currentOledCurveGroupKind = "";
+    private readonly List<string> _currentOledCurveGroupTemplateIds = new();
+    private readonly List<string> _currentOledCurveGroupTemplatePaths = new();
+    private readonly List<OledCurveSplitBackgroundPart> _currentOledCurveSplitBackgrounds = new();
+    private readonly List<OledCurveSplitBackgroundPart> _pendingOledCurveSplitBackgrounds = new();
+    private string _oledCurvePreviewSplitMode = "full";
     private bool _suppressDeviceSyncFromTemplatePath;
     private DateTime _currentTemplateWriteStampUtc = DateTime.MinValue;
     private bool IsOfflineMode => OfflineModeCheck?.IsChecked == true;
@@ -286,7 +300,7 @@ public partial class MainWindow : Window
     private sealed record EditSnapshot(string Description, byte[] Layers, DateTime CreatedAtUtc);
     private sealed record PendingLayerMove(int SourceIndex, int TargetIndex);
     private sealed record PendingLayerDuplicate(LayerRow Layer, LayerRow SourceLayer, int SourceIndex);
-    private sealed record PendingLayerDelete(int SourceIndex);
+    private sealed record PendingLayerDelete(string SourceIndex);
     private readonly Stack<EditSnapshot> _undoStack = new();
     private readonly Stack<EditSnapshot> _redoStack = new();
     private readonly List<PendingLayerMove> _pendingLayerMoves = new();
@@ -361,6 +375,7 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, System.Drawing.Rectangle> _imageInkBoundsCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, double> _gaugeNeedleZeroAngleCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, FontFamily> _resolvedFontsCache = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, D3PreviewCache?> _d3PreviewCacheByTemplate = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, BitmapSource> _gdiTextCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Rect> _gdiTextInkCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, TextLayerRenderResult> _gdiTextLayerCache = new(StringComparer.OrdinalIgnoreCase);
@@ -1309,7 +1324,9 @@ public partial class MainWindow : Window
         UseActiveCheck.IsChecked = false;
         TemplateIdBox.Text = option.Id;
         _currentTemplatePath = option.Path;
-        await LoadLayersAsync(true);
+        var deviceModel = GetSelectedDeviceModel();
+        var result = await Task.Run(() => LoadTemplateOptionAsync(deviceModel, option));
+        ApplyTemplateResult(result);
     }
 
     private async void ActiveThemeButton_Click(object sender, RoutedEventArgs e)
@@ -2268,6 +2285,8 @@ public partial class MainWindow : Window
                 : File.Exists(resolvedCurrentBackground)
                     ? resolvedCurrentBackground
                     : editorBackgroundPathBeforeExport;
+            var editorOrientationBeforeExport = NormalizeUniversalOrientation(
+                (UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString());
 
             try
             {
@@ -2276,6 +2295,7 @@ public partial class MainWindow : Window
                 var refreshed = await Task.Run(() => _supporter.LoadTemplatePathAsync(
                     deviceModel, target.TemplatePath));
                 ApplyTemplateResult(refreshed);
+                SetUniversalOrientation(universalOrientation);
                 _selectedBackgroundSourcePath = File.Exists(backgroundSource)
                     ? backgroundSource
                     : "";
@@ -2321,23 +2341,31 @@ public partial class MainWindow : Window
                             Path.GetTempPath(),
                             $"lconnect-export-preview-{Guid.NewGuid():N}.png");
                         await File.WriteAllBytesAsync(lConnectExportPreviewPath, previewBytes);
+                        var normalizedExportPreviewPath = await this.NormalizeThemePicPreviewForExportAsync(
+                            deviceModel,
+                            lConnectExportPreviewPath);
                         try
                         {
                             await WriteThemePreviewFileAsync(
                                 deviceModel,
                                 exportTemplateId,
-                                lConnectExportPreviewPath);
+                                normalizedExportPreviewPath);
                             await _supporter.UpdateThemePreviewAsync(
                                 deviceModel,
                                 exportTemplatePath,
-                                lConnectExportPreviewPath);
-                            await _supporter.UpdateAnimationPreviewBitmapsAsync(
+                                normalizedExportPreviewPath);
+                            await UpdateWideTemplateAnimationPreviewFromBackgroundAsync(
                                 deviceModel,
                                 exportTemplatePath,
-                                lConnectExportPreviewPath);
+                                exportBackground,
+                                exportPreviewFrame);
                         }
                         finally
                         {
+                            if (!string.Equals(normalizedExportPreviewPath, lConnectExportPreviewPath, StringComparison.OrdinalIgnoreCase))
+                            {
+                                TryDeleteFile(normalizedExportPreviewPath);
+                            }
                             TryDeleteFile(lConnectExportPreviewPath);
                         }
                     }
@@ -2363,6 +2391,10 @@ public partial class MainWindow : Window
                 }
                 finally
                 {
+                    if (!string.IsNullOrWhiteSpace(editorOrientationBeforeExport))
+                    {
+                        SetUniversalOrientation(editorOrientationBeforeExport);
+                    }
                     _currentBackgroundPath = editorBackgroundPathBeforeExport;
                     _selectedBackgroundSourcePath = editorSelectedBackgroundBeforeExport;
                     LoadBackgroundPreview(editorPreviewBackgroundBeforeExport, Path.GetFileName(editorPreviewBackgroundBeforeExport));
@@ -2417,6 +2449,16 @@ public partial class MainWindow : Window
 
     private async void Convert88To92Button_Click(object sender, RoutedEventArgs e)
     {
+        await RunConvert88To92DialogAsync(null);
+    }
+
+    private async void ConvertFix88To92Button_Click(object sender, RoutedEventArgs e)
+    {
+        await RunConvert88To92DialogAsync(ConvertFix88To92StatusText);
+    }
+
+    private async Task RunConvert88To92DialogAsync(TextBlock? statusText)
+    {
         var openDialog = new OpenFileDialog
         {
             Title = GetLanguageText("dialogs.convert88To92Open", "Choose an 8.8 L-Connect ZIP"),
@@ -2438,14 +2480,27 @@ public partial class MainWindow : Window
         try
         {
             SetBusy(true, GetLanguageText("status.converting88To92", "Converting 8.8 package for VM 9.2..."));
+            if (statusText != null)
+            {
+                statusText.Text = GetLanguageText("convertFix.convert88To92Converting", "Converting 8.8 package for VM 9.2...");
+            }
+
             var exportTemplateId = CreateExportTemplateName(
                 Path.GetFileNameWithoutExtension(saveDialog.FileName),
                 Path.GetFileNameWithoutExtension(openDialog.FileName));
-            await Task.Run(() => ConvertUniversal88LConnectZipToVm92(
+            await ConvertUniversal88LConnectZipToVm92Async(
                 openDialog.FileName,
                 saveDialog.FileName,
-                exportTemplateId));
+                exportTemplateId);
             SetBusy(false, GetLanguageText("status.converted88To92", "VM 9.2 package created."));
+            if (statusText != null)
+            {
+                statusText.Text = FormatLanguageText(
+                    "convertFix.convert88To92Exported",
+                    "VM 9.2 L-Connect ZIP exported: {0}",
+                    saveDialog.FileName);
+            }
+
             ShowThemedMessage(
                 GetLanguageText("messages.convert88To92Done", "VM 9.2 package created"),
                 GetLanguageText(
@@ -2455,6 +2510,11 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             SetBusy(false, GetLanguageText("status.convert88To92Failed", "Conversion failed."));
+            if (statusText != null)
+            {
+                statusText.Text = FormatLanguageText("convertFix.convertFailed", "Conversion failed: {0}", ex.Message);
+            }
+
             ShowThemedMessage(
                 GetLanguageText("messages.convert88To92Failed", "Conversion failed"),
                 ex.Message);
@@ -2503,8 +2563,12 @@ public partial class MainWindow : Window
                 }
 
                 _currentTemplatePath = templatePath;
-                TemplateIdBox.Text = Path.GetFileNameWithoutExtension(templatePath);
-                result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, templatePath));
+                TemplateIdBox.Text = selectedOption?.Id ?? Path.GetFileNameWithoutExtension(templatePath);
+                result = selectedOption != null &&
+                         (string.Equals(selectedOption.Path, templatePath, StringComparison.OrdinalIgnoreCase) ||
+                          selectedOption.GroupedTemplatePaths.Any(path => string.Equals(path, templatePath, StringComparison.OrdinalIgnoreCase)))
+                    ? await Task.Run(() => LoadTemplateOptionAsync(deviceModel, selectedOption))
+                    : await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, templatePath));
             }
 
             ApplyTemplateResult(result);
@@ -2559,7 +2623,7 @@ public partial class MainWindow : Window
             _currentTemplatePath = firstTemplate.Path;
             _isLoading = wasLoading;
             result = await Task.Run(() =>
-                _supporter.LoadTemplatePathAsync(deviceModel, firstTemplate.Path, inspectBitmaps: false));
+                LoadTemplateOptionAsync(deviceModel, firstTemplate, inspectBitmaps: false));
         }
 
         var suppressDeviceSync = _suppressDeviceSyncFromTemplatePath;
@@ -2625,6 +2689,24 @@ public partial class MainWindow : Window
         _selectedBackgroundSourcePath = "";
         _currentTemplatePath = result.TemplatePath;
         _currentTemplateId = result.TemplateId;
+        _currentTemplatePixelWidth = result.Width;
+        _currentTemplatePixelHeight = result.Height;
+        _currentOledCurveGroupKind = "";
+        _currentOledCurveGroupTemplateIds.Clear();
+        _currentOledCurveGroupTemplatePaths.Clear();
+        _currentOledCurveSplitBackgrounds.Clear();
+        _currentOledCurveSplitBackgrounds.AddRange(_pendingOledCurveSplitBackgrounds);
+        _pendingOledCurveSplitBackgrounds.Clear();
+        if (TemplateCombo?.SelectedItem is TemplateOption { IsOledCurveGroup: true } groupedOption &&
+            string.Equals(groupedOption.Id, result.TemplateId, StringComparison.OrdinalIgnoreCase))
+        {
+            _currentOledCurveGroupKind = groupedOption.OledCurveGroupKind;
+            _currentOledCurveGroupTemplateIds.AddRange(groupedOption.GroupedTemplateIds);
+            _currentOledCurveGroupTemplatePaths.AddRange(groupedOption.GroupedTemplatePaths);
+        }
+        _oledCurvePreviewSplitMode = string.Equals(GetSelectedDeviceModel(), OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase)
+            ? string.IsNullOrWhiteSpace(_currentOledCurveGroupKind) ? _oledCurvePreviewSplitMode : _currentOledCurveGroupKind
+            : "full";
         _currentBackgroundPath = result.BackgroundPath;
         _previewSampleOverrides.Clear();
         _gdiTextCache.Clear();
@@ -2635,6 +2717,7 @@ public partial class MainWindow : Window
         _pendingLayerDuplicates.Clear();
         _pendingLayerDeletes.Clear();
         _editorUndoArmed = false;
+        EnsureOledCurveBackgroundLayer(result);
 
         try
         {
@@ -2642,8 +2725,20 @@ public partial class MainWindow : Window
             LayerGroups.Clear();
             var groupingMetadata = ReadGroupingMetadata(result.Layers);
             var tempLayers = new List<LayerRow>();
+            var oledCurveDisplayIndex = 0;
             foreach (var layer in result.Layers)
             {
+                if (IsOledCurveDeviceSelected() &&
+                    !IsOledCurveSyntheticBackgroundLayer(layer) &&
+                    string.IsNullOrWhiteSpace(layer.SourceLayerIndex))
+                {
+                    layer.SourceLayerIndex = layer.Index;
+                    layer.Index = oledCurveDisplayIndex.ToString(CultureInfo.InvariantCulture);
+                }
+                if (!layer.IsEditorMetadata)
+                {
+                    oledCurveDisplayIndex++;
+                }
                 NormalizeAnimationLayerZoom(layer);
                 if (NormalizeClockLayerPlacementIfOffCanvas(layer))
                 {
@@ -2662,13 +2757,21 @@ public partial class MainWindow : Window
                     _dirtyLayers.Add(layer);
                 }
                 RefreshLayerDataSourceDisplay(layer);
-                layer.IsLocked = _lockedLayerKeys.Contains(GetLayerLockKey(_currentTemplatePath, layer.Index));
+                layer.IsLocked = IsOledCurveSyntheticBackgroundLayer(layer) ||
+                                 _lockedLayerKeys.Contains(GetLayerLockKey(_currentTemplatePath, layer.Index));
                 SetLayerActionTooltips(layer);
                 tempLayers.Add(layer);
             }
             Layers.AddRange(tempLayers);
+            PopulateCurrentLayerFonts();
+            PopulateD3AddTextOptions();
             ApplyGroupingMetadata(groupingMetadata);
             ConfigureLayerGrouping();
+            AppLogger.Info(
+                $"Template loaded: device={GetSelectedDeviceModel()}; template={_currentTemplateId}; " +
+                $"layers={Layers.Count(layer => !layer.IsEditorMetadata)}; " +
+                $"images={Layers.Count(layer => string.Equals(layer.Type, "GraphImage", StringComparison.OrdinalIgnoreCase))}; " +
+                $"backgrounds={Layers.Count(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))}");
 
             TemplateTitleText.Text = string.IsNullOrWhiteSpace(_currentTemplateId)
                 ? "Template ID: -"
@@ -2694,10 +2797,11 @@ public partial class MainWindow : Window
             if (SupportsOrientationSelectionSelected())
             {
                 templateOrientation = FirstNonEmpty(
+                    InferUniversalOrientationFromCanvas(result.Width, result.Height),
+                    NormalizeUniversalOrientation((TemplateCombo?.SelectedItem as TemplateOption)?.UniversalOrientation),
                     TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
-                    InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, GetSelectedDeviceModel()),
                     InferGalleryThemeOrientation(_currentTemplateId, _currentTemplatePath, displayBackground, result.BackgroundPath),
-                    NormalizeUniversalOrientation((TemplateCombo.SelectedItem as TemplateOption)?.UniversalOrientation),
+                    InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, GetSelectedDeviceModel()),
                     InferWideGalleryOrientationFromLayers(Layers));
             }
             if (!string.IsNullOrWhiteSpace(templateOrientation))
@@ -2709,6 +2813,7 @@ public partial class MainWindow : Window
                 SetUniversalOrientationFromLayers();
             }
             LoadBackgroundPreview(result.BackgroundPath, displayBackground);
+            UpdateOledCurvePreviewModeControls();
 
             if (LayerView.Cast<object>().Any())
             {
@@ -2730,6 +2835,177 @@ public partial class MainWindow : Window
         }
         RequestPreviewDraw();
     }
+
+    private void EnsureOledCurveBackgroundLayer(TemplateLoadResult result)
+    {
+        if (!string.Equals(GetSelectedDeviceModel(), OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(result.BackgroundPath) ||
+            !File.Exists(result.BackgroundPath))
+        {
+            return;
+        }
+
+        var backgroundName = string.IsNullOrWhiteSpace(result.Background)
+            ? Path.GetFileName(result.BackgroundPath)
+            : result.Background;
+        var animationLayer = result.Layers.FirstOrDefault(layer =>
+            string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
+        if (animationLayer != null)
+        {
+            if (string.IsNullOrWhiteSpace(animationLayer.Media))
+            {
+                animationLayer.Media = backgroundName;
+            }
+            if (string.IsNullOrWhiteSpace(animationLayer.MediaPath) ||
+                !File.Exists(animationLayer.MediaPath))
+            {
+                animationLayer.MediaPath = result.BackgroundPath;
+            }
+            if (string.IsNullOrWhiteSpace(animationLayer.X)) animationLayer.X = "0";
+            if (string.IsNullOrWhiteSpace(animationLayer.Y)) animationLayer.Y = "0";
+            if (string.IsNullOrWhiteSpace(animationLayer.Width)) animationLayer.Width = result.Width.ToString(CultureInfo.InvariantCulture);
+            if (string.IsNullOrWhiteSpace(animationLayer.Height)) animationLayer.Height = result.Height.ToString(CultureInfo.InvariantCulture);
+            return;
+        }
+
+        result.Layers.Insert(0, new LayerRow
+        {
+            Index = "0",
+            SourceLayerIndex = OledCurveSyntheticBackgroundLayerIndex,
+            Type = "GraphAnimation",
+            Media = backgroundName,
+            MediaPath = result.BackgroundPath,
+            X = "0",
+            Y = "0",
+            Width = result.Width.ToString(CultureInfo.InvariantCulture),
+            Height = result.Height.ToString(CultureInfo.InvariantCulture),
+            Description = GetLayerDisplayType(new LayerRow { Type = "GraphAnimation" }),
+            IconData = "M5,6 H27 V26 H5 Z M8,6 V26 M24,6 V26 M12,12 L21,16 L12,20 Z",
+            IconColor = "#7C3AED",
+            IsLocked = true,
+            LockTooltip = GetLanguageText("tooltips.backgroundLayerLocked", "Background is edited with the background controls")
+        });
+    }
+
+    private async Task<TemplateLoadResult> LoadTemplateOptionAsync(string deviceModel, TemplateOption option, bool inspectBitmaps = true)
+    {
+        if (!string.Equals(deviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            !option.IsOledCurveGroup)
+        {
+            return await _supporter.LoadTemplatePathAsync(deviceModel, option.Path, inspectBitmaps);
+        }
+
+        return await LoadOledCurveGroupedTemplateAsync(deviceModel, option, inspectBitmaps);
+    }
+
+    private async Task<TemplateLoadResult> LoadOledCurveGroupedTemplateAsync(
+        string deviceModel,
+        TemplateOption option,
+        bool inspectBitmaps = true)
+    {
+        var parts = new List<TemplateLoadResult>();
+        for (var index = 0; index < option.GroupedTemplatePaths.Count; index++)
+        {
+            var path = option.GroupedTemplatePaths[index];
+            if (!File.Exists(path))
+            {
+                continue;
+            }
+
+            parts.Add(await _supporter.LoadTemplatePathAsync(deviceModel, path, inspectBitmaps));
+        }
+
+        if (parts.Count == 0)
+        {
+            throw new InvalidOperationException("OLED Curve grouped template parts could not be loaded.");
+        }
+
+        var merged = new TemplateLoadResult
+        {
+            TemplateId = option.Id,
+            TemplatePath = option.Path,
+            Background = parts[0].Background,
+            BackgroundPath = parts[0].BackgroundPath,
+            Width = OledCurveCanvasWidth,
+            Height = OledCurveCanvasHeight
+        };
+
+        var globalIndex = 0;
+        _pendingOledCurveSplitBackgrounds.Clear();
+        for (var partIndex = 0; partIndex < parts.Count; partIndex++)
+        {
+            var part = parts[partIndex];
+            var partId = option.GroupedTemplateIds.Count > partIndex
+                ? option.GroupedTemplateIds[partIndex]
+                : part.TemplateId;
+            var partPath = option.GroupedTemplatePaths.Count > partIndex
+                ? option.GroupedTemplatePaths[partIndex]
+                : part.TemplatePath;
+            var offsetX = GetOledCurveSplitOffsetX(partId);
+            if (!string.IsNullOrWhiteSpace(part.BackgroundPath))
+            {
+                _pendingOledCurveSplitBackgrounds.Add(new OledCurveSplitBackgroundPart(
+                    part.BackgroundPath,
+                    offsetX,
+                    part.Width > 0 ? part.Width : GetOledCurveSplitWidth(partId)));
+            }
+            foreach (var layer in part.Layers)
+            {
+                layer.SourceLayerIndex = layer.Index;
+                layer.SourceTemplateId = partId;
+                layer.SourceTemplatePath = partPath;
+                layer.SourceOffsetX = offsetX;
+                layer.Index = globalIndex.ToString(CultureInfo.InvariantCulture);
+                layer.GroupName = GetOledCurveSplitDisplayName(partId);
+                if (TryParseTemplateDouble(layer.X, out var x))
+                {
+                    layer.X = FormatTemplateDouble(x + offsetX);
+                }
+                merged.Layers.Add(layer);
+                globalIndex++;
+            }
+        }
+
+        _currentOledCurveGroupKind = option.OledCurveGroupKind;
+        _currentOledCurveGroupTemplateIds.Clear();
+        _currentOledCurveGroupTemplateIds.AddRange(option.GroupedTemplateIds);
+        _currentOledCurveGroupTemplatePaths.Clear();
+        _currentOledCurveGroupTemplatePaths.AddRange(option.GroupedTemplatePaths);
+        return merged;
+    }
+
+    private static double GetOledCurveSplitWidth(string templateId)
+    {
+        if (templateId.StartsWith("dualleft", StringComparison.OrdinalIgnoreCase)) return 1392.0;
+        if (templateId.StartsWith("dualright", StringComparison.OrdinalIgnoreCase)) return 880.0;
+        if (templateId.StartsWith("triple", StringComparison.OrdinalIgnoreCase)) return 752.0;
+        return OledCurveCanvasWidth;
+    }
+
+    private static double GetOledCurveSplitOffsetX(string templateId)
+    {
+        if (templateId.StartsWith("dualright", StringComparison.OrdinalIgnoreCase)) return 1392.0 + OledCurveSplitGap;
+        if (templateId.StartsWith("triplemiddle", StringComparison.OrdinalIgnoreCase)) return 752.0 + OledCurveSplitGap;
+        if (templateId.StartsWith("tripleright", StringComparison.OrdinalIgnoreCase)) return 1504.0 + OledCurveSplitGap * 2;
+        return 0.0;
+    }
+
+    private static string GetOledCurveSplitDisplayName(string templateId)
+    {
+        if (templateId.StartsWith("dualleft", StringComparison.OrdinalIgnoreCase)) return "Dual Left";
+        if (templateId.StartsWith("dualright", StringComparison.OrdinalIgnoreCase)) return "Dual Right";
+        if (templateId.StartsWith("tripleleft", StringComparison.OrdinalIgnoreCase)) return "Triple Left";
+        if (templateId.StartsWith("triplemiddle", StringComparison.OrdinalIgnoreCase)) return "Triple Middle";
+        if (templateId.StartsWith("tripleright", StringComparison.OrdinalIgnoreCase)) return "Triple Right";
+        return "";
+    }
+
+    private static bool TryParseTemplateDouble(string value, out double parsed) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed) ||
+        double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out parsed);
+
+    private static string FormatTemplateDouble(double value) =>
+        value.ToString("0.###", CultureInfo.InvariantCulture);
 
     private async Task<(string DeviceModel, string TemplatePath)> ResolveTemplateTargetAsync()
     {
@@ -3020,6 +3296,11 @@ public partial class MainWindow : Window
         foreach (var layer in Layers)
         {
             if (layer.IsEditorMetadata) continue;
+            if (IsOledCurveSyntheticBackgroundLayer(layer)) continue;
+            if (!int.TryParse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            {
+                continue;
+            }
             layer.Index = count.ToString(System.Globalization.CultureInfo.InvariantCulture);
             count++;
         }
@@ -3088,6 +3369,10 @@ public partial class MainWindow : Window
             GeneralPropertiesCard.Visibility = Visibility.Collapsed;
             DataPropertiesCard.Visibility = Visibility.Collapsed;
             TextAndFormatCard.Visibility = Visibility.Collapsed;
+            if (D3EditTextPresetPanel != null)
+            {
+                D3EditTextPresetPanel.Visibility = Visibility.Collapsed;
+            }
             LayerOptionsCard.Visibility = Visibility.Collapsed;
             GradientOptionsCard.Visibility = Visibility.Collapsed;
             GraphEditPanel.Visibility = Visibility.Collapsed;
@@ -3126,11 +3411,16 @@ public partial class MainWindow : Window
         }
         SizeBox.Text = layer.Size;
         ColorBox.Text = NormalizeColorText(layer.Color);
-        TextBox.Text = NormalizeLConnectText(layer.Text);
+        TextBox.Text = IsDynamicDataLayer(layer) && !layer.ForceText
+            ? SampleValueFor(layer.DataSource, layer.Format)
+            : NormalizeLConnectText(layer.Text);
         FormatBox.Text = layer.Format;
         BoldCheck.IsChecked = string.Equals(layer.Bold, "True", StringComparison.OrdinalIgnoreCase);
         ItalicCheck.IsChecked = string.Equals(layer.Italic, "True", StringComparison.OrdinalIgnoreCase);
-        SetComboText(FontCombo, ResolveCanonicalFontName(GetEffectiveLayerFont(layer.Font)));
+        var selectedLayerFont = ResolveCanonicalFontName(GetEffectiveLayerFont(layer.Font));
+        AddFontComboItem(FontCombo, selectedLayerFont);
+        AddFontComboItem(AddFontCombo, selectedLayerFont);
+        SetComboText(FontCombo, selectedLayerFont);
         SetComboText(DataCombo, GetDataSourceComboKey(layer.DataSource));
         SyncCaseFanSelector(layer.DataSource, CaseFanPanel, CaseFanCombo);
         SetComboValue(GraphStyleCombo, layer.GraphStyle);
@@ -3235,11 +3525,12 @@ public partial class MainWindow : Window
             GraphExtraValuesPanel.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
 
         var textVisibility = isText ? Visibility.Visible : Visibility.Collapsed;
+        var isD3TextLayer = IsD3TextLayer(layer);
         FontLabel.Visibility = isSensor ? Visibility.Visible : textVisibility;
         FontCombo.Visibility = isSensor ? Visibility.Visible : textVisibility;
         SensorFontColorsPanel.Visibility = isSensor ? Visibility.Visible : Visibility.Collapsed;
-        SizeLabel.Visibility = textVisibility;
-        SizePanel.Visibility = textVisibility;
+        SizeLabel.Visibility = isD3TextLayer ? Visibility.Collapsed : textVisibility;
+        SizePanel.Visibility = isD3TextLayer ? Visibility.Collapsed : textVisibility;
         SizeLabel.Content = isText
             ? GetLanguageText("labels.size", "SIZE")
             : GetLanguageText("labels.widthShort", "W");
@@ -3265,11 +3556,15 @@ public partial class MainWindow : Window
             SensorTopColorBox.Text = NormalizeColorText(string.IsNullOrWhiteSpace(layer.SensorTopFontColor) ? layer.SensorMainFontColor : layer.SensorTopFontColor);
             SensorBottomColorLabel.Content = GetLanguageText("labels.bottomText", "BOTTOM TEXT");
             SensorBottomColorBox.Text = NormalizeColorText(string.IsNullOrWhiteSpace(layer.SensorBottomFontColor) ? layer.SensorMainFontColor : layer.SensorBottomFontColor);
-            SetComboText(FontCombo, ResolveCanonicalFontName(GetEffectiveLayerFont(layer.SensorFontFamily)));
+            var selectedSensorFont = ResolveCanonicalFontName(GetEffectiveLayerFont(layer.SensorFontFamily));
+            AddFontComboItem(FontCombo, selectedSensorFont);
+            AddFontComboItem(AddFontCombo, selectedSensorFont);
+            SetComboText(FontCombo, selectedSensorFont);
         }
         SetTextCheck.Visibility = textVisibility;
         TextBox.Visibility = textVisibility;
         TextEditorGrid.Visibility = textVisibility;
+        PopulateD3EditTextOptions(layer);
         if (isSensor)
         {
             PopulateSensorTypeCombo(DataCombo);
@@ -3516,6 +3811,10 @@ public partial class MainWindow : Window
             ImageFileLabel.Content = isClock
                 ? GetLanguageText("labels.gaugeNeedle", "GAUGE NEEDLE")
                 : GetLanguageText(isAnimation ? "labels.backgroundFile" : "labels.imageFile", isAnimation ? "BACKGROUND FILE" : "IMAGE FILE");
+            ExportLayerMediaButton.Content = GetLanguageText(
+                isAnimation ? "buttons.exportBackground" : "buttons.exportImage",
+                isAnimation ? "Export background..." : "Export image...");
+            ExportLayerMediaButton.IsEnabled = !string.IsNullOrWhiteSpace(ResolveLayerMediaExportPath(layer));
             var showRotateEditor = !isAnimation &&
                                    (layer.CanWrite(ThemeEngineNames.TransformRotation) ||
                                     layer.CanWrite(ThemeEngineNames.GraphAnimationRotation));
@@ -3528,6 +3827,7 @@ public partial class MainWindow : Window
             ImageEditPanel.Visibility = Visibility.Collapsed;
             ClockSettingsPanel.Visibility = Visibility.Collapsed;
             ImageSettingsTitle.Text = GetLanguageText("sections.imageSettings", "Image Settings");
+            ExportLayerMediaButton.IsEnabled = false;
             EditSeparator.Visibility = Visibility.Collapsed;
         }
 
@@ -3753,7 +4053,13 @@ public partial class MainWindow : Window
         {
             SetBusy(true, GetLanguageText("status.removingLayers", "Removing layer(s)..."));
             var sortedSelected = selected
-                .Select(l => new { Layer = l, Index = int.TryParse(l.Index, out var idx) ? idx : -1 })
+                .Where(layer => !IsOledCurveSyntheticBackgroundLayer(layer))
+                .Select(l => new
+                {
+                    Layer = l,
+                    Index = int.TryParse(l.Index, out var idx) ? idx : -1,
+                    SourceIndex = !string.IsNullOrWhiteSpace(l.SourceLayerIndex) ? l.SourceLayerIndex : l.Index
+                })
                 .Where(x => x.Index >= 0)
                 .OrderByDescending(x => x.Index)
                 .ToList();
@@ -3769,7 +4075,7 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    _pendingLayerDeletes.Add(new PendingLayerDelete(item.Index));
+                    _pendingLayerDeletes.Add(new PendingLayerDelete(item.SourceIndex));
                 }
 
                 _dirtyLayers.Remove(item.Layer);
@@ -4102,7 +4408,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Title = GetLanguageText("dialogs.chooseBackgroundMedia", "Choose LCD background media"),
-            Filter = GetLanguageText("dialogs.mediaFilter", "Media files (*.mp4;*.gif;*.jpg;*.jpeg;*.h264)|*.mp4;*.gif;*.jpg;*.jpeg;*.h264|All files (*.*)|*.*")
+            Filter = GetLanguageText("dialogs.mediaFilter", "Media files (*.mp4;*.mov;*.gif;*.jpg;*.jpeg;*.h264)|*.mp4;*.mov;*.gif;*.jpg;*.jpeg;*.h264|All files (*.*)|*.*")
         };
         if (dialog.ShowDialog(this) != true) return;
 
@@ -4190,12 +4496,24 @@ public partial class MainWindow : Window
                     templatePath,
                     templateIdBeforeBackgroundChange,
                     GetTemplatePreviewAliases(templateIdBeforeBackgroundChange));
+                await UpdateWideTemplateAnimationPreviewFromBackgroundAsync(
+                    deviceModel,
+                    templatePath,
+                    backgroundForLConnect,
+                    previewFramePath);
             }
 
             var accepted = IsOfflineMode ||
-                await TriggerLConnectBackgroundChangeAsync(
-                    backgroundForLConnect,
-                    templateIdBeforeBackgroundChange);
+                (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase)
+                    ? await ActivateVm92ThemeAsync(
+                        templateIdBeforeBackgroundChange,
+                        templatePath,
+                        backgroundForLConnect,
+                        updatePreview: false,
+                        applyBackgroundOverride: true)
+                    : await TriggerLConnectBackgroundChangeAsync(
+                        backgroundForLConnect,
+                        templateIdBeforeBackgroundChange));
             if (!accepted && !IsOfflineMode)
             {
                 accepted = await TriggerLConnectRefreshAsync();
@@ -4586,6 +4904,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (IsCurrentOledCurveGroupedTemplate() &&
+            (_pendingLayerMoves.Count > 0 || _pendingLayerDuplicates.Count > 0 || _pendingLayerDeletes.Count > 0))
+        {
+            throw new InvalidOperationException(
+                "OLED Curve grouped split themes currently support property edits. Reorder, duplicate and delete must be done on a single split part.");
+        }
+
         if (_pendingLayerDeletes.Count > 0)
         {
             var deleteStopwatch = Stopwatch.StartNew();
@@ -4632,6 +4957,7 @@ public partial class MainWindow : Window
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         _dirtyLayers.RemoveWhere(item =>
             !Layers.Contains(item) ||
+            IsOledCurveSyntheticBackgroundLayer(item) ||
             !validIndexes.Contains(item.Index) ||
             (int.TryParse(item.Index, out var index) && index >= Layers.Count));
 
@@ -4651,9 +4977,10 @@ public partial class MainWindow : Window
             .Where(layer =>
                 !Layers.Contains(layer) ||
                 layer.IsEditorMetadata ||
-                !int.TryParse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index) ||
-                index < 0 ||
-                index >= persistedLayerCount)
+                IsOledCurveSyntheticBackgroundLayer(layer) ||
+                !validIndexes.Contains(layer.Index) ||
+                (int.TryParse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index) &&
+                 (index < 0 || index >= persistedLayerCount)))
             .ToList();
         if (skippedLayers.Count > 0)
         {
@@ -4687,7 +5014,7 @@ public partial class MainWindow : Window
             $"ApplyDirtyLayers worker start. device={deviceModel}; template={Path.GetFileName(templatePath)}; " +
             $"layers={layersToApply.Count}; includePaired={includePairedLayers}; [{layerSummary}]");
         var workerStopwatch = Stopwatch.StartNew();
-        await _supporter.ApplyLayersAsync(deviceModel, templatePath, layersToApply);
+        await ApplyLayersToResolvedTemplateTargetsAsync(deviceModel, templatePath, layersToApply);
         AppLogger.Info(
             $"ApplyDirtyLayers worker completed in {workerStopwatch.ElapsedMilliseconds} ms; " +
             $"totalMs={stopwatch.ElapsedMilliseconds}");
@@ -4703,6 +5030,111 @@ public partial class MainWindow : Window
 
         progress?.Invoke(1);
         AppLogger.Info($"ApplyDirtyLayers completed in {stopwatch.ElapsedMilliseconds} ms.");
+    }
+
+    private bool IsCurrentOledCurveGroupedTemplate() =>
+        string.Equals(GetSelectedDeviceModel(), OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+        _currentOledCurveGroupTemplatePaths.Count > 1;
+
+    private static bool IsOledCurveSyntheticBackgroundLayer(LayerRow layer) =>
+        string.Equals(layer.Index, OledCurveSyntheticBackgroundLayerIndex, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(layer.SourceLayerIndex, OledCurveSyntheticBackgroundLayerIndex, StringComparison.OrdinalIgnoreCase);
+
+    private async Task ApplyLayersToResolvedTemplateTargetsAsync(
+        string deviceModel,
+        string defaultTemplatePath,
+        IReadOnlyList<LayerRow> layersToApply)
+    {
+        if (string.Equals(deviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+            !IsCurrentOledCurveGroupedTemplate())
+        {
+            await ApplyOledCurveLayersWithSourceIndexesAsync(deviceModel, defaultTemplatePath, layersToApply);
+            return;
+        }
+
+        if (!IsCurrentOledCurveGroupedTemplate())
+        {
+            await _supporter.ApplyLayersAsync(deviceModel, defaultTemplatePath, layersToApply);
+            return;
+        }
+
+        foreach (var group in layersToApply
+                     .GroupBy(layer => string.IsNullOrWhiteSpace(layer.SourceTemplatePath)
+                         ? defaultTemplatePath
+                         : layer.SourceTemplatePath,
+                         StringComparer.OrdinalIgnoreCase))
+        {
+            var changedLayers = group.ToList();
+            var snapshots = changedLayers
+                .Select(layer => new
+                {
+                    Layer = layer,
+                    Index = layer.Index,
+                    X = layer.X
+                })
+                .ToList();
+
+            try
+            {
+                foreach (var layer in changedLayers)
+                {
+                    if (!string.IsNullOrWhiteSpace(layer.SourceLayerIndex))
+                    {
+                        layer.Index = layer.SourceLayerIndex;
+                    }
+
+                    if (Math.Abs(layer.SourceOffsetX) > double.Epsilon &&
+                        TryParseTemplateDouble(layer.X, out var x))
+                    {
+                        layer.X = FormatTemplateDouble(x - layer.SourceOffsetX);
+                    }
+                }
+
+                await _supporter.ApplyLayersAsync(deviceModel, group.Key, changedLayers);
+            }
+            finally
+            {
+                foreach (var snapshot in snapshots)
+                {
+                    snapshot.Layer.Index = snapshot.Index;
+                    snapshot.Layer.X = snapshot.X;
+                }
+            }
+        }
+    }
+
+    private async Task ApplyOledCurveLayersWithSourceIndexesAsync(
+        string deviceModel,
+        string templatePath,
+        IReadOnlyList<LayerRow> layersToApply)
+    {
+        var snapshots = layersToApply
+            .Select(layer => new
+            {
+                Layer = layer,
+                Index = layer.Index
+            })
+            .ToList();
+
+        try
+        {
+            foreach (var layer in layersToApply)
+            {
+                if (!string.IsNullOrWhiteSpace(layer.SourceLayerIndex))
+                {
+                    layer.Index = layer.SourceLayerIndex;
+                }
+            }
+
+            await _supporter.ApplyLayersAsync(deviceModel, templatePath, layersToApply);
+        }
+        finally
+        {
+            foreach (var snapshot in snapshots)
+            {
+                snapshot.Layer.Index = snapshot.Index;
+            }
+        }
     }
 
     private async Task ApplyPendingLayerDuplicatesAsync(string deviceModel, string templatePath)
@@ -4769,20 +5201,39 @@ public partial class MainWindow : Window
 
         var indexes = _pendingLayerDeletes
             .Select(item => item.SourceIndex)
-            .Where(index => index >= 0)
+            .Where(index => !string.IsNullOrWhiteSpace(index))
             .Distinct()
-            .OrderByDescending(index => index)
+            .OrderByDescending(GetLayerDeleteSortKey)
             .ToList();
         foreach (var index in indexes)
         {
             await Task.Run(() => _supporter.RemoveLayerAsync(
                 deviceModel,
                 templatePath,
-                index.ToString(CultureInfo.InvariantCulture)));
+                index));
         }
 
         _pendingLayerDeletes.Clear();
         _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
+    }
+
+    private static long GetLayerDeleteSortKey(string index)
+    {
+        if (int.TryParse(index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rootIndex))
+        {
+            return (2L << 48) | (uint)rootIndex;
+        }
+
+        var parts = (index ?? "").Split(':');
+        if (parts.Length == 3 &&
+            parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
+            int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
+        {
+            return (1L << 48) | ((long)(uint)themeIndex << 24) | (uint)childIndex;
+        }
+
+        return 0;
     }
 
     private string GetLayerSummary(LayerRow layer)
@@ -4800,6 +5251,26 @@ public partial class MainWindow : Window
 
     private static string NormalizeLConnectText(string value) =>
         (value ?? "").Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
+
+    private static string NormalizeDynamicDataPreviewText(string dataSource, string formatText, string value)
+    {
+        var normalized = NormalizeLConnectText(value ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return SampleValueFor(dataSource, formatText);
+        }
+
+        var key = NormalizeDataSourceKey(dataSource);
+        if (key is "TIME" or "DATE" or "DAY" or "APM" or "CPUMODEL" or "GPUMODEL" or "RAMMODEL")
+        {
+            return normalized;
+        }
+
+        var numeric = Regex.Match(normalized, @"[-+]?\d+(?:[.,]\d+)?");
+        return numeric.Success
+            ? numeric.Value.Replace(',', '.')
+            : SampleValueFor(dataSource, formatText);
+    }
 
     private static bool NormalizeLayerTextForDevice(LayerRow layer)
     {
@@ -4908,7 +5379,7 @@ public partial class MainWindow : Window
 
     private static void StartLConnectApplication()
     {
-        var appPath = @"C:\Program Files\Lian-Li\L-Connect 3\L-Connect 3.exe";
+        var appPath = Path.Combine(LConnectPaths.ProgramFilesRoot, "L-Connect 3.exe");
         if (System.IO.File.Exists(appPath))
         {
             Process.Start(new ProcessStartInfo(appPath) { UseShellExecute = true });
@@ -5022,8 +5493,10 @@ public partial class MainWindow : Window
         var backgroundSoloHidden = _soloSelectedLayers && (animationLayer == null || !soloLayers.Contains(animationLayer));
         BackgroundMedia.Opacity = backgroundHidden || backgroundSoloHidden ? 0 : 1;
         BackgroundImage.Opacity = backgroundHidden || backgroundSoloHidden ? 0 : 1;
+        OledCurveSplitBackgroundCanvas.Opacity = backgroundHidden || backgroundSoloHidden ? 0 : 1;
         ApplyBackgroundPreviewTransform();
         DrawAlignmentGuides(selected);
+        DrawOledCurveSplitGuides();
         var zIndex = 10;
         foreach (var layer in Layers)
         {
@@ -5047,11 +5520,11 @@ public partial class MainWindow : Window
             var bounds = GetLayerBounds(layer);
             var visual = CreateLayerPreviewVisual(layer, bounds, layer == selected);
             ConfigurePreviewLayerVisual(layer, visual);
-            Canvas.SetLeft(visual, bounds.Left);
-            Canvas.SetTop(visual, bounds.Top);
-            Canvas.SetZIndex(visual, zIndex++);
-            PreviewCanvas.Children.Add(visual);
-            _previewLayerVisuals[layer] = visual;
+            var visualRoot = CreatePreviewLayerRoot(layer, visual);
+            PositionPreviewLayerRoot(visualRoot, bounds);
+            Canvas.SetZIndex(visualRoot, zIndex++);
+            PreviewCanvas.Children.Add(visualRoot);
+            _previewLayerVisuals[layer] = visualRoot;
         }
 
         foreach (var selectedLayer in LayerGrid.SelectedItems.OfType<LayerRow>())
@@ -5343,11 +5816,11 @@ public partial class MainWindow : Window
         var bounds = GetLayerBounds(layer);
         var visual = CreateLayerPreviewVisual(layer, bounds, ReferenceEquals(LayerGrid.SelectedItem, layer));
         ConfigurePreviewLayerVisual(layer, visual);
-        Canvas.SetLeft(visual, bounds.Left);
-        Canvas.SetTop(visual, bounds.Top);
-        Canvas.SetZIndex(visual, GetPreviewLayerZIndex(layer));
-        PreviewCanvas.Children.Add(visual);
-        _previewLayerVisuals[layer] = visual;
+        var visualRoot = CreatePreviewLayerRoot(layer, visual);
+        PositionPreviewLayerRoot(visualRoot, bounds);
+        Canvas.SetZIndex(visualRoot, GetPreviewLayerZIndex(layer));
+        PreviewCanvas.Children.Add(visualRoot);
+        _previewLayerVisuals[layer] = visualRoot;
 
         if (_previewSelectionVisuals.TryGetValue(layer, out var selection))
         {
@@ -5378,9 +5851,39 @@ public partial class MainWindow : Window
 
     private static int GetPreviewLayerZIndex(LayerRow layer)
     {
+        if (TryGetNestedLayerZIndex(layer.Index, out var nestedIndex))
+        {
+            return nestedIndex;
+        }
+
+        if (TryGetNestedLayerZIndex(layer.SourceLayerIndex, out nestedIndex))
+        {
+            return nestedIndex;
+        }
+
         return int.TryParse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var index)
             ? 10 + index
             : 10;
+    }
+
+    private static bool TryGetNestedLayerZIndex(string? indexText, out int zIndex)
+    {
+        zIndex = 0;
+        if (string.IsNullOrWhiteSpace(indexText))
+        {
+            return false;
+        }
+
+        var match = Regex.Match(indexText, @"^theme:(?<theme>\d+):(?<layer>\d+)$", RegexOptions.IgnoreCase);
+        if (!match.Success ||
+            !int.TryParse(match.Groups["theme"].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) ||
+            !int.TryParse(match.Groups["layer"].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var layerIndex))
+        {
+            return false;
+        }
+
+        zIndex = 100 + themeIndex * 20 + layerIndex;
+        return true;
     }
 
     private const double TextPreviewSupersample = 2.0;
@@ -5483,6 +5986,74 @@ public partial class MainWindow : Window
         }
 
         PreviewCanvas.Children.Add(line);
+    }
+
+    private FrameworkElement CreatePreviewLayerRoot(LayerRow layer, FrameworkElement visual)
+    {
+        if (!IsCurrentOledCurveGroupedTemplate() ||
+            string.IsNullOrWhiteSpace(layer.SourceTemplateId))
+        {
+            return visual;
+        }
+
+        var slotLeft = ToPreview(layer.SourceOffsetX);
+        var slotWidth = ToPreview(GetOledCurveSplitWidth(layer.SourceTemplateId));
+        var host = new Canvas
+        {
+            Width = slotWidth,
+            Height = _previewCanvasHeight,
+            Clip = new RectangleGeometry(new Rect(0, 0, slotWidth, _previewCanvasHeight)),
+            Background = null,
+            Tag = new OledCurvePreviewLayerHostInfo(visual, slotLeft)
+        };
+        host.Children.Add(visual);
+        return host;
+    }
+
+    private void PositionPreviewLayerRoot(FrameworkElement root, Rect bounds)
+    {
+        if (root.Tag is OledCurvePreviewLayerHostInfo hostInfo)
+        {
+            Canvas.SetLeft(root, hostInfo.SlotLeft);
+            Canvas.SetTop(root, 0);
+            Canvas.SetLeft(hostInfo.Child, bounds.Left - hostInfo.SlotLeft);
+            Canvas.SetTop(hostInfo.Child, bounds.Top);
+            return;
+        }
+
+        Canvas.SetLeft(root, bounds.Left);
+        Canvas.SetTop(root, bounds.Top);
+    }
+
+    private void DrawOledCurveSplitGuides()
+    {
+        if (!IsOledCurveDeviceSelected() || string.Equals(_oledCurvePreviewSplitMode, "full", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var splitPositions = string.Equals(_oledCurvePreviewSplitMode, "dual", StringComparison.OrdinalIgnoreCase)
+            ? new[] { 1392.0 + OledCurveSplitGap / 2.0 }
+            : new[] { 752.0 + OledCurveSplitGap / 2.0, 1504.0 + OledCurveSplitGap * 1.5 };
+        foreach (var splitX in splitPositions)
+        {
+            var previewX = ToPreview(splitX);
+            var line = new Line
+            {
+                Tag = "OledCurveSplitGuide",
+                X1 = previewX,
+                X2 = previewX,
+                Y1 = 0,
+                Y2 = _previewCanvasHeight,
+                Stroke = Brushes.Red,
+                StrokeThickness = 1.6,
+                Opacity = 0.78,
+                IsHitTestVisible = false
+            };
+            line.StrokeDashArray = new DoubleCollection { 6, 5 };
+            Canvas.SetZIndex(line, 8);
+            PreviewCanvas.Children.Add(line);
+        }
     }
 
     private void RemovePreviewGuideLines()
@@ -5649,8 +6220,13 @@ public partial class MainWindow : Window
             }
 
             var bounds = _dragStartPreviewBounds[layer];
-            Canvas.SetLeft(visual, bounds.Left + ToPreview(visualDeltaX));
-            Canvas.SetTop(visual, bounds.Top + ToPreview(visualDeltaY));
+            PositionPreviewLayerRoot(
+                visual,
+                new Rect(
+                    bounds.Left + ToPreview(visualDeltaX),
+                    bounds.Top + ToPreview(visualDeltaY),
+                    bounds.Width,
+                    bounds.Height));
 
             if (_previewSelectionVisuals.TryGetValue(layer, out var selection))
             {
@@ -5892,7 +6468,7 @@ public partial class MainWindow : Window
             type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase))
         {
             var graphPreviewPath = ResolveLayerMediaPath(layer);
-            if (!string.IsNullOrWhiteSpace(graphPreviewPath))
+            if (!IsOledCurveDeviceSelected() && !string.IsNullOrWhiteSpace(graphPreviewPath))
             {
                 return CreatePreviewLayerHitTarget(bounds, CreatePreviewImage(graphPreviewPath, bounds.Width, bounds.Height, selected: false, rotationText: ""));
             }
@@ -6683,6 +7259,21 @@ public partial class MainWindow : Window
 
     private FrameworkElement CreateGdiTextPreviewVisual(LayerRow layer, string value)
     {
+        if (TryGetD3TextLayerRender(layer, value, out var d3Render))
+        {
+            var d3Image = new Image
+            {
+                Source = d3Render.Source,
+                Width = d3Render.Bounds.Width,
+                Height = d3Render.Bounds.Height,
+                Stretch = Stretch.Fill,
+                SnapsToDevicePixels = true,
+                UseLayoutRounding = true
+            };
+            RenderOptions.SetBitmapScalingMode(d3Image, BitmapScalingMode.HighQuality);
+            return d3Image;
+        }
+
         var render = GetGdiTextLayerRender(layer, value);
 
         var image = new Image
@@ -6696,6 +7287,406 @@ public partial class MainWindow : Window
         };
         RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
         return image;
+    }
+
+    private bool TryGetD3TextLayerRender(LayerRow layer, string value, out TextLayerRenderResult render)
+    {
+        render = null!;
+        if (!IsOledCurveDeviceSelected() ||
+            !string.Equals(layer.RenderMode, "D3", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var cache = GetD3PreviewCache(layer);
+        if (cache == null)
+        {
+            return false;
+        }
+
+        if (!TryRenderD3LayerBitmap(layer, value, cache, out var bitmap, out var left, out var top))
+        {
+            return false;
+        }
+
+        using (bitmap)
+        {
+            using var normalized = EnsurePArgbBitmap(bitmap);
+            var source = ToBitmapSource(normalized);
+            render = new TextLayerRenderResult(
+                source,
+                new Rect(
+                    left * _previewScale,
+                    top * _previewScale,
+                    Math.Max(1.0, source.PixelWidth * _previewScale),
+                    Math.Max(1.0, source.PixelHeight * _previewScale)));
+            return true;
+        }
+    }
+
+    private static System.Drawing.Bitmap EnsurePArgbBitmap(System.Drawing.Bitmap source)
+    {
+        if (source.PixelFormat == System.Drawing.Imaging.PixelFormat.Format32bppPArgb)
+        {
+            return new System.Drawing.Bitmap(source);
+        }
+
+        var bitmap = new System.Drawing.Bitmap(
+            source.Width,
+            source.Height,
+            System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+        bitmap.SetResolution(source.HorizontalResolution, source.VerticalResolution);
+        using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+        graphics.Clear(System.Drawing.Color.Transparent);
+        graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+        graphics.DrawImage(source, 0, 0, source.Width, source.Height);
+        return bitmap;
+    }
+
+    private D3PreviewCache? GetD3PreviewCache(LayerRow layer)
+    {
+        var templatePath = !string.IsNullOrWhiteSpace(layer.SourceTemplatePath)
+            ? layer.SourceTemplatePath
+            : _currentTemplatePath;
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            return null;
+        }
+
+        var templateDirectory = Path.GetDirectoryName(templatePath) ?? "";
+        var templateId = Path.GetFileNameWithoutExtension(templatePath);
+        var cachePath = ResolveD3CachePath(templateDirectory, templateId);
+        if (string.IsNullOrWhiteSpace(cachePath))
+        {
+            return null;
+        }
+
+        if (_d3PreviewCacheByTemplate.TryGetValue(cachePath, out var cached))
+        {
+            return cached;
+        }
+
+        var loaded = LoadD3PreviewCache(cachePath);
+        if (_d3PreviewCacheByTemplate.Count > 32)
+        {
+            _d3PreviewCacheByTemplate.Clear();
+        }
+        _d3PreviewCacheByTemplate[cachePath] = loaded;
+        return loaded;
+    }
+
+    private static string ResolveD3CachePath(string templateDirectory, string templateId)
+    {
+        if (string.IsNullOrWhiteSpace(templateId))
+        {
+            return "";
+        }
+
+        foreach (var root in GetD3CacheSearchDirectories(templateDirectory))
+        {
+            var exact = Path.Combine(root, templateId + ".cache");
+            if (File.Exists(exact))
+            {
+                return exact;
+            }
+
+            foreach (var candidateId in GetD3CacheFallbackTemplateIds(templateId))
+            {
+                var candidate = Path.Combine(root, candidateId + ".cache");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            try
+            {
+                foreach (var candidate in Directory.GetFiles(root, "*.cache"))
+                {
+                    var candidateId = Path.GetFileNameWithoutExtension(candidate);
+                    if (templateId.StartsWith(candidateId + "_", StringComparison.OrdinalIgnoreCase) ||
+                        templateId.StartsWith(candidateId + "-", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return candidate;
+                    }
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        return "";
+    }
+
+    private static IEnumerable<string> GetD3CacheSearchDirectories(string templateDirectory)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in new[]
+                 {
+                     templateDirectory,
+                     Path.Combine(LConnectPaths.ProgramDataRoot, OledCurveDeviceModel, "template"),
+                     Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets", OledCurveDeviceModel, "template")
+                 })
+        {
+            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+            {
+                continue;
+            }
+
+            var full = Path.GetFullPath(root);
+            if (seen.Add(full))
+            {
+                yield return full;
+            }
+        }
+    }
+
+    private static IEnumerable<string> GetD3CacheFallbackTemplateIds(string templateId)
+    {
+        var value = (templateId ?? "").Trim();
+        while (true)
+        {
+            var underscore = value.LastIndexOf('_');
+            var hyphen = value.LastIndexOf('-');
+            var split = Math.Max(underscore, hyphen);
+            if (split <= 0)
+            {
+                yield break;
+            }
+
+            value = value[..split];
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                yield return value;
+            }
+        }
+    }
+
+    private D3PreviewCache? LoadD3PreviewCache(string cachePath)
+    {
+        try
+        {
+            var templatePath = Path.ChangeExtension(cachePath, ".template");
+            var outputDir = Path.Combine(
+                Path.GetTempPath(),
+                "LianLiThemeEditor",
+                "d3-cache",
+                SanitizeFileName(Path.GetFileNameWithoutExtension(cachePath)));
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = _supporter.SupporterPath,
+                WorkingDirectory = _supporter.WorkingDirectory,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
+                CreateNoWindow = true
+            };
+            foreach (var argument in new[]
+                     {
+                         "-DeviceModel", OledCurveDeviceModel,
+                         "-TemplatePath", templatePath,
+                         "-ExtractD3CacheManifest",
+                         "-OutputDir", outputDir,
+                         "-Json"
+                     })
+            {
+                startInfo.ArgumentList.Add(argument);
+            }
+
+            using var process = Process.Start(startInfo);
+            if (process == null)
+            {
+                return null;
+            }
+
+            var stdout = process.StandardOutput.ReadToEnd();
+            var stderr = process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(10_000) || process.ExitCode != 0)
+            {
+                AppLogger.Warning($"D3 cache manifest extraction failed: {cachePath}; {stderr.Trim()} {stdout.Trim()}");
+                return null;
+            }
+
+            using var document = JsonDocument.Parse(stdout);
+            var root = document.RootElement;
+            var loaded = new D3PreviewCache(
+                ReadD3ManifestMap(root, "Text"),
+                ReadD3ManifestMap(root, "Num3"),
+                ReadD3ManifestMap(root, "Num4"));
+            AppLogger.Info(
+                $"D3 cache manifest loaded: {Path.GetFileName(cachePath)}; " +
+                $"text={loaded.Text.Count}; num3={loaded.Num3.Count}; num4={loaded.Num4.Count}");
+            return loaded;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"D3 cache manifest could not be loaded: {cachePath}; {ex.GetType().Name}: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static Dictionary<string, string> ReadD3ManifestMap(JsonElement root, string propertyName)
+    {
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!root.TryGetProperty(propertyName, out var map) ||
+            map.ValueKind != JsonValueKind.Object)
+        {
+            return result;
+        }
+
+        foreach (var property in map.EnumerateObject())
+        {
+            var path = property.Value.GetString() ?? "";
+            if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            {
+                result[property.Name] = path;
+            }
+        }
+
+        return result;
+    }
+
+    private static bool TryRenderD3LayerBitmap(
+        LayerRow layer,
+        string value,
+        D3PreviewCache cache,
+        out System.Drawing.Bitmap bitmap,
+        out double left,
+        out double top)
+    {
+        bitmap = null!;
+        left = 0;
+        top = 0;
+        if (!TryParseInvariant(layer.X, out var x)) x = 0;
+        if (!TryParseInvariant(layer.Y, out var y)) y = 0;
+
+        if (string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(layer.TypeName, "StaticText", StringComparison.OrdinalIgnoreCase))
+        {
+            var key = (value ?? "")
+                .Replace(" ", "", StringComparison.Ordinal)
+                .Replace("/", "-", StringComparison.Ordinal)
+                .ToUpperInvariant();
+            if (!TryLoadD3Glyph(cache.Text, key, out var textBitmap) &&
+                key.Contains("PUMP", StringComparison.OrdinalIgnoreCase))
+            {
+                TryLoadD3Glyph(cache.Text, "PUMPLIANLI", out textBitmap);
+            }
+
+            if (textBitmap == null)
+            {
+                return false;
+            }
+
+            bitmap = textBitmap;
+            left = x - bitmap.Width / 2.0;
+            top = y;
+            return true;
+        }
+
+        if (!string.Equals(layer.TypeName, "Data", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var text = value ?? "";
+        var glyphs = text.Length < 4 ? cache.Num3 : cache.Num4;
+        if (glyphs.Count == 0 || !TryLoadD3Glyph(glyphs, "9", out var baselineBitmap))
+        {
+            return false;
+        }
+
+        var baseline = baselineBitmap!;
+        var pieces = new List<(string Key, System.Drawing.Bitmap Bitmap)>();
+        var totalWidth = 0;
+        var maxHeight = baseline.Height;
+        foreach (var ch in text)
+        {
+            var key = ch.ToString();
+            if (!TryLoadD3Glyph(glyphs, key, out var glyph))
+            {
+                baseline.Dispose();
+                foreach (var piece in pieces)
+                {
+                    piece.Bitmap.Dispose();
+                }
+                return false;
+            }
+
+            var loadedGlyph = glyph!;
+            pieces.Add((key, loadedGlyph));
+            totalWidth += loadedGlyph.Width - 6;
+            maxHeight = Math.Max(maxHeight, loadedGlyph.Height);
+        }
+
+        if (pieces.Count == 0)
+        {
+            baseline.Dispose();
+            return false;
+        }
+
+        try
+        {
+            totalWidth = Math.Max(1, totalWidth);
+            bitmap = new System.Drawing.Bitmap(totalWidth, Math.Max(1, maxHeight), System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+            using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            {
+                graphics.Clear(System.Drawing.Color.Transparent);
+                graphics.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+                graphics.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighQuality;
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                var drawX = 0;
+                foreach (var piece in pieces)
+                {
+                    var drawY = piece.Key == "."
+                        ? baseline.Height - piece.Bitmap.Height
+                        : 0;
+                    graphics.DrawImage(piece.Bitmap, drawX, drawY, piece.Bitmap.Width, piece.Bitmap.Height);
+                    drawX += piece.Bitmap.Width - 6;
+                }
+            }
+        }
+        finally
+        {
+            baseline.Dispose();
+            foreach (var piece in pieces)
+            {
+                piece.Bitmap.Dispose();
+            }
+        }
+
+        var alignmentIndex = GetTextAlignmentIndex(layer);
+        left = alignmentIndex == 0 ? x : x - totalWidth / 2.0;
+        top = y;
+        return true;
+    }
+
+    private static bool TryLoadD3Glyph(
+        Dictionary<string, string> glyphPaths,
+        string key,
+        out System.Drawing.Bitmap? bitmap)
+    {
+        bitmap = null;
+        if (!glyphPaths.TryGetValue(key, out var path) || !File.Exists(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            bitmap = new System.Drawing.Bitmap(path);
+            return true;
+        }
+        catch
+        {
+            bitmap = null;
+            return false;
+        }
     }
 
         private async Task FinalizeAddedLayerAsync()
@@ -7590,7 +8581,7 @@ public partial class MainWindow : Window
         return dialog.ShowDialog() == true;
     }
 
-    private UpdateDialogChoice ShowUpdateAvailableDialog(string latestVersion, string currentVersion, bool canInstall)
+    private UpdateDialogChoice ShowUpdateAvailableDialog(string latestVersion, string currentVersion, bool canInstall, string releaseNotes)
     {
         var choice = UpdateDialogChoice.Skip;
         var panel = new StackPanel
@@ -7658,6 +8649,42 @@ public partial class MainWindow : Window
         Grid.SetColumn(currentPill, 2);
         versionGrid.Children.Add(currentPill);
         textPanel.Children.Add(versionGrid);
+
+        var notes = NormalizeReleaseNotesForDisplay(releaseNotes);
+        if (!string.IsNullOrWhiteSpace(notes))
+        {
+            textPanel.Children.Add(new TextBlock
+            {
+                Text = GetLanguageText("updates.releaseNotesLabel", "Release notes"),
+                Margin = new Thickness(0, 14, 0, 6),
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold
+            });
+
+            var notesBox = new Border
+            {
+                MaxHeight = 170,
+                CornerRadius = new CornerRadius(6),
+                BorderThickness = new Thickness(1)
+            };
+            notesBox.SetResourceReference(Border.BackgroundProperty, "BrSurface2");
+            notesBox.SetResourceReference(Border.BorderBrushProperty, "BrBorderSoft");
+            notesBox.Child = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                Padding = new Thickness(10, 8, 10, 8),
+                Content = new TextBlock
+                {
+                    Text = notes,
+                    FontSize = 12,
+                    LineHeight = 17,
+                    TextWrapping = TextWrapping.Wrap
+                }
+            };
+            textPanel.Children.Add(notesBox);
+        }
+
         content.Children.Add(textPanel);
         panel.Children.Add(content);
 
@@ -7701,6 +8728,20 @@ public partial class MainWindow : Window
         var dialog = CreateThemedDialog(GetLanguageText("updates.availableTitle", "Update available"), panel, 680);
         dialog.ShowDialog();
         return choice;
+    }
+
+    private static string NormalizeReleaseNotesForDisplay(string releaseNotes)
+    {
+        if (string.IsNullOrWhiteSpace(releaseNotes)) return "";
+
+        var normalized = releaseNotes
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n')
+            .Trim();
+
+        return normalized.Length <= 8000
+            ? normalized
+            : normalized[..8000].TrimEnd() + "\n...";
     }
 
     private Border CreateUpdateVersionPill(string label, string value, bool accent)
@@ -8546,13 +9587,15 @@ public partial class MainWindow : Window
         if (isDynamicSource &&
             _previewSampleOverrides.TryGetValue(previewOverrideKey, out var selectedPreviewValue))
         {
-            return selectedPreviewValue;
+            return NormalizeDynamicDataPreviewText(source, layer.Format, selectedPreviewValue);
         }
 
         if (ReferenceEquals(LayerGrid.SelectedItem, layer))
         {
-            return isDynamicSource && !layer.PreviewValueEdited
-                ? SampleValueFor(source, layer.Format)
+            return isDynamicSource
+                ? (layer.PreviewValueEdited
+                    ? NormalizeDynamicDataPreviewText(source, layer.Format, TextBox.Text)
+                    : SampleValueFor(source, layer.Format))
                 : TextBox.Text;
         }
 
@@ -8577,7 +9620,7 @@ public partial class MainWindow : Window
         {
             if (_previewSampleOverrides.TryGetValue(previewOverrideKey, out var previewValue))
             {
-                return previewValue;
+                return NormalizeDynamicDataPreviewText(source, layer.Format, previewValue);
             }
             return SampleValueFor(source, layer.Format);
         }
@@ -8652,7 +9695,7 @@ public partial class MainWindow : Window
         if (string.Equals(type, "GraphArchBar", StringComparison.OrdinalIgnoreCase)) return "donut1";
         if (string.Equals(type, "GraphStatuBar", StringComparison.OrdinalIgnoreCase) || string.Equals(type, "DynamicBar", StringComparison.OrdinalIgnoreCase))
         {
-            if (int.TryParse(layer.Radius, out var rad) && rad <= 1) return "bar2";
+            if (TryParseInvariant(layer.Radius, out var rad) && rad <= 1) return "bar2";
             return "bar1";
         }
         return "";
@@ -8662,10 +9705,10 @@ public partial class MainWindow : Window
     {
         var outerWidth = width;
         var outerHeight = height;
-        var logicalWidth = double.TryParse(layer.Width, out var templateWidth) && templateWidth > 0
+        var logicalWidth = TryParseInvariant(layer.Width, out var templateWidth) && templateWidth > 0
             ? ToPreview(templateWidth)
             : width;
-        var logicalHeight = double.TryParse(layer.Height, out var templateHeight) && templateHeight > 0
+        var logicalHeight = TryParseInvariant(layer.Height, out var templateHeight) && templateHeight > 0
             ? ToPreview(templateHeight)
             : height;
         var type = layer.Type ?? "";
@@ -8700,9 +9743,9 @@ public partial class MainWindow : Window
 
         if (h2Style.StartsWith("donut", StringComparison.OrdinalIgnoreCase) || type.Contains("Arch", StringComparison.OrdinalIgnoreCase))
         {
-            double.TryParse(layer.Thickness, out var thickVal);
+            TryParseInvariant(layer.Thickness, out var thickVal);
             var thickness = thickVal > 0 ? Math.Max(2.0, ToPreview(thickVal)) : Math.Max(8.0, Math.Min(width, height) * 0.12);
-            double.TryParse(layer.BorderWidth, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedBorderWidth);
+            TryParseInvariant(layer.BorderWidth, out var parsedBorderWidth);
             var borderThickness = parsedBorderWidth > 0 ? Math.Max(0.75, ToPreview(parsedBorderWidth)) : 1.0;
             var padding = Math.Max(2.0, borderThickness + 1.0);
             var centerDiameter = Math.Max(4.0, Math.Min(width, height) - thickness - (padding * 2.0));
@@ -8776,9 +9819,14 @@ public partial class MainWindow : Window
         }
         else
         {
-            double.TryParse(layer.Radius, out var radVal);
+            TryParseInvariant(layer.Radius, out var radVal);
             var rad = radVal >= 0 ? ToPreview(radVal) : 4.0;
             var cornerRadius = ClampPreviewCornerRadius(rad, width, height);
+
+            var isSegmentedStatusBar =
+                (type.Contains("StatuBar", StringComparison.OrdinalIgnoreCase) ||
+                 type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase)) &&
+                string.Equals(layer.UseSubsection, "True", StringComparison.OrdinalIgnoreCase);
 
             var barBg = new Border
             {
@@ -8789,10 +9837,12 @@ public partial class MainWindow : Window
                              !string.Equals(layer.FillBack, "True", StringComparison.OrdinalIgnoreCase)
                     ? Brushes.Transparent
                     : ApplyBrushAlpha(NewBrush(layer.BackColor, "#20FFFFFF"), layer.BackAlpha, zeroMeansUnspecified: true),
-                BorderBrush = string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase)
+                BorderBrush = isSegmentedStatusBar ||
+                              string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase)
                     ? Brushes.Transparent
                     : ApplyBrushAlpha(NewBrush(layer.BackColor, "#20242A"), layer.BackAlpha, zeroMeansUnspecified: true),
-                BorderThickness = string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase)
+                BorderThickness = isSegmentedStatusBar ||
+                                  string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase)
                     ? new Thickness(0)
                     : new Thickness(1)
             };
@@ -8817,7 +9867,7 @@ public partial class MainWindow : Window
                 };
                 var area = new Polygon();
                 var fillWidth = width;
-                if (double.TryParse(layer.ColumnWidth, NumberStyles.Float, CultureInfo.InvariantCulture, out var columnWidth) && columnWidth > 0)
+                if (TryParseInvariant(layer.ColumnWidth, out var columnWidth) && columnWidth > 0)
                 {
                     fillWidth = Math.Clamp(ToPreview(columnWidth * 14.0), Math.Min(width, 8.0), width);
                 }
@@ -8834,7 +9884,7 @@ public partial class MainWindow : Window
                 area.Points = points;
                 area.Fill = ApplyBrushAlpha(NewBrush(layer.FillColor, "#40000000"), layer.Transparent);
                 area.Stroke = NewBrush(layer.LineColor, layer.FrontColor);
-                area.StrokeThickness = Math.Max(1.0, double.TryParse(layer.LineWidth, out var streamLine) ? ToPreview(streamLine) : 1.0);
+                area.StrokeThickness = Math.Max(1.0, TryParseInvariant(layer.LineWidth, out var streamLine) ? ToPreview(streamLine) : 1.0);
                 if (string.Equals(layer.InvertDirection, "True", StringComparison.OrdinalIgnoreCase))
                 {
                     area.RenderTransformOrigin = new Point(0.5, 0.5);
@@ -8860,9 +9910,9 @@ public partial class MainWindow : Window
                         Width = width,
                         Height = height
                     };
-                    double.TryParse(layer.SplitBlankWidth, out var sbkVal);
+                    TryParseInvariant(layer.SplitBlankWidth, out var sbkVal);
                     var gap = sbkVal > 0 ? Math.Max(1.0, ToPreview(sbkVal)) : 2.0;
-                    double.TryParse(layer.SplitBlockWidth, out var sbwVal);
+                    TryParseInvariant(layer.SplitBlockWidth, out var sbwVal);
                     var segW = sbwVal > 0 ? Math.Max(2.0, ToPreview(sbwVal)) : 6.0;
                     var direction = GetGraphDirection(layer);
                     var vertical = direction is 2 or 3;
@@ -8889,7 +9939,17 @@ public partial class MainWindow : Window
                                 : !string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase) &&
                                   string.Equals(layer.FillBack, "True", StringComparison.OrdinalIgnoreCase)
                                     ? ApplyBrushAlpha(NewBrush(layer.BackColor, "#30303030"), layer.BackAlpha, zeroMeansUnspecified: true)
-                                    : Brushes.Transparent
+                                    : Brushes.Transparent,
+                            BorderBrush = !filled &&
+                                          !string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase) &&
+                                          !string.Equals(layer.FillBack, "True", StringComparison.OrdinalIgnoreCase)
+                                ? ApplyBrushAlpha(NewBrush(layer.BackColor, "#80FFFFFF"), layer.BackAlpha, zeroMeansUnspecified: true)
+                                : Brushes.Transparent,
+                            BorderThickness = !filled &&
+                                              !string.Equals(layer.TransparentBackground, "True", StringComparison.OrdinalIgnoreCase) &&
+                                              !string.Equals(layer.FillBack, "True", StringComparison.OrdinalIgnoreCase)
+                                ? new Thickness(Math.Max(0.5, ToPreview(1.0)))
+                                : new Thickness(0)
                         };
                         Canvas.SetLeft(seg, vertical ? 0 : s * (segW + gap));
                         Canvas.SetTop(seg, vertical ? s * (segW + gap) : 0);
@@ -9045,7 +10105,26 @@ public partial class MainWindow : Window
 
     private static double GetGraphPreviewRatio(LayerRow layer)
     {
-        return 1.0;
+        if (double.TryParse(
+                layer.DataRate,
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var dataRate) ||
+            double.TryParse(
+                layer.DataRate,
+                NumberStyles.Float,
+                CultureInfo.CurrentCulture,
+                out dataRate))
+        {
+            if (dataRate > 1.0)
+            {
+                dataRate /= 100.0;
+            }
+
+            return Math.Clamp(dataRate, 0.0, 1.0);
+        }
+
+        return GetGraphDataRatio(layer);
     }
 
     private static double GetGraphDataRatio(LayerRow layer)
@@ -9240,6 +10319,19 @@ public partial class MainWindow : Window
         return ResolveLayerMediaPath(layer.Media);
     }
 
+    private string ResolveLayerMediaExportPath(LayerRow layer)
+    {
+        if (string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))
+        {
+            return FirstExistingPath(
+                _currentBackgroundPath,
+                ResolveBackgroundPath(_currentBackgroundPath, layer.Media),
+                ResolveLayerMediaPath(layer));
+        }
+
+        return ResolveLayerMediaPath(layer);
+    }
+
     private string ResolveLayerMediaPath(string mediaName)
     {
         if (string.IsNullOrWhiteSpace(mediaName)) return "";
@@ -9265,8 +10357,14 @@ public partial class MainWindow : Window
         }
 
         var baseName = Path.GetFileNameWithoutExtension(mediaName);
-        var extensions = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".mp4", ".h264" };
-        var searchDirs = new[] { Path.Combine(deviceDir, "image"), Path.Combine(deviceDir, "video"), Path.Combine(LConnectPaths.ProgramDataRoot, GetSelectedDeviceModel(), "image"), Path.Combine(LConnectPaths.ProgramDataRoot, GetSelectedDeviceModel(), "video") };
+        var extensions = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif", ".mp4", ".mov", ".h264" };
+        var searchDirs = new[]
+        {
+            Path.Combine(deviceDir, "image"),
+            Path.Combine(deviceDir, "video"),
+            Path.Combine(LConnectPaths.ProgramDataRoot, GetSelectedDeviceModel(), "image"),
+            Path.Combine(LConnectPaths.ProgramDataRoot, GetSelectedDeviceModel(), "video")
+        };
 
         foreach (var dir in searchDirs)
         {
@@ -9447,8 +10545,8 @@ public partial class MainWindow : Window
     private Rect GetLayerBounds(LayerRow layer)
     {
         var type = layer.Type ?? "";
-        if (!double.TryParse(layer.X, out var lx)) lx = 0;
-        if (!double.TryParse(layer.Y, out var ly)) ly = 0;
+        if (!TryParseInvariant(layer.X, out var lx)) lx = 0;
+        if (!TryParseInvariant(layer.Y, out var ly)) ly = 0;
 
         double left = ToPreview(lx);
         double top = ToPreview(ly);
@@ -9458,8 +10556,8 @@ public partial class MainWindow : Window
             type.Contains("GraphLine", StringComparison.OrdinalIgnoreCase) ||
             type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase))
         {
-            double w = double.TryParse(layer.Width, out var lw) && lw > 0 ? lw : 200.0;
-            double h = double.TryParse(layer.Height, out var lh) && lh > 0 ? lh : 20.0;
+            double w = TryParseInvariant(layer.Width, out var lw) && lw > 0 ? lw : 200.0;
+            double h = TryParseInvariant(layer.Height, out var lh) && lh > 0 ? lh : 20.0;
             var trackThickness = h;
             var isDirectionalBar =
                 type.Contains("GraphStatuBar", StringComparison.OrdinalIgnoreCase) ||
@@ -9471,7 +10569,7 @@ public partial class MainWindow : Window
             }
             var lineOverflow = GetGraphPreviewPadding(layer);
             if (type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase) &&
-                double.TryParse(layer.InnerCircleRadius, out var knobDiameter))
+                TryParseInvariant(layer.InnerCircleRadius, out var knobDiameter))
             {
                 lineOverflow = Math.Max(6.0, Math.Max(0, (knobDiameter - trackThickness) / 2.0) + 6.0);
             }
@@ -9483,7 +10581,7 @@ public partial class MainWindow : Window
         }
         else if (type.Contains("GraphArchBar", StringComparison.OrdinalIgnoreCase))
         {
-            double d = double.TryParse(layer.Diameter, out var ld) && ld > 0 ? ld : 120.0;
+            double d = TryParseInvariant(layer.Diameter, out var ld) && ld > 0 ? ld : 120.0;
             var padding = GetArchGraphPreviewPadding(layer);
             return new Rect(
                 ToPreview(lx - padding),
@@ -9525,10 +10623,14 @@ public partial class MainWindow : Window
         }
         else
         {
-            if (!double.TryParse(layer.Size, out var lsize)) lsize = 20;
+            if (!TryParseInvariant(layer.Size, out var lsize)) lsize = 20;
             var text = GetPreviewText(layer);
             text = ApplyDataDisplayOptions(layer, text);
             if (string.IsNullOrWhiteSpace(text)) text = layer.DataSource;
+            if (TryGetD3TextLayerRender(layer, text, out var d3Render))
+            {
+                return d3Render.Bounds;
+            }
             return GetGdiTextLayerRender(layer, text).Bounds;
         }
     }
@@ -10398,6 +11500,12 @@ public partial class MainWindow : Window
     }
 
     private sealed record TextLayerRenderResult(BitmapSource Source, Rect Bounds);
+    private sealed record D3PreviewCache(
+        Dictionary<string, string> Text,
+        Dictionary<string, string> Num3,
+        Dictionary<string, string> Num4);
+    private sealed record OledCurveSplitBackgroundPart(string Path, double OffsetX, double Width);
+    private sealed record OledCurvePreviewLayerHostInfo(FrameworkElement Child, double SlotLeft);
 
     private TextLayerRenderResult GetGdiTextLayerRender(LayerRow layer, string text)
     {
@@ -10413,15 +11521,17 @@ public partial class MainWindow : Window
         }
 
         var fontName = GetEffectiveLayerFont(layer.Font);
+        var usesOledCurveTextAnchor = IsOledCurveDeviceSelected();
+        var previewFontSize = size;
         var bold = IsBoldFont(layer);
         var color = NormalizeColorText(layer.Color);
         var alignmentIndex = GetTextAlignmentIndex(layer);
         var interval = GetTextInterval(layer);
         var gradientColor = NormalizeColorText(layer.FontGradientColor);
         var gradientDirection = int.TryParse(layer.FontGradientDirection, out var parsedDirection) ? parsedDirection : -1;
-        var cacheKey = string.Join("|layer-v9", text, x.ToString(CultureInfo.InvariantCulture), y.ToString(CultureInfo.InvariantCulture),
-            size.ToString(CultureInfo.InvariantCulture), fontName, bold, color, gradientColor, gradientDirection,
-            alignmentIndex, interval.ToString(CultureInfo.InvariantCulture));
+        var cacheKey = string.Join("|layer-v17", text, x.ToString(CultureInfo.InvariantCulture), y.ToString(CultureInfo.InvariantCulture),
+            previewFontSize.ToString(CultureInfo.InvariantCulture), fontName, bold, color, gradientColor, gradientDirection,
+            alignmentIndex, interval.ToString(CultureInfo.InvariantCulture), usesOledCurveTextAnchor);
 
         if (_gdiTextLayerCache.TryGetValue(cacheKey, out var cached))
         {
@@ -10441,18 +11551,24 @@ public partial class MainWindow : Window
             System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
         using var measureGraphics = System.Drawing.Graphics.FromImage(measureBitmap);
         ConfigureGdiTextGraphics(measureGraphics);
-        using var measureFont = CreateGdiFont(fontName, size, bold, 1.0);
-        var measured = Math.Abs(interval) > double.Epsilon
+        using var measureFont = CreateGdiFont(fontName, previewFontSize, bold, 1.0);
+        var measured = usesOledCurveTextAnchor && Math.Abs(interval) <= double.Epsilon
+            ? measureGraphics.MeasureString(string.IsNullOrEmpty(text) ? " " : text, measureFont)
+            : Math.Abs(interval) > double.Epsilon
             ? MeasureGdiIntervalTextAtScale(measureGraphics, text, measureFont, interval)
             : MeasureGdiString(measureGraphics, text, measureFont);
         
         var parsedFontWidth = double.TryParse(layer.FontWidth, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var fw) ? fw : 0;
-        var drawWidth = parsedFontWidth > 0 ? parsedFontWidth : Math.Max(1, measured.Width);
+        var drawWidth = parsedFontWidth > 0
+            ? parsedFontWidth
+            : Math.Max(1, measured.Width);
 
-        var padding = 0;
-        var bitmapWidth = Math.Max(1, (int)Math.Ceiling(drawWidth));
-        var bitmapHeight = Math.Max(1, (int)Math.Ceiling(measured.Height));
-        var localAnchorX = 0;
+        var padding = usesOledCurveTextAnchor ? Math.Max(64, (int)Math.Ceiling(previewFontSize * 2.0)) : 0;
+        var localAnchorX = usesOledCurveTextAnchor
+            ? padding + (alignmentIndex == 1 ? drawWidth / 2.0 : (alignmentIndex == 2 ? drawWidth : 0.0))
+            : 0.0;
+        var bitmapWidth = Math.Max(1, (int)Math.Ceiling(drawWidth + padding * 2.0));
+        var bitmapHeight = Math.Max(1, (int)Math.Ceiling(measured.Height * (usesOledCurveTextAnchor ? 2.0 : 1.0) + padding * 2.0));
 
         using var bitmap = new System.Drawing.Bitmap(
             bitmapWidth,
@@ -10463,7 +11579,7 @@ public partial class MainWindow : Window
         {
             graphics.Clear(System.Drawing.Color.Transparent);
             ConfigureGdiTextGraphics(graphics);
-            using var font = CreateGdiFont(fontName, size, bold, 1.0);
+            using var font = CreateGdiFont(fontName, previewFontSize, bold, 1.0);
             using var brush = CreateTextDrawingBrush(
                 color,
                 gradientColor,
@@ -10473,7 +11589,9 @@ public partial class MainWindow : Window
                         padding,
                         Math.Max(1f, measured.Width),
                         Math.Max(1f, measured.Height)));
-            using var format = CreateGdiStringFormat(alignmentIndex);
+            using var format = usesOledCurveTextAnchor
+                ? CreateThemeEngineStringFormat(alignmentIndex)
+                : CreateGdiStringFormat(alignmentIndex);
             if (Math.Abs(interval) > double.Epsilon)
             {
                 var intervalAnchorX = localAnchorX + (alignmentIndex == 1 ? drawWidth / 2.0 : (alignmentIndex == 2 ? drawWidth : 0.0));
@@ -10489,13 +11607,25 @@ public partial class MainWindow : Window
             }
             else
             {
-                var rect = new System.Drawing.RectangleF((float)localAnchorX, padding, (float)drawWidth, (float)measured.Height * 1.5f);
-                graphics.DrawString(
-                    text,
-                    font,
-                    brush,
-                    rect,
-                    format);
+                if (usesOledCurveTextAnchor)
+                {
+                    graphics.DrawString(
+                        text,
+                        font,
+                        brush,
+                        new System.Drawing.PointF((float)localAnchorX, padding),
+                        format);
+                }
+                else
+                {
+                    var rect = new System.Drawing.RectangleF((float)localAnchorX, padding, (float)drawWidth, (float)measured.Height * 1.5f);
+                    graphics.DrawString(
+                        text,
+                        font,
+                        brush,
+                        rect,
+                        format);
+                }
             }
         }
 
@@ -10530,23 +11660,20 @@ public partial class MainWindow : Window
             using var croppedBitmap = bitmap.Clone(new System.Drawing.Rectangle(minX, minY, croppedWidth, croppedHeight), bitmap.PixelFormat);
             source = ToBitmapSource(croppedBitmap);
             
-            var anchorLeft = x;
-            if (alignmentIndex == 1) anchorLeft = x - (drawWidth / 2.0);
-            else if (alignmentIndex == 2) anchorLeft = x - drawWidth;
-            
-            finalLeft = anchorLeft + minX;
-            finalTop = y + minY;
+            finalLeft = usesOledCurveTextAnchor
+                ? x - localAnchorX + minX
+                : x - (alignmentIndex == 1 ? drawWidth / 2.0 : (alignmentIndex == 2 ? drawWidth : 0.0)) + minX;
+            finalTop = usesOledCurveTextAnchor ? y - padding + minY : y + minY;
             finalWidth = croppedWidth;
             finalHeight = croppedHeight;
         }
         else
         {
             source = ToBitmapSource(bitmap);
-            var anchorLeft = x;
-            if (alignmentIndex == 1) anchorLeft = x - (drawWidth / 2.0);
-            else if (alignmentIndex == 2) anchorLeft = x - drawWidth;
-            finalLeft = anchorLeft;
-            finalTop = y;
+            finalLeft = usesOledCurveTextAnchor
+                ? x - localAnchorX
+                : x - (alignmentIndex == 1 ? drawWidth / 2.0 : (alignmentIndex == 2 ? drawWidth : 0.0));
+            finalTop = usesOledCurveTextAnchor ? y - padding : y;
             finalWidth = bitmapWidth;
             finalHeight = bitmapHeight;
         }
@@ -10864,11 +11991,17 @@ public partial class MainWindow : Window
 
     private static System.Drawing.StringFormat CreateGdiStringFormat(int alignmentIndex)
     {
-        var format = (System.Drawing.StringFormat)System.Drawing.StringFormat.GenericTypographic.Clone();
+        var format = new System.Drawing.StringFormat();
         format.Alignment = (System.Drawing.StringAlignment)Math.Clamp(alignmentIndex, 0, 2);
-        format.FormatFlags |= System.Drawing.StringFormatFlags.MeasureTrailingSpaces |
-                              System.Drawing.StringFormatFlags.NoClip;
+        format.FormatFlags |= System.Drawing.StringFormatFlags.MeasureTrailingSpaces;
         format.Trimming = System.Drawing.StringTrimming.None;
+        return format;
+    }
+
+    private static System.Drawing.StringFormat CreateThemeEngineStringFormat(int alignmentIndex)
+    {
+        var format = new System.Drawing.StringFormat();
+        format.Alignment = (System.Drawing.StringAlignment)Math.Clamp(alignmentIndex, 0, 2);
         return format;
     }
 
@@ -10897,6 +12030,21 @@ public partial class MainWindow : Window
     private static System.Drawing.FontFamily ResolveGdiFontFamily(string fontName)
     {
         var effective = GetEffectiveLayerFont(fontName);
+        foreach (var alias in GetFontAliasCandidates(effective))
+        {
+            if (_gdiFontMap.TryGetValue(alias, out var aliasMapped))
+            {
+                return aliasMapped;
+            }
+
+            var normalizedAlias = NormalizeFontLookupKey(alias);
+            if (!string.IsNullOrWhiteSpace(normalizedAlias) &&
+                _gdiFontMap.TryGetValue(normalizedAlias, out aliasMapped))
+            {
+                return aliasMapped;
+            }
+        }
+
         if (_gdiFontMap.TryGetValue(effective, out var mapped))
         {
             return mapped;
@@ -10910,7 +12058,7 @@ public partial class MainWindow : Window
 
         try
         {
-            var family = new System.Drawing.FontFamily(effective);
+            var family = CreateGdiFontFamily(effective);
             _gdiFontMap[effective] = family;
             _gdiFontMap[normalized] = family;
             return family;
@@ -10921,6 +12069,22 @@ public partial class MainWindow : Window
             _gdiFontMap[effective] = fallback;
             return fallback;
         }
+    }
+
+    private static System.Drawing.FontFamily CreateGdiFontFamily(string fontName)
+    {
+        foreach (var candidate in GetFontAliasCandidates(fontName))
+        {
+            try
+            {
+                return new System.Drawing.FontFamily(candidate);
+            }
+            catch
+            {
+            }
+        }
+
+        return new System.Drawing.FontFamily(fontName);
     }
 
     private static System.Drawing.Color ToDrawingColor(string colorText)
@@ -11031,6 +12195,26 @@ public partial class MainWindow : Window
             fontName = GetDefaultLayerFontName();
         }
 
+        foreach (var alias in GetFontAliasCandidates(fontName))
+        {
+            if (_customFontMap.TryGetValue(alias, out var aliasCustom))
+            {
+                return aliasCustom;
+            }
+
+            if (_systemFonts.Contains(alias))
+            {
+                return new FontFamily(alias);
+            }
+
+            var normalizedAlias = NormalizeFontLookupKey(alias);
+            if (!string.IsNullOrWhiteSpace(normalizedAlias) &&
+                _customFontMap.TryGetValue(normalizedAlias, out aliasCustom))
+            {
+                return aliasCustom;
+            }
+        }
+
         if (_customFontMap.TryGetValue(fontName, out var custom))
         {
             return custom;
@@ -11049,6 +12233,23 @@ public partial class MainWindow : Window
         return new FontFamily(fontName);
     }
 
+    private static IEnumerable<string> GetFontAliasCandidates(string fontName)
+    {
+        var value = (fontName ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            yield break;
+        }
+
+        yield return value;
+
+        if (string.Equals(value, "微软雅黑", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return "Microsoft YaHei";
+            yield return "Microsoft YaHei UI";
+        }
+    }
+
     private static readonly Dictionary<string, FontFamily> _customFontMap = new(StringComparer.OrdinalIgnoreCase);
     private static readonly System.Drawing.Text.PrivateFontCollection _privateGdiFonts = new();
     private static readonly Dictionary<string, System.Drawing.FontFamily> _gdiFontMap = new(StringComparer.OrdinalIgnoreCase);
@@ -11060,7 +12261,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var dllPath = @"C:\Program Files\Lian-Li\L-Connect 3\lianli.ThemeEngine.dll";
+            var dllPath = Path.Combine(LConnectPaths.ProgramFilesRoot, "lianli.ThemeEngine.dll");
             if (!File.Exists(dllPath))
             {
                 return;
@@ -11098,8 +12299,8 @@ public partial class MainWindow : Window
 
         var paths = new[]
         {
-            @"C:\Program Files\Lian-Li\L-Connect 3\Assets\ga2v\fonts\",
-            @"C:\Program Files\Lian-Li\L-Connect 3\Assets\tl-sensor\assets\",
+            Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets", "ga2v", "fonts"),
+            Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets", "tl-sensor", "assets"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LianLiThemeEditor", "Fonts")
         };
 
@@ -11255,6 +12456,7 @@ public partial class MainWindow : Window
 
     private void ClearTextPreviewCaches()
     {
+        _resolvedFontsCache.Clear();
         _gdiTextCache.Clear();
         _gdiTextInkCache.Clear();
         _gdiTextLayerCache.Clear();
@@ -11475,7 +12677,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            var fontDir = @"C:\Program Files\Lian-Li\L-Connect 3\fonts";
+            var fontDir = Path.Combine(LConnectPaths.ProgramFilesRoot, "fonts");
             Directory.CreateDirectory(fontDir);
             var targetPath = Path.Combine(fontDir, Path.GetFileName(sourcePath));
             if (!File.Exists(targetPath))
@@ -11619,6 +12821,7 @@ public partial class MainWindow : Window
 
         UpdateSelectedDeviceChrome();
         UpdateDeviceCapabilityNotice();
+        UpdateOledCurvePreviewModeControls();
 
         if (_isLoading)
         {
@@ -11652,7 +12855,7 @@ public partial class MainWindow : Window
             TemplateIdBox.Text = option.Id;
             _currentTemplatePath = option.Path;
             var templatePath = option.Path;
-            var result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, templatePath));
+            var result = await Task.Run(() => LoadTemplateOptionAsync(deviceModel, option));
             if (token.IsCancellationRequested ||
                 selectionVersion != _deviceSelectionVersion ||
                 !string.Equals(deviceModel, GetSelectedDeviceModel(), StringComparison.OrdinalIgnoreCase) ||
@@ -11750,6 +12953,181 @@ public partial class MainWindow : Window
         _gdiTextLayerCache.Clear();
         DrawPreview();
         SaveEditorSettings();
+    }
+
+    private async void ApplyOrientationButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!SupportsOrientationSelectionSelected())
+        {
+            return;
+        }
+
+        try
+        {
+            SetBusy(true, GetLanguageText("status.changingOrientation", "Changing orientation..."));
+            var target = await ResolveTemplateTargetAsync();
+            var deviceModel = target.DeviceModel;
+            var sourceTemplatePath = target.TemplatePath;
+            var orientation = IsUniversalLandscape() ? "landscape" : "portrait";
+            var templateRoot = GetTemplateRoot(deviceModel);
+            Directory.CreateDirectory(templateRoot);
+            var sourceTemplateId = FirstNonEmpty(_currentTemplateId, Path.GetFileNameWithoutExtension(sourceTemplatePath));
+            var newTemplateId = GetUniqueTemplateId(
+                templateRoot,
+                SanitizeTemplateId($"{sourceTemplateId}-{orientation}"));
+            var newTemplatePath = Path.Combine(templateRoot, $"{newTemplateId}.template");
+
+            if (_dirtyLayers.Count > 0 || _pendingLayerMoves.Count > 0 || _pendingLayerDuplicates.Count > 0 || _pendingLayerDeletes.Count > 0)
+            {
+                if (LayerGrid.SelectedItem is LayerRow selectedLayer && _dirtyLayers.Contains(selectedLayer))
+                {
+                    UpdateLayerFromInputs(selectedLayer);
+                }
+
+                await ApplyDirtyLayersAsync(deviceModel, sourceTemplatePath);
+            }
+
+            File.Copy(sourceTemplatePath, newTemplatePath, overwrite: false);
+            await _supporter.NormalizeTemplateIdentityAsync(deviceModel, newTemplatePath, newTemplateId);
+            await _supporter.EnsureBackgroundLayerAsync(deviceModel, newTemplatePath);
+
+            var animationLayer = Layers.FirstOrDefault(layer =>
+                string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
+            var backgroundSource = animationLayer is null
+                ? ""
+                : ResolveLayerMediaExportPath(animationLayer);
+            if (string.IsNullOrWhiteSpace(backgroundSource) || !File.Exists(backgroundSource))
+            {
+                backgroundSource = ResolveBackgroundPath(
+                    _currentBackgroundPath,
+                    animationLayer?.Media ?? "");
+            }
+
+            var appliedBackgroundPath = "";
+            var previewBackgroundPath = "";
+            if (!string.IsNullOrWhiteSpace(backgroundSource) && File.Exists(backgroundSource))
+            {
+                var prepared = await PrepareExportBackgroundAsync(deviceModel, backgroundSource, newTemplateId, orientation);
+                try
+                {
+                    var videoRoot = Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "video");
+                    Directory.CreateDirectory(videoRoot);
+                    var backgroundBase = $"{newTemplateId}-background";
+                    var runtimeExtension = GetExportBackgroundExtension(deviceModel);
+                    appliedBackgroundPath = Path.Combine(videoRoot, backgroundBase + runtimeExtension);
+                    File.Copy(prepared.RuntimePath, appliedBackgroundPath, overwrite: true);
+
+                    if (!string.IsNullOrWhiteSpace(prepared.PreviewPath) && File.Exists(prepared.PreviewPath))
+                    {
+                        previewBackgroundPath = Path.Combine(videoRoot, backgroundBase + ".mp4");
+                        if (!string.Equals(prepared.PreviewPath, previewBackgroundPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            File.Copy(prepared.PreviewPath, previewBackgroundPath, overwrite: true);
+                        }
+                    }
+
+                    var canvas = GetDeviceCanvasPixels(deviceModel, orientation);
+                    await _supporter.SetBackgroundMediaAsync(
+                        deviceModel,
+                        newTemplatePath,
+                        Path.GetFileName(appliedBackgroundPath),
+                        canvas.Width,
+                        canvas.Height);
+                }
+                finally
+                {
+                    foreach (var temporaryPath in prepared.TemporaryPaths)
+                    {
+                        TryDeleteFile(temporaryPath);
+                    }
+                }
+            }
+
+            var result = await _supporter.LoadTemplatePathAsync(deviceModel, newTemplatePath);
+            UseActiveCheck.IsChecked = false;
+            TemplateIdBox.Text = newTemplateId;
+            _currentTemplatePath = newTemplatePath;
+            _currentTemplateId = newTemplateId;
+            _currentBackgroundPath = FirstNonEmpty(appliedBackgroundPath, result.BackgroundPath);
+            _selectedBackgroundSourcePath = "";
+            RefreshTemplateList();
+            SelectTemplateCombo(newTemplatePath);
+            ApplyTemplateResult(result);
+            SetUniversalOrientation(orientation);
+            if (!string.IsNullOrWhiteSpace(_currentBackgroundPath))
+            {
+                LoadBackgroundPreview(
+                    FirstNonEmpty(previewBackgroundPath, _currentBackgroundPath),
+                    Path.GetFileName(_currentBackgroundPath));
+            }
+
+            try
+            {
+                await SaveAndApplyThemePreviewAsync(
+                    deviceModel,
+                    newTemplatePath,
+                    newTemplateId,
+                    embedInTemplate: true,
+                    forceBackgroundVisible: true);
+                await UpdateWideTemplateAnimationPreviewFromBackgroundAsync(
+                    deviceModel,
+                    newTemplatePath,
+                    FirstNonEmpty(previewBackgroundPath, _currentBackgroundPath, appliedBackgroundPath));
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"Orientation-changed theme preview could not be generated: {ex.Message}");
+            }
+
+            var registeredTheme = await TryRegisterNewThemeThroughLConnectAsync(
+                deviceModel,
+                newTemplatePath,
+                newTemplateId,
+                orientation);
+            if (registeredTheme != null)
+            {
+                newTemplatePath = registeredTheme.Path;
+                newTemplateId = registeredTheme.Id;
+                _currentTemplatePath = registeredTheme.Path;
+                _currentTemplateId = registeredTheme.Id;
+                TemplateIdBox.Text = registeredTheme.Id;
+                TemplatePathText.Text = registeredTheme.Path;
+                RefreshTemplateList();
+                SelectTemplateCombo(registeredTheme.Path);
+                result = await _supporter.LoadTemplatePathAsync(deviceModel, registeredTheme.Path);
+                ApplyTemplateResult(result);
+                SetUniversalOrientation(orientation);
+            }
+
+            await PersistSelectedUniversalOrientationAsync(newTemplateId);
+            var applied = IsOfflineMode || await ActivateUniversal88ThemeAsync(
+                newTemplateId,
+                newTemplatePath,
+                FirstNonEmpty(_currentBackgroundPath, appliedBackgroundPath),
+                updatePreview: false,
+                applyBackgroundOverride: true);
+            RefreshLocalThemesList();
+            foreach (var key in _localTemplateOrientationCache.Keys
+                         .Where(key => key.Contains($"|{newTemplatePath}|", StringComparison.OrdinalIgnoreCase))
+                         .ToList())
+            {
+                _localTemplateOrientationCache.Remove(key);
+            }
+
+            SetBusy(false, applied
+                ? FormatLanguageText("status.orientationThemeCreated", "Orientation theme created: {0}", newTemplateId)
+                : FormatLanguageText("status.orientationThemeCreatedRefreshPending", "Orientation theme created: {0}. Reopen it in L-Connect if it does not update.", newTemplateId));
+        }
+        catch (Exception ex)
+        {
+            SetBusy(false, GetLanguageText("status.orientationChangeFailed", "Orientation change failed."));
+            MessageBox.Show(
+                this,
+                ex.Message,
+                GetLanguageText("messages.orientationChangeFailed", "Orientation change failed"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     private void LanguageCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -11921,6 +13299,7 @@ public partial class MainWindow : Window
             "hydroshift-ii-lcd-c" => "Hydroshift II LCD-C",
             "universal-screen-8.8-inch" => "8.8\" Universal Screen",
             Vm92DeviceModel => "VM 9.2 LCD",
+            OledCurveDeviceModel => "HydroShift II OLED Curve",
             _ => "Hydroshift II LCD-S"
         };
     }
@@ -11985,6 +13364,7 @@ public partial class MainWindow : Window
         }
 
         AddDeviceComboItem(Vm92DeviceModel, GetDeviceDisplayNameForTag(Vm92DeviceModel), "Assets/Devices/vm-9.2.png");
+        AddDeviceComboItem(OledCurveDeviceModel, GetDeviceDisplayNameForTag(OledCurveDeviceModel), "Assets/Devices/hydroshift-ii-oled-curve.png");
 
         DeviceCombo.SelectionChanged += DeviceCombo_SelectionChanged;
 
@@ -12058,7 +13438,12 @@ public partial class MainWindow : Window
 
     private static bool IsWideScreenDeviceModel(string deviceModel) =>
         string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase);
+        string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(deviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsHydroshiftLcdDeviceModel(string deviceModel) =>
+        string.Equals(deviceModel, "hydroshift-ii-lcd-s", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(deviceModel, "hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase);
 
     private bool CanDirectApplySelectedDevice() => true;
 
@@ -12100,6 +13485,30 @@ public partial class MainWindow : Window
     private static string NormalizeUniversalOrientation(string? orientation)
     {
         return ThemePackageManifestNormalizer.NormalizeUniversalOrientation(orientation);
+    }
+
+    private async Task PersistSelectedUniversalOrientationAsync(string templateId)
+    {
+        if (!IsUniversalScreenSelected() || string.IsNullOrWhiteSpace(templateId))
+        {
+            return;
+        }
+
+        var preferLandscape = IsUniversalLandscape();
+        await Task.Run(() => TrySetUniversal88ActiveTemplateProfile(templateId, preferLandscape));
+
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+        foreach (var path in GetLConnectDevicePaths())
+        {
+            try
+            {
+                await SetUniversal88ScreenOrientationAsync(client, path, preferLandscape);
+                await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+            }
+            catch
+            {
+            }
+        }
     }
 
     private void SetUniversalOrientation(string orientation, bool updateCanvas = true)
@@ -12179,12 +13588,17 @@ public partial class MainWindow : Window
 
     private static (int Width, int Height) GetDeviceCanvasPixels(string deviceModel, string orientation = "")
     {
-        var portrait = string.Equals(NormalizeUniversalOrientation(orientation), "portrait", StringComparison.OrdinalIgnoreCase);
         if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return portrait ? (464, 1920) : (1920, 464);
+            return (1920, 464);
         }
 
+        if (string.Equals(deviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return (2288, 1080);
+        }
+
+        var portrait = string.Equals(NormalizeUniversalOrientation(orientation), "portrait", StringComparison.OrdinalIgnoreCase);
         if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
             return portrait ? (480, 1920) : (1920, 480);
@@ -12204,7 +13618,9 @@ public partial class MainWindow : Window
     private void UpdateCanvasConfiguration(bool resetZoom)
     {
         var universal = IsWideScreenDeviceSelected();
-        UniversalOrientationPanel.Visibility = SupportsOrientationSelectionSelected() ? Visibility.Visible : Visibility.Collapsed;
+        var supportsOrientationSelection = SupportsOrientationSelectionSelected();
+        UniversalOrientationPanel.Visibility = supportsOrientationSelection ? Visibility.Visible : Visibility.Collapsed;
+        ApplyOrientationButton.Visibility = supportsOrientationSelection ? Visibility.Visible : Visibility.Collapsed;
 
         if (universal)
         {
@@ -12246,6 +13662,8 @@ public partial class MainWindow : Window
         BackgroundMedia.Height = _previewCanvasHeight;
         BackgroundImage.Width = _previewCanvasWidth;
         BackgroundImage.Height = _previewCanvasHeight;
+        OledCurveSplitBackgroundCanvas.Width = _previewCanvasWidth;
+        OledCurveSplitBackgroundCanvas.Height = _previewCanvasHeight;
         PreviewClipGeometry.Rect = new Rect(0, 0, _previewCanvasWidth, _previewCanvasHeight);
         var previewMaskThickness = Math.Max(1.0, Math.Round(PreviewMaskTemplateThickness * _previewScale));
         PreviewMaskTop.Height = previewMaskThickness;
@@ -12303,6 +13721,8 @@ public partial class MainWindow : Window
     {
         var model = templatePath.Contains(Vm92DeviceModel, StringComparison.OrdinalIgnoreCase)
             ? Vm92DeviceModel
+            : templatePath.Contains(OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase)
+            ? OledCurveDeviceModel
             : templatePath.Contains(UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
             ? UniversalScreenDeviceModel
             : templatePath.Contains("hydroshift-ii-lcd-c", StringComparison.OrdinalIgnoreCase)
@@ -12357,6 +13777,7 @@ public partial class MainWindow : Window
                         {
                             Id = id,
                             Path = path,
+                            DeviceModel = deviceModel,
                             Thumbnail = thumbnail,
                             UniversalOrientation = orientation,
                             IsPortraitThumbnail = IsPortraitThumbnail(thumbnail)
@@ -12364,6 +13785,7 @@ public partial class MainWindow : Window
                     }
                 }
             });
+            options = GroupOledCurveTemplateOptions(options);
 
             // UI Updates
             TemplateOptions.Clear();
@@ -12417,8 +13839,97 @@ public partial class MainWindow : Window
             "hydroshift-ii-lcd-s",
             "hydroshift-ii-lcd-c",
             UniversalScreenDeviceModel,
-            Vm92DeviceModel
+            Vm92DeviceModel,
+            OledCurveDeviceModel
         };
+
+    private static List<TemplateOption> GroupOledCurveTemplateOptions(List<TemplateOption> options)
+    {
+        if (options.Count == 0 ||
+            !options.Any(option => string.Equals(option.DeviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase)))
+        {
+            return options;
+        }
+
+        var grouped = new List<TemplateOption>();
+
+        foreach (var option in options.OrderBy(option => option.Id, StringComparer.OrdinalIgnoreCase))
+        {
+            if (string.Equals(option.DeviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+                TryGetOledCurveSplitPart(option.Id, out _, out _, out _))
+            {
+                continue;
+            }
+
+            grouped.Add(option);
+        }
+
+        return grouped;
+    }
+
+    private static TemplateOption CreateOledCurveGroupedOption(
+        string kind,
+        string suffix,
+        IReadOnlyList<TemplateOption> parts)
+    {
+        var first = parts[0];
+        var displaySuffix = suffix.TrimStart('_', '-');
+        var id = string.IsNullOrWhiteSpace(displaySuffix)
+            ? kind
+            : $"{kind}_{displaySuffix}";
+        var option = new TemplateOption
+        {
+            Id = id,
+            Path = first.Path,
+            DeviceModel = first.DeviceModel,
+            DeviceName = first.DeviceName,
+            Thumbnail = first.Thumbnail,
+            UniversalOrientation = first.UniversalOrientation,
+            OrientationDisplay = first.OrientationDisplay,
+            IsPortraitThumbnail = first.IsPortraitThumbnail,
+            IsSquareThumbnail = first.IsSquareThumbnail,
+            IsOfficial = parts.All(part => part.IsOfficial),
+            CanDelete = parts.All(part => part.CanDelete),
+            SourceDisplay = first.SourceDisplay,
+            ApplyText = first.ApplyText,
+            DeleteText = first.DeleteText,
+            LConnectVisible = parts.Any(part => part.LConnectVisible),
+            OledCurveGroupKind = kind
+        };
+        option.GroupedTemplatePaths.AddRange(parts.Select(part => part.Path));
+        option.GroupedTemplateIds.AddRange(parts.Select(part => part.Id));
+        return option;
+    }
+
+    private static bool TryGetOledCurveSplitPart(
+        string templateId,
+        out string kind,
+        out string part,
+        out string suffix)
+    {
+        kind = "";
+        part = "";
+        suffix = "";
+        foreach (var candidate in new[]
+        {
+            ("dual", "left", "dualleft"),
+            ("dual", "right", "dualright"),
+            ("triple", "left", "tripleleft"),
+            ("triple", "middle", "triplemiddle"),
+            ("triple", "right", "tripleright")
+        })
+        {
+            if (templateId.StartsWith(candidate.Item3, StringComparison.OrdinalIgnoreCase))
+            {
+                kind = candidate.Item1;
+                part = candidate.Item2;
+                suffix = templateId[candidate.Item3.Length..];
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private async void RefreshLocalThemesList()
     {
@@ -12485,7 +13996,7 @@ public partial class MainWindow : Window
                     }
                 }
 
-                return result;
+                return GroupOledCurveTemplateOptions(result);
             });
 
             LocalThemes.Clear();
@@ -12563,6 +14074,16 @@ public partial class MainWindow : Window
         return "";
     }
 
+    private static string InferUniversalOrientationFromCanvas(int width, int height)
+    {
+        if (width <= 0 || height <= 0 || Math.Abs(width - height) < 4)
+        {
+            return "";
+        }
+
+        return height > width ? "portrait" : "landscape";
+    }
+
     private static string InferUniversalOrientationFromTemplateMediaReferences(string templatePath, string deviceModel)
     {
         if (!IsWideScreenDeviceModel(deviceModel) ||
@@ -12577,7 +14098,7 @@ public partial class MainWindow : Window
             var text = System.Text.Encoding.Default.GetString(File.ReadAllBytes(templatePath));
             var references = Regex.Matches(
                     text,
-                    @"[A-Za-z0-9 _.,:;\\/()\-]+?\.(?:h264|mp4|png|jpe?g|gif|webp)",
+                    @"[A-Za-z0-9 _.,:;\\/()\-]+?\.(?:h264|mp4|gif)",
                     RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
                 .Select(match => match.Value.Trim())
                 .Where(value => !string.IsNullOrWhiteSpace(value))
@@ -12715,6 +14236,7 @@ public partial class MainWindow : Window
         if (IsVisibleGalleryDeviceFilterChecked(LocalFilterHydroshiftCCheck)) selected.Add("hydroshift-ii-lcd-c");
         if (IsVisibleGalleryDeviceFilterChecked(LocalFilterUniversal88Check)) selected.Add(UniversalScreenDeviceModel);
         if (IsVisibleGalleryDeviceFilterChecked(LocalFilterVm92Check)) selected.Add(Vm92DeviceModel);
+        if (IsVisibleGalleryDeviceFilterChecked(LocalFilterOledCurveCheck)) selected.Add(OledCurveDeviceModel);
         return selected;
     }
 
@@ -13205,7 +14727,10 @@ public partial class MainWindow : Window
 
             SetBusy(true, GetLanguageText("status.applyingTheme", "Applying theme..."));
             SelectDeviceModelForLocalTheme(option.DeviceModel, selectedDeviceTag);
-            var result = await Task.Run(() => _supporter.LoadTemplatePathAsync(option.DeviceModel, option.Path));
+            TemplateCombo.SelectedItem = TemplateOptions.FirstOrDefault(templateOption =>
+                string.Equals(templateOption.Id, option.Id, StringComparison.OrdinalIgnoreCase) ||
+                templateOption.GroupedTemplatePaths.Any(path => string.Equals(path, option.Path, StringComparison.OrdinalIgnoreCase)));
+            var result = await Task.Run(() => LoadTemplateOptionAsync(option.DeviceModel, option));
             ApplyTemplateResult(result);
             if (IsWideScreenDeviceModel(option.DeviceModel))
             {
@@ -13618,6 +15143,7 @@ public partial class MainWindow : Window
         "hydroshift-ii-lcd-c" => "Assets/Devices/hydroshift-ii-lcd-c.png",
         "universal-screen-8.8-inch" => "Assets/Devices/universal-screen-8.8.png",
         Vm92DeviceModel => "Assets/Devices/vm-9.2.png",
+        OledCurveDeviceModel => "Assets/Devices/hydroshift-ii-oled-curve.png",
         _ => "Assets/Devices/hydroshift-ii-lcd-s.png"
     };
 
@@ -13646,7 +15172,8 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(templatePath)) return;
         foreach (var option in TemplateOptions)
         {
-            if (string.Equals(option.Path, templatePath, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(option.Path, templatePath, StringComparison.OrdinalIgnoreCase) ||
+                option.GroupedTemplatePaths.Any(path => string.Equals(path, templatePath, StringComparison.OrdinalIgnoreCase)))
             {
                 TemplateCombo.SelectedItem = option;
                 return;
@@ -13663,6 +15190,53 @@ public partial class MainWindow : Window
     {
         _autoFitWidePreview = false;
         SetCanvasZoom(_canvasZoom - 0.1);
+    }
+
+    private void OledCurvePreviewModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as Button)?.Tag is not string mode || string.IsNullOrWhiteSpace(mode))
+        {
+            return;
+        }
+
+        _oledCurvePreviewSplitMode = mode;
+        UpdateOledCurvePreviewModeControls();
+        DrawPreview();
+    }
+
+    private void UpdateOledCurvePreviewModeControls()
+    {
+        if (OledCurvePreviewModePanel == null)
+        {
+            return;
+        }
+
+        var visible = IsOledCurveDeviceSelected();
+        OledCurvePreviewModePanel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        if (OledCurveBetaNotice != null)
+        {
+            OledCurveBetaNotice.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
+        }
+        if (!visible)
+        {
+            return;
+        }
+
+        ApplyOledCurvePreviewModeButtonState(OledCurvePreviewFullButton, "full");
+        ApplyOledCurvePreviewModeButtonState(OledCurvePreviewDualButton, "dual");
+        ApplyOledCurvePreviewModeButtonState(OledCurvePreviewTripleButton, "triple");
+    }
+
+    private void ApplyOledCurvePreviewModeButtonState(Button? button, string mode)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        var selected = string.Equals(_oledCurvePreviewSplitMode, mode, StringComparison.OrdinalIgnoreCase);
+        button.Background = selected ? NewBrush("#3B82F6", "#1D4ED8") : (Brush)FindResource("BrField");
+        button.BorderBrush = selected ? NewBrush("#93C5FD", "#60A5FA") : (Brush)FindResource("BrBorder");
     }
 
     private void CanvasZoomPlus_Click(object sender, RoutedEventArgs e)
@@ -13913,7 +15487,7 @@ public partial class MainWindow : Window
             PreviewSurface.UpdateLayout();
 
             var canvas = GetTemplateCanvasPixels();
-            var brush = new VisualBrush(PreviewSurface);
+            var brush = CreateClippedVisualBrush(PreviewSurface);
             var drawingVisual = new DrawingVisual();
             using (var context = drawingVisual.RenderOpen())
             {
@@ -13974,14 +15548,13 @@ public partial class MainWindow : Window
             background.CacheOption = BitmapCacheOption.OnLoad;
             background.UriSource = new Uri(backgroundImagePath, UriKind.Absolute);
             background.EndInit();
- background.Freeze();
             background.Freeze();
 
             var drawingVisual = new DrawingVisual();
             using (var context = drawingVisual.RenderOpen())
             {
                 context.DrawImage(background, new Rect(0, 0, canvas.Width, canvas.Height));
-                var overlayBrush = new VisualBrush(PreviewCanvas);
+                var overlayBrush = CreateClippedVisualBrush(PreviewCanvas);
                 context.DrawRectangle(overlayBrush, null, new Rect(0, 0, canvas.Width, canvas.Height));
             }
 
@@ -14005,6 +15578,125 @@ public partial class MainWindow : Window
         }
     }
 
+    private static VisualBrush CreateClippedVisualBrush(FrameworkElement source)
+    {
+        var width = source.ActualWidth > 0 ? source.ActualWidth : source.Width;
+        var height = source.ActualHeight > 0 ? source.ActualHeight : source.Height;
+        return new VisualBrush(source)
+        {
+            Stretch = Stretch.Fill,
+            ViewboxUnits = BrushMappingMode.Absolute,
+            Viewbox = new Rect(0, 0, Math.Max(1.0, width), Math.Max(1.0, height))
+        };
+    }
+
+    private Task<string> NormalizeThemePicPreviewForExportAsync(string deviceModel, string previewPath)
+    {
+        if (!IsHydroshiftLcdDeviceModel(deviceModel) ||
+            string.IsNullOrWhiteSpace(previewPath) ||
+            !File.Exists(previewPath))
+        {
+            return Task.FromResult(previewPath);
+        }
+
+        try
+        {
+            var source = new BitmapImage();
+            source.BeginInit();
+            source.CacheOption = BitmapCacheOption.OnLoad;
+            source.UriSource = new Uri(previewPath, UriKind.Absolute);
+            source.EndInit();
+            source.Freeze();
+
+            if (source.PixelWidth <= 0 || source.PixelHeight <= 0)
+            {
+                return Task.FromResult(previewPath);
+            }
+
+            var alphaBounds = GetNonTransparentPixelBounds(source);
+            if (alphaBounds.Width <= 0 || alphaBounds.Height <= 0)
+            {
+                return Task.FromResult(previewPath);
+            }
+
+            var needsCrop =
+                alphaBounds.X > 0 ||
+                alphaBounds.Y > 0 ||
+                alphaBounds.Width < source.PixelWidth ||
+                alphaBounds.Height < source.PixelHeight;
+            var needsResize = source.PixelWidth != 480 || source.PixelHeight != 480;
+            if (!needsCrop && !needsResize)
+            {
+                return Task.FromResult(previewPath);
+            }
+
+            var cropped = new CroppedBitmap(source, alphaBounds);
+            cropped.Freeze();
+
+            var visual = new DrawingVisual();
+            using (var context = visual.RenderOpen())
+            {
+                context.DrawRectangle(Brushes.Black, null, new Rect(0, 0, 480, 480));
+                context.DrawImage(cropped, new Rect(0, 0, 480, 480));
+            }
+
+            var output = new RenderTargetBitmap(480, 480, 96, 96, PixelFormats.Pbgra32);
+            output.Render(visual);
+
+            var normalizedPath = Path.Combine(
+                Path.GetTempPath(),
+                $"hydroshift-themepic-{Guid.NewGuid():N}.png");
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(output));
+            using var stream = File.Create(normalizedPath);
+            encoder.Save(stream);
+            return Task.FromResult(normalizedPath);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(
+                $"HydroShift themePic preview normalization failed for {Path.GetFileName(previewPath)}: " +
+                $"{ex.GetType().Name}: {ex.Message}");
+            return Task.FromResult(previewPath);
+        }
+    }
+
+    private static Int32Rect GetNonTransparentPixelBounds(BitmapSource source)
+    {
+        var converted = new FormatConvertedBitmap(source, PixelFormats.Bgra32, null, 0);
+        var width = converted.PixelWidth;
+        var height = converted.PixelHeight;
+        var stride = width * 4;
+        var pixels = new byte[stride * height];
+        converted.CopyPixels(pixels, stride, 0);
+
+        var minX = width;
+        var minY = height;
+        var maxX = -1;
+        var maxY = -1;
+        for (var y = 0; y < height; y++)
+        {
+            var row = y * stride;
+            for (var x = 0; x < width; x++)
+            {
+                var alpha = pixels[row + x * 4 + 3];
+                if (alpha <= 16)
+                {
+                    continue;
+                }
+
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+
+        return maxX < minX || maxY < minY
+            ? new Int32Rect(0, 0, width, height)
+            : new Int32Rect(minX, minY, maxX - minX + 1, maxY - minY + 1);
+    }
+
     private async Task<byte[]> RenderCurrentThemePreviewForExportAsync(
         bool cleanEditorOverlay = false,
         bool forceBackgroundVisible = false)
@@ -14018,7 +15710,7 @@ public partial class MainWindow : Window
         var extension = Path.GetExtension(backgroundPath).ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(backgroundPath) ||
             !File.Exists(backgroundPath) ||
-            extension is not (".mp4" or ".h264" or ".gif"))
+            extension is not (".mp4" or ".mov" or ".h264" or ".gif"))
         {
             return RenderCurrentThemePreview(cleanEditorOverlay, forceBackgroundVisible);
         }
@@ -14223,6 +15915,7 @@ public partial class MainWindow : Window
         }
 
         return FirstNonEmpty(
+            InferUniversalOrientationFromCanvas(_currentTemplatePixelWidth, _currentTemplatePixelHeight),
             NormalizeUniversalOrientation((UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
             TryInferUniversalOrientationFromBackgroundPath(backgroundPath),
             InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, deviceModel),
@@ -14420,6 +16113,220 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task ConvertUniversal88LConnectZipToVm92Async(
+        string sourcePackagePath,
+        string destinationPackagePath,
+        string exportTemplateId)
+    {
+        var sourceFullPath = Path.GetFullPath(sourcePackagePath);
+        var destinationFullPath = Path.GetFullPath(destinationPackagePath);
+        if (string.Equals(sourceFullPath, destinationFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("Choose a different output file for the converted package.");
+        }
+
+        var tempRoot = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "Convert88To92", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempRoot);
+        var tempDestination = Path.Combine(
+            Path.GetDirectoryName(destinationFullPath)!,
+            $"{Path.GetFileNameWithoutExtension(destinationFullPath)}.{Guid.NewGuid():N}.tmp");
+
+        try
+        {
+            using var sourceArchive = ZipFile.OpenRead(sourceFullPath);
+            if (sourceArchive.GetEntry("manifest.json") != null)
+            {
+                throw new InvalidDataException("Choose an L-Connect ZIP package, not a Theme Editor .lltheme package.");
+            }
+
+            var entries = sourceArchive.Entries
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Name))
+                .ToList();
+            var templateEntries = entries
+                .Where(entry => entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            if (templateEntries.Count == 0)
+            {
+                throw new InvalidDataException("No .template file was found in the selected ZIP.");
+            }
+
+            if (templateEntries.Count > 1)
+            {
+                throw new InvalidDataException("The selected ZIP contains more than one .template file.");
+            }
+
+            var templateId = SanitizeFileName(exportTemplateId);
+            if (string.IsNullOrWhiteSpace(templateId))
+            {
+                templateId = $"{Path.GetFileNameWithoutExtension(templateEntries[0].Name)}-VM92";
+            }
+
+            var templatePath = Path.Combine(tempRoot, $"{templateId}.template");
+            ExtractPackageEntry(templateEntries[0], templatePath);
+            await _supporter.NormalizeTemplateIdentityAsync(Vm92DeviceModel, templatePath, templateId);
+
+            var extractedAssets = new List<(string Path, string EntryName)>();
+            foreach (var entry in entries.Where(entry => !ReferenceEquals(entry, templateEntries[0])))
+            {
+                var entryName = GetSafeFlatZipEntryName(entry);
+                var extractedPath = Path.Combine(tempRoot, "assets", entryName);
+                ExtractPackageEntry(entry, extractedPath);
+                extractedAssets.Add((extractedPath, entryName));
+            }
+
+            var backgroundSource = SelectUniversal88BackgroundCandidate(extractedAssets);
+            var convertedBackgroundPath = "";
+            var convertedBackgroundEntryName = "";
+            if (!string.IsNullOrWhiteSpace(backgroundSource.Path) && File.Exists(backgroundSource.Path))
+            {
+                var sourceIsUniversal88RuntimeH264 = IsUniversal88RuntimeH264Source(backgroundSource.Path);
+                var appliedBackgroundPath = await _supporter.SetBackgroundMediaAsync(
+                    Vm92DeviceModel,
+                    templatePath,
+                    backgroundSource.Path,
+                    1920,
+                    464);
+                var runtimeBackgroundSourcePath = sourceIsUniversal88RuntimeH264
+                    ? backgroundSource.Path
+                    : File.Exists(Path.ChangeExtension(appliedBackgroundPath, ".h264"))
+                        ? Path.ChangeExtension(appliedBackgroundPath, ".h264")
+                        : backgroundSource.Path;
+                convertedBackgroundPath = await EnsureWideRuntimeH264BackgroundAsync(
+                    Vm92DeviceModel,
+                    runtimeBackgroundSourcePath,
+                    templateId,
+                    Path.Combine(tempRoot, $"{templateId}.h264"),
+                    preferLandscape: true);
+
+                convertedBackgroundEntryName = Path.GetFileName(convertedBackgroundPath);
+                await _supporter.SetBackgroundMediaAsync(
+                    Vm92DeviceModel,
+                    templatePath,
+                    convertedBackgroundEntryName,
+                    1920,
+                    464);
+                var previewPath = await CreateDeterministicBackgroundPreviewAsync(
+                    sourceIsUniversal88RuntimeH264 ? convertedBackgroundPath : appliedBackgroundPath);
+                if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
+                {
+                    await _supporter.UpdateThemePreviewAsync(Vm92DeviceModel, templatePath, previewPath);
+                    await _supporter.UpdateAnimationPreviewBitmapsAsync(Vm92DeviceModel, templatePath, previewPath);
+                    extractedAssets.Add((previewPath, $"template_{templateId}.png"));
+                }
+            }
+            else
+            {
+                await _supporter.NormalizeTemplateIdentityAsync(Vm92DeviceModel, templatePath, templateId);
+            }
+
+            using (var destinationArchive = ZipFile.Open(tempDestination, ZipArchiveMode.Create))
+            {
+                var addedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                AddFileToFlatZip(destinationArchive, addedNames, templatePath, $"{templateId}.template");
+
+                if (!string.IsNullOrWhiteSpace(convertedBackgroundPath) && File.Exists(convertedBackgroundPath))
+                {
+                    AddFileToFlatZip(destinationArchive, addedNames, convertedBackgroundPath, convertedBackgroundEntryName);
+                }
+
+                foreach (var asset in extractedAssets)
+                {
+                    if (!File.Exists(asset.Path) ||
+                        string.Equals(asset.Path, backgroundSource.Path, StringComparison.OrdinalIgnoreCase) ||
+                        asset.EntryName.EndsWith(".template", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    AddFileToFlatZip(destinationArchive, addedNames, asset.Path, asset.EntryName);
+                }
+            }
+
+            if (File.Exists(destinationFullPath))
+            {
+                File.Delete(destinationFullPath);
+            }
+
+            File.Move(tempDestination, destinationFullPath);
+        }
+        finally
+        {
+            TryDeleteFile(tempDestination);
+            TryDeleteDirectory(tempRoot);
+        }
+    }
+
+    private static (string Path, string EntryName) SelectUniversal88BackgroundCandidate(
+        IReadOnlyList<(string Path, string EntryName)> assets)
+    {
+        var candidates = assets
+            .Where(asset => IsConverted88To92BackgroundSource(asset.EntryName))
+            .ToList();
+        return candidates
+                   .OrderByDescending(asset => Path.GetExtension(asset.EntryName).Equals(".mp4", StringComparison.OrdinalIgnoreCase) ? 4 : 0)
+                   .ThenByDescending(asset => Path.GetExtension(asset.EntryName).Equals(".h264", StringComparison.OrdinalIgnoreCase) ? 3 : 0)
+                   .ThenByDescending(asset => asset.EntryName.Contains("background", StringComparison.OrdinalIgnoreCase) ? 2 : 0)
+                   .ThenByDescending(asset => asset.EntryName.Contains("video", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
+                   .FirstOrDefault();
+    }
+
+    private static bool IsConverted88To92BackgroundSource(string entryName)
+    {
+        var extension = Path.GetExtension(entryName);
+        if (extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".h264", StringComparison.OrdinalIgnoreCase) ||
+            extension.Equals(".gif", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".png", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var name = Path.GetFileNameWithoutExtension(entryName);
+        return !name.StartsWith("template_", StringComparison.OrdinalIgnoreCase) &&
+               (name.Contains("background", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("wallpaper", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("bg", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool IsUniversal88RuntimeH264Source(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path) ||
+            !Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase) ||
+            !File.Exists(path))
+        {
+            return false;
+        }
+
+        var size = TryGetVideoPixelSize(path);
+        return size.Width == 480 && size.Height == 1920;
+    }
+
+    private static void AddFileToFlatZip(
+        ZipArchive archive,
+        HashSet<string> addedNames,
+        string sourcePath,
+        string entryName)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+        {
+            return;
+        }
+
+        var safeEntryName = GetSafeFileName(entryName);
+        if (!addedNames.Add(safeEntryName))
+        {
+            return;
+        }
+
+        archive.CreateEntryFromFile(sourcePath, safeEntryName, CompressionLevel.Optimal);
+    }
+
     private static void ConvertUniversal88LConnectZipToVm92(
         string sourcePackagePath,
         string destinationPackagePath,
@@ -14612,9 +16519,13 @@ public partial class MainWindow : Window
         InstallPackagedFonts(archive);
 
         var deviceModel = manifest.DeviceModel;
-        if (deviceModel is not ("hydroshift-ii-lcd-s" or "hydroshift-ii-lcd-c" or UniversalScreenDeviceModel or Vm92DeviceModel))
+        if (deviceModel is not ("hydroshift-ii-lcd-s" or "hydroshift-ii-lcd-c" or UniversalScreenDeviceModel or Vm92DeviceModel or OledCurveDeviceModel))
         {
             throw new InvalidDataException("The theme package contains an unsupported device model.");
+        }
+        if (!SupportsOrientationSelection(deviceModel))
+        {
+            manifest.UniversalOrientation = "landscape";
         }
 
         var templateEntry = GetSafePackageEntry(archive, manifest.TemplateFile);
@@ -15008,12 +16919,20 @@ public partial class MainWindow : Window
             {
                 var installedTemplate = await _supporter.LoadTemplatePathAsync(deviceModel, installedTemplatePath);
                 if (!string.IsNullOrWhiteSpace(installedTemplate.BackgroundPath) &&
-                    File.Exists(installedTemplate.BackgroundPath))
+                    File.Exists(installedTemplate.BackgroundPath) &&
+                    !IsLConnectTemplatePreviewImage(installedTemplate.BackgroundPath))
                 {
                     importedBackgroundPath = installedTemplate.BackgroundPath;
                     AppLogger.Info(
                         $"L-Connect imported template default background selected for {lConnectId}: " +
                         $"{DescribeFileForLog(importedBackgroundPath)}");
+                }
+                else if (IsLConnectTemplatePreviewImage(installedTemplate.BackgroundPath))
+                {
+                    AppLogger.Warning(
+                        $"L-Connect imported template background ignored because it points to a preview image for {lConnectId}: " +
+                        $"{DescribeFileForLog(installedTemplate.BackgroundPath)}; " +
+                        $"keeping {DescribeFileForLog(importedBackgroundPath)}");
                 }
             }
             catch (Exception ex)
@@ -15349,7 +17268,7 @@ public partial class MainWindow : Window
             Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase));
         var h264Source = bundle.FirstOrDefault(path =>
             Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase));
-        if (string.IsNullOrWhiteSpace(mp4Source))
+        if (string.IsNullOrWhiteSpace(mp4Source) && string.IsNullOrWhiteSpace(h264Source))
         {
             return "";
         }
@@ -15366,20 +17285,27 @@ public partial class MainWindow : Window
         var safeTemplateId = SanitizeFileName(templateId);
         if (string.IsNullOrWhiteSpace(safeTemplateId))
         {
-            safeTemplateId = Path.GetFileNameWithoutExtension(mp4Source);
+            safeTemplateId = Path.GetFileNameWithoutExtension(FirstNonEmpty(mp4Source ?? "", h264Source ?? ""));
         }
 
         var mp4Destination = Path.Combine(uploadedBackgroundRoot, safeTemplateId + ".mp4");
-        CopyFileIfDifferent(mp4Source, mp4Destination);
+        if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
+        {
+            CopyFileIfDifferent(mp4Source, mp4Destination);
+        }
 
         var h264Destination = Path.Combine(uploadedBackgroundRoot, safeTemplateId + ".h264");
         try
         {
-            await ConvertExportBackgroundAsync(
+            var h264Input = !string.IsNullOrWhiteSpace(h264Source) && File.Exists(h264Source)
+                ? h264Source
+                : !string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source)
+                    ? mp4Destination
+                    : "";
+            await EnsureWideRuntimeH264BackgroundAsync(
                 deviceModel,
-                mp4Destination,
+                h264Input,
                 templateId,
-                ".h264",
                 h264Destination,
                 preferLandscape);
         }
@@ -15403,7 +17329,7 @@ public partial class MainWindow : Window
             {
                 await ConvertExportBackgroundAsync(
                     deviceModel,
-                    mp4Source,
+                    mp4Source ?? "",
                     templateId,
                     ".mp4",
                     portraitPreviewMp4,
@@ -15422,7 +17348,83 @@ public partial class MainWindow : Window
             }
         }
 
-        return mp4Destination;
+        return File.Exists(mp4Destination) ? mp4Destination : h264Destination;
+    }
+
+    private async Task<string> EnsureWideRuntimeH264BackgroundAsync(
+        string deviceModel,
+        string sourcePath,
+        string templateId,
+        string outputPath,
+        bool preferLandscape)
+    {
+        if (!IsWideScreenDeviceModel(deviceModel) ||
+            string.IsNullOrWhiteSpace(sourcePath) ||
+            !File.Exists(sourcePath))
+        {
+            return sourcePath;
+        }
+
+        var expected = GetWideRuntimeH264Pixels(deviceModel, preferLandscape ? "landscape" : "portrait");
+        var sourceExtension = Path.GetExtension(sourcePath);
+        var sourceSize = sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase)
+            ? TryGetVideoPixelSize(sourcePath)
+            : (Width: 0, Height: 0);
+        var outputFullPath = Path.GetFullPath(outputPath);
+        var sourceFullPath = Path.GetFullPath(sourcePath);
+
+        if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
+            sourceSize.Width == expected.Width &&
+            sourceSize.Height == expected.Height)
+        {
+            if (!string.Equals(sourceFullPath, outputFullPath, StringComparison.OrdinalIgnoreCase))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(outputFullPath) ?? "");
+                CopyFileWithRetry(sourcePath, outputFullPath);
+            }
+
+            return outputPath;
+        }
+
+        var conversionOutput = outputPath;
+        var temporaryOutput = "";
+        if (string.Equals(sourceFullPath, outputFullPath, StringComparison.OrdinalIgnoreCase))
+        {
+            temporaryOutput = Path.Combine(
+                Path.GetTempPath(),
+                $"wide_runtime_background_{Guid.NewGuid():N}.h264");
+            conversionOutput = temporaryOutput;
+        }
+
+        try
+        {
+            var convertedPath = await ConvertExportBackgroundAsync(
+                deviceModel,
+                sourcePath,
+                templateId,
+                ".h264",
+                conversionOutput,
+                preferLandscape);
+            if (!string.IsNullOrWhiteSpace(temporaryOutput))
+            {
+                CopyFileWithRetry(convertedPath, outputPath);
+            }
+
+            var outputSize = TryGetVideoPixelSize(outputPath);
+            if (outputSize.Width != expected.Width || outputSize.Height != expected.Height)
+            {
+                AppLogger.Warning(
+                    $"Wide runtime H264 background has unexpected dimensions: " +
+                    $"{DescribeFileForLog(outputPath)}; " +
+                    $"size={outputSize.Width}x{outputSize.Height}; expected={expected.Width}x{expected.Height}");
+            }
+
+            return outputPath;
+        }
+        finally
+        {
+            TryDeleteFile(temporaryOutput);
+        }
     }
 
     private async Task<string> EnsureImportedLConnectVideoBackgroundPairAsync(
@@ -15439,14 +17441,41 @@ public partial class MainWindow : Window
             return "";
         }
 
+        var bundle = packageBackgroundBundle
+            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .ToList();
+        var mp4Source = bundle.FirstOrDefault(path =>
+            Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase));
+        var h264Source = bundle.FirstOrDefault(path =>
+            Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(mp4Source) && string.IsNullOrWhiteSpace(h264Source))
+        {
+            return "";
+        }
+
         var runtimeBackgroundPath = ResolveInstalledTemplateRuntimeBackgroundPath(
             deviceModel,
             installedTemplatePath,
             "");
         if (string.IsNullOrWhiteSpace(runtimeBackgroundPath) ||
-            !Path.GetExtension(runtimeBackgroundPath).Equals(".h264", StringComparison.OrdinalIgnoreCase))
+            !Path.GetExtension(runtimeBackgroundPath).Equals(".h264", StringComparison.OrdinalIgnoreCase) ||
+            IsTemporaryPath(runtimeBackgroundPath))
         {
-            return "";
+            var uploadedBackgroundRoot = Path.Combine(
+                LConnectPaths.ProgramDataRoot,
+                "uploaded",
+                deviceModel,
+                "template-background");
+            Directory.CreateDirectory(uploadedBackgroundRoot);
+            var runtimeFileName = !string.IsNullOrWhiteSpace(h264Source)
+                ? Path.GetFileName(h264Source)
+                : $"{SanitizeFileName(templateId)}.h264";
+            if (string.IsNullOrWhiteSpace(runtimeFileName) || runtimeFileName.Equals(".h264", StringComparison.OrdinalIgnoreCase))
+            {
+                runtimeFileName = $"background-{Guid.NewGuid():N}.h264";
+            }
+
+            runtimeBackgroundPath = Path.Combine(uploadedBackgroundRoot, runtimeFileName);
         }
 
         var runtimeDirectory = Path.GetDirectoryName(runtimeBackgroundPath);
@@ -15458,19 +17487,43 @@ public partial class MainWindow : Window
 
         Directory.CreateDirectory(runtimeDirectory);
         var runtimeMp4Path = Path.Combine(runtimeDirectory, runtimeBaseName + ".mp4");
-        var bundle = packageBackgroundBundle
-            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
-            .ToList();
-        var mp4Source = bundle.FirstOrDefault(path =>
-            Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase));
-        var h264Source = bundle.FirstOrDefault(path =>
-            Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase));
         var temporaryH264Path = "";
         var temporaryMp4Path = "";
 
         try
         {
-            if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
+            if (!string.IsNullOrWhiteSpace(h264Source) && File.Exists(h264Source))
+            {
+                temporaryH264Path = Path.Combine(
+                    Path.GetTempPath(),
+                    $"lconnect_import_background_{Guid.NewGuid():N}.h264");
+                await EnsureWideRuntimeH264BackgroundAsync(
+                    deviceModel,
+                    h264Source,
+                    templateId,
+                    temporaryH264Path,
+                    preferLandscape);
+                CopyFileWithRetry(temporaryH264Path, runtimeBackgroundPath);
+                if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
+                {
+                    CopyFileWithRetry(mp4Source, runtimeMp4Path);
+                }
+                else
+                {
+                    temporaryMp4Path = Path.Combine(
+                        Path.GetTempPath(),
+                        $"lconnect_import_background_{Guid.NewGuid():N}.mp4");
+                    await ConvertExportBackgroundAsync(
+                        deviceModel,
+                        runtimeBackgroundPath,
+                        templateId,
+                        ".mp4",
+                        temporaryMp4Path,
+                        preferLandscape);
+                    CopyFileWithRetry(temporaryMp4Path, runtimeMp4Path);
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
             {
                 var runtimeMp4Source = mp4Source;
                 if (!preferLandscape)
@@ -15490,37 +17543,14 @@ public partial class MainWindow : Window
                 temporaryH264Path = Path.Combine(
                     Path.GetTempPath(),
                     $"lconnect_import_background_{Guid.NewGuid():N}.h264");
-                await ConvertExportBackgroundAsync(
+                await EnsureWideRuntimeH264BackgroundAsync(
                     deviceModel,
                     mp4Source,
                     templateId,
-                    ".h264",
                     temporaryH264Path,
                     preferLandscape);
                 CopyFileWithRetry(temporaryH264Path, runtimeBackgroundPath);
                 CopyFileWithRetry(runtimeMp4Source, runtimeMp4Path);
-            }
-            else if (!string.IsNullOrWhiteSpace(h264Source) && File.Exists(h264Source))
-            {
-                CopyFileWithRetry(h264Source, runtimeBackgroundPath);
-                if (preferLandscape)
-                {
-                    TryCreateUniversal88PreviewBackgroundSibling(runtimeBackgroundPath, runtimeMp4Path);
-                }
-                else
-                {
-                    temporaryMp4Path = Path.Combine(
-                        Path.GetTempPath(),
-                        $"lconnect_import_background_{Guid.NewGuid():N}.mp4");
-                    await ConvertExportBackgroundAsync(
-                        deviceModel,
-                        runtimeBackgroundPath,
-                        templateId,
-                        ".mp4",
-                        temporaryMp4Path,
-                        preferLandscape: false);
-                    CopyFileWithRetry(temporaryMp4Path, runtimeMp4Path);
-                }
             }
             else
             {
@@ -15537,6 +17567,7 @@ public partial class MainWindow : Window
                     $"size={h264Size.Width}x{h264Size.Height}; expected={expectedH264.Width}x{expectedH264.Height}");
             }
 
+            await PatchInstalledTemplateRuntimeBackgroundAsync(deviceModel, installedTemplatePath, runtimeBackgroundPath);
             return runtimeBackgroundPath;
         }
         catch (Exception ex)
@@ -15574,6 +17605,30 @@ public partial class MainWindow : Window
         return fullPath.StartsWith(
             fullRoot + Path.DirectorySeparatorChar,
             StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTemporaryPath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return false;
+        }
+
+        try
+        {
+            var fullPath = Path.GetFullPath(path)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var tempRoot = Path.GetFullPath(Path.GetTempPath())
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return fullPath.StartsWith(
+                tempRoot + Path.DirectorySeparatorChar,
+                StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return path.Contains(@"\Temp\", StringComparison.OrdinalIgnoreCase) ||
+                   path.Contains(@"/Temp/", StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static void AddTemplateReferencedBackgroundAliases(
@@ -16073,7 +18128,7 @@ public partial class MainWindow : Window
         var dialog = new OpenFileDialog
         {
             Title = GetLanguageText("dialogs.chooseBackgroundMedia", "Choose LCD background media"),
-            Filter = GetLanguageText("dialogs.mediaFilter", "Media files (*.mp4;*.gif;*.jpg;*.jpeg;*.h264)|*.mp4;*.gif;*.jpg;*.jpeg;*.h264|All files (*.*)|*.*")
+            Filter = GetLanguageText("dialogs.mediaFilter", "Media files (*.mp4;*.mov;*.gif;*.jpg;*.jpeg;*.h264)|*.mp4;*.mov;*.gif;*.jpg;*.jpeg;*.h264|All files (*.*)|*.*")
         };
         if (dialog.ShowDialog(this) != true) return;
 
@@ -16224,17 +18279,15 @@ public partial class MainWindow : Window
                     canvas.Width,
                     canvas.Height);
                 packageBackgroundPath = File.Exists(appliedBackground) ? appliedBackground : backgroundPath;
-                if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+                if (IsWideScreenDeviceModel(deviceModel) &&
                     !string.IsNullOrWhiteSpace(packageBackgroundPath) &&
-                    File.Exists(packageBackgroundPath) &&
-                    Path.GetExtension(packageBackgroundPath).Equals(".mp4", StringComparison.OrdinalIgnoreCase))
+                    File.Exists(packageBackgroundPath))
                 {
                     var packageH264Path = Path.ChangeExtension(packageBackgroundPath, ".h264");
-                    await ConvertExportBackgroundAsync(
+                    packageBackgroundPath = await EnsureWideRuntimeH264BackgroundAsync(
                         deviceModel,
                         packageBackgroundPath,
                         templateId,
-                        ".h264",
                         packageH264Path,
                         preferLandscape: !string.Equals(universalOrientation, "portrait", StringComparison.OrdinalIgnoreCase));
                 }
@@ -16881,7 +18934,11 @@ public partial class MainWindow : Window
             }
 
             UpdateStatusText.Text = FormatLanguageText("updates.latestFound", "Latest release: {0}. Current version: {1}.", release.LatestTag, currentVersion);
-            var choice = ShowUpdateAvailableDialog(release.LatestTag, currentVersion, !string.IsNullOrWhiteSpace(release.InstallerUrl));
+            var choice = ShowUpdateAvailableDialog(
+                release.LatestTag,
+                currentVersion,
+                !string.IsNullOrWhiteSpace(release.InstallerUrl),
+                release.ReleaseNotes);
             if (choice == UpdateDialogChoice.Install && !string.IsNullOrWhiteSpace(release.InstallerUrl))
             {
                 await StartSelfUpdateAsync(release.InstallerUrl, release.LatestTag);
@@ -16921,7 +18978,11 @@ public partial class MainWindow : Window
             {
                 Dispatcher.Invoke(() =>
                 {
-                    var choice = ShowUpdateAvailableDialog(release.LatestTag, currentVersion, !string.IsNullOrWhiteSpace(release.InstallerUrl));
+                    var choice = ShowUpdateAvailableDialog(
+                        release.LatestTag,
+                        currentVersion,
+                        !string.IsNullOrWhiteSpace(release.InstallerUrl),
+                        release.ReleaseNotes);
                     if (choice == UpdateDialogChoice.Install && !string.IsNullOrWhiteSpace(release.InstallerUrl))
                     {
                         _ = StartSelfUpdateAsync(release.InstallerUrl, release.LatestTag);
@@ -16946,6 +19007,7 @@ public partial class MainWindow : Window
         var root = doc.RootElement;
         var latestName = GetJsonString(root, "name");
         var latestTag = GetJsonString(root, "tag_name", latestName);
+        var releaseNotes = GetJsonString(root, "body");
         var releaseUrl = GetJsonString(root, "html_url", GitHubReleasesUrl);
         string? installerUrl = null;
 
@@ -16966,6 +19028,7 @@ public partial class MainWindow : Window
         {
             LatestTag = latestTag,
             LatestName = latestName,
+            ReleaseNotes = releaseNotes,
             ReleaseUrl = releaseUrl,
             InstallerUrl = installerUrl
         };
@@ -17055,7 +19118,7 @@ public partial class MainWindow : Window
                     ? new ProcessStartInfo
                     {
                         FileName = "msiexec.exe",
-                        Arguments = $"/i \"{tempPath}\"",
+                        Arguments = $"/i \"{tempPath}\" INSTALLFOLDER=\"{EscapeMsiPropertyValue(GetCurrentInstallDirectory())}\"",
                         UseShellExecute = true
                     }
                     : new ProcessStartInfo
@@ -17084,6 +19147,14 @@ public partial class MainWindow : Window
 
         progressWindow.ShowDialog();
     }
+
+    private static string GetCurrentInstallDirectory()
+    {
+        var directory = AppContext.BaseDirectory;
+        return Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static string EscapeMsiPropertyValue(string value) => value.Replace("\"", "\"\"");
 
     private static bool IsInstallerAssetName(string? name)
     {
@@ -17587,19 +19658,43 @@ public partial class MainWindow : Window
             var existingIds = GalleryThemes
                 .Select(theme => theme.Id)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var existingKeys = GalleryThemes
+                .Select((theme, index) => new { Key = GetGalleryThemeMergeKey(theme), Index = index })
+                .Where(item => !string.IsNullOrWhiteSpace(item.Key))
+                .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First().Index, StringComparer.OrdinalIgnoreCase);
             var added = false;
             foreach (var theme in communityThemes)
             {
+                PrepareCommunityGalleryThemeForDisplay(theme);
+
+                var mergeKey = GetGalleryThemeMergeKey(theme);
+                if (!string.IsNullOrWhiteSpace(mergeKey) &&
+                    existingKeys.TryGetValue(mergeKey, out var existingIndex))
+                {
+                    var existingTheme = GalleryThemes[existingIndex];
+                    if (!string.Equals(existingTheme.Id, theme.Id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        GalleryThemes[existingIndex] = theme;
+                        existingIds.Remove(existingTheme.Id);
+                        existingIds.Add(theme.Id);
+                        added = true;
+                    }
+
+                    continue;
+                }
+
                 if (!existingIds.Add(theme.Id))
                 {
                     continue;
                 }
 
-                theme.DeviceName = string.IsNullOrWhiteSpace(theme.DeviceName)
-                    ? GetDeviceDisplayName(theme.DeviceModel)
-                    : theme.DeviceName;
-                theme.Status = GetLanguageText("gallery.loadingPreview", "Loading preview");
                 GalleryThemes.Add(theme);
+                if (!string.IsNullOrWhiteSpace(mergeKey))
+                {
+                    existingKeys[mergeKey] = GalleryThemes.Count - 1;
+                }
+
                 added = true;
             }
 
@@ -17614,6 +19709,79 @@ public partial class MainWindow : Window
             ApplyGalleryFilter();
             _ = LoadVisibleGalleryPreviewsAsync();
         }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void PrepareCommunityGalleryThemeForDisplay(GalleryThemeItem theme)
+    {
+        theme.DeviceName = string.IsNullOrWhiteSpace(theme.DeviceName)
+            ? GetDeviceDisplayName(theme.DeviceModel)
+            : theme.DeviceName;
+        theme.Status = GetLanguageText("gallery.loadingPreview", "Loading preview");
+    }
+
+    private static string GetGalleryThemeMergeKey(GalleryThemeItem theme)
+    {
+        var token = GetGalleryThemeStableToken(theme);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            return $"{NormalizeGalleryMergePart(theme.DeviceModel)}|token:{token}";
+        }
+
+        var name = NormalizeGalleryMergePart(theme.Name);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "";
+        }
+
+        return $"{NormalizeGalleryMergePart(theme.DeviceModel)}|name:{name}";
+    }
+
+    private static string GetGalleryThemeStableToken(GalleryThemeItem theme)
+    {
+        foreach (var value in new[] { theme.Id, theme.PackageUrl, theme.PreviewUrl })
+        {
+            var token = ExtractGalleryThemeStableToken(value);
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                return token;
+            }
+        }
+
+        return "";
+    }
+
+    private static string ExtractGalleryThemeStableToken(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        var decoded = Uri.UnescapeDataString(value).ToLowerInvariant();
+        var guidMatch = Regex.Match(
+            decoded,
+            @"(?<![0-9a-f])([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![0-9a-f])",
+            RegexOptions.IgnoreCase);
+        if (guidMatch.Success)
+        {
+            return guidMatch.Groups[1].Value;
+        }
+
+        var suffixMatches = Regex.Matches(decoded, @"(?:^|[-_/])([0-9a-f]{8})(?=(?:[-_.]|\?|$))", RegexOptions.IgnoreCase);
+        return suffixMatches.Count > 0 ? suffixMatches[^1].Groups[1].Value : "";
+    }
+
+    private static string NormalizeGalleryMergePart(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        normalized = Regex.Replace(normalized, @"[^\p{L}\p{Nd}]+", " ");
+        normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
+        return normalized;
     }
 
     private static void SetMissingGalleryOrientationsFromMetadata(IEnumerable<GalleryThemeItem> themes)
@@ -17861,6 +20029,11 @@ public partial class MainWindow : Window
         if (IsVisibleGalleryDeviceFilterChecked(GalleryFilterVm92Check))
         {
             selected.Add(Vm92DeviceModel);
+        }
+
+        if (IsVisibleGalleryDeviceFilterChecked(GalleryFilterOledCurveCheck))
+        {
+            selected.Add(OledCurveDeviceModel);
         }
 
         return selected;
@@ -19405,7 +21578,8 @@ public partial class MainWindow : Window
             deviceModel,
             templatePath,
             backgroundPath,
-            updatePreview);
+            updatePreview,
+            applyBackgroundOverride: true);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(20));
         var completedTask = await Task.WhenAny(activationTask, timeoutTask);
         if (completedTask == activationTask)
@@ -19859,6 +22033,62 @@ public partial class MainWindow : Window
         return "";
     }
 
+    private async Task UpdateWideTemplateAnimationPreviewFromBackgroundAsync(
+        string deviceModel,
+        string templatePath,
+        string backgroundPath,
+        string previewFramePath = "")
+    {
+        if (!IsWideScreenDeviceModel(deviceModel) ||
+            string.IsNullOrWhiteSpace(templatePath) ||
+            !File.Exists(templatePath))
+        {
+            return;
+        }
+
+        var generatedPreviewPath = "";
+        try
+        {
+            var animationPreviewPath = "";
+            if (!string.IsNullOrWhiteSpace(previewFramePath) &&
+                IsImageFilePath(previewFramePath) &&
+                File.Exists(previewFramePath))
+            {
+                animationPreviewPath = previewFramePath;
+            }
+            else if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+            {
+                if (IsImageFilePath(backgroundPath))
+                {
+                    animationPreviewPath = backgroundPath;
+                }
+                else
+                {
+                    generatedPreviewPath = await CreateDeterministicBackgroundPreviewAsync(backgroundPath);
+                    animationPreviewPath = generatedPreviewPath;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(animationPreviewPath) && File.Exists(animationPreviewPath))
+            {
+                await _supporter.UpdateAnimationPreviewBitmapsAsync(
+                    deviceModel,
+                    templatePath,
+                    animationPreviewPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(
+                $"Animation preview bitmaps could not be updated from background for {Path.GetFileNameWithoutExtension(templatePath)}: " +
+                $"{ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            TryDeleteFile(generatedPreviewPath);
+        }
+    }
+
     private async Task ExportThemePackageAsync(string packagePath, ThemeExportSnapshot snapshot)
     {
         var exportTemplateId = string.IsNullOrWhiteSpace(snapshot.ExportTemplateId)
@@ -19893,16 +22123,10 @@ public partial class MainWindow : Window
                 await _supporter.UpdateThemePreviewAsync(snapshot.DeviceModel, tempTemplate, tempPreviewPath);
                 if (IsWideScreenDeviceModel(snapshot.DeviceModel))
                 {
-                    try
-                    {
-                        await _supporter.UpdateAnimationPreviewBitmapsAsync(snapshot.DeviceModel, tempTemplate, tempPreviewPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.Warning(
-                            $"Export animation preview bitmaps could not be updated for {exportTemplateId}: " +
-                            $"{ex.GetType().Name}: {ex.Message}");
-                    }
+                    await UpdateWideTemplateAnimationPreviewFromBackgroundAsync(
+                        snapshot.DeviceModel,
+                        tempTemplate,
+                        snapshot.BackgroundPath);
                 }
             }
 
@@ -19935,6 +22159,11 @@ public partial class MainWindow : Window
 
     private static bool IsGalleryBackgroundEntry(string name)
     {
+        if (IsPackagePreviewLikeEntry(name))
+        {
+            return false;
+        }
+
         var extension = Path.GetExtension(name);
         return IsGalleryVideoExtension(extension) ||
                extension.Equals(".gif", StringComparison.OrdinalIgnoreCase) ||
@@ -19942,6 +22171,21 @@ public partial class MainWindow : Window
                extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) ||
                extension.Equals(".png", StringComparison.OrdinalIgnoreCase) ||
                extension.Equals(".webp", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsPackagePreviewLikeEntry(string name)
+    {
+        var normalized = name.Replace('\\', '/');
+        var fileName = Path.GetFileName(normalized);
+        var directory = Path.GetDirectoryName(normalized)?.Replace('\\', '/') ?? "";
+        return fileName.StartsWith("template_", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("themepic", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("theme-pic", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("thumbnail", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Contains("preview", StringComparison.OrdinalIgnoreCase) ||
+               directory.Split('/', StringSplitOptions.RemoveEmptyEntries)
+                   .Any(part => part.Equals("preview", StringComparison.OrdinalIgnoreCase) ||
+                                part.Equals("thumbnail", StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsGalleryVideoExtension(string extension) =>
@@ -20114,7 +22358,7 @@ public partial class MainWindow : Window
         stream.CopyTo(memory);
         var templateText = System.Text.Encoding.UTF8.GetString(memory.ToArray());
         return templateText.Contains("GraphAnimation", StringComparison.OrdinalIgnoreCase) &&
-               Regex.IsMatch(templateText, @"\.(mp4|h264|gif|png|jpe?g|webp)", RegexOptions.IgnoreCase);
+               Regex.IsMatch(templateText, @"\.(mp4|h264|gif)", RegexOptions.IgnoreCase);
     }
 
     private static async Task DownloadGalleryPackageAsync(string source, string destinationPath, Action<double> reportProgress)
@@ -20952,9 +23196,20 @@ private static string CreateExportPackageBaseName(string templateId)
         UpdatePreviewPlaybackButton(false);
         BackgroundImage.Source = null;
         BackgroundImage.Visibility = Visibility.Collapsed;
+        OledCurveSplitBackgroundCanvas.Children.Clear();
+        OledCurveSplitBackgroundCanvas.Visibility = Visibility.Collapsed;
         _backgroundPreviewAutoRotationDegrees = 0;
         TryDeleteFile(_generatedBackgroundPreviewFramePath);
         _generatedBackgroundPreviewFramePath = "";
+
+        if (_currentOledCurveSplitBackgrounds.Count > 0 &&
+            LoadOledCurveSplitBackgroundPreview())
+        {
+            _currentBackgroundPath = "";
+            _selectedBackgroundSourcePath = "";
+            UpdatePreviewPlaybackButton(false);
+            return;
+        }
 
         var resolved = ResolveBackgroundPath(backgroundPath, backgroundName);
         if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
@@ -21040,6 +23295,73 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             // Preview media is best-effort; template editing should keep working.
         }
+    }
+
+    private bool LoadOledCurveSplitBackgroundPreview()
+    {
+        var renderedAny = false;
+        foreach (var part in _currentOledCurveSplitBackgrounds)
+        {
+            var resolved = ResolveBackgroundPath(part.Path, Path.GetFileName(part.Path));
+            if (string.IsNullOrWhiteSpace(resolved) || !File.Exists(resolved))
+            {
+                continue;
+            }
+
+            var ext = Path.GetExtension(resolved).ToLowerInvariant();
+            if (ext is ".mp4" or ".avi" or ".mov" or ".wmv" or ".h264")
+            {
+                var frame = ext == ".h264"
+                    ? CreateBackgroundPreviewFrame(resolved)
+                    : !AnimateVideoPreviews
+                        ? CreateBackgroundPreviewFrame(resolved)
+                        : "";
+                if (!string.IsNullOrWhiteSpace(frame) && File.Exists(frame))
+                {
+                    resolved = frame;
+                    ext = Path.GetExtension(resolved).ToLowerInvariant();
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            if (ext is not (".png" or ".jpg" or ".jpeg" or ".bmp" or ".gif"))
+            {
+                continue;
+            }
+
+            try
+            {
+                var bitmap = new BitmapImage();
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.UriSource = new Uri(resolved, UriKind.Absolute);
+                bitmap.EndInit();
+                bitmap.Freeze();
+
+                var image = new Image
+                {
+                    Source = bitmap,
+                    Stretch = Stretch.Fill,
+                    Width = ToPreview(part.Width),
+                    Height = _previewCanvasHeight,
+                    IsHitTestVisible = false
+                };
+                Canvas.SetLeft(image, ToPreview(part.OffsetX));
+                Canvas.SetTop(image, 0);
+                Canvas.SetZIndex(image, 0);
+                OledCurveSplitBackgroundCanvas.Children.Add(image);
+                renderedAny = true;
+            }
+            catch
+            {
+            }
+        }
+
+        OledCurveSplitBackgroundCanvas.Visibility = renderedAny ? Visibility.Visible : Visibility.Collapsed;
+        return renderedAny;
     }
 
     private bool IsBackgroundPreviewVariantCompatibleWithCurrentOrientation(string path)
@@ -21201,7 +23523,7 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             var lconnect = LConnectPaths.ProgramDataRoot;
             var model = GetSelectedDeviceModel();
-            var assetRoot = @"C:\Program Files\Lian-Li\L-Connect 3\Assets";
+            var assetRoot = Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets");
             var searchModels = new List<string> { model };
             if (string.Equals(model, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
             {
@@ -21341,7 +23663,7 @@ private static string CreateExportPackageBaseName(string templateId)
             }
 
             var baseNoExt = Path.Combine(Path.GetDirectoryName(candidate) ?? "", Path.GetFileNameWithoutExtension(candidate));
-            foreach (var ext in new[] { ".mp4", ".h264", ".gif", ".png", ".jpg", ".jpeg" })
+            foreach (var ext in new[] { ".mp4", ".mov", ".h264", ".gif", ".png", ".jpg", ".jpeg" })
             {
                 var alternate = baseNoExt + ext;
                 if (File.Exists(alternate))
@@ -21365,7 +23687,7 @@ private static string CreateExportPackageBaseName(string templateId)
             }
 
             var baseNoExt = Path.Combine(Path.GetDirectoryName(candidate) ?? "", Path.GetFileNameWithoutExtension(candidate));
-            foreach (var ext in new[] { ".mp4", ".h264", ".gif", ".png", ".jpg", ".jpeg" })
+            foreach (var ext in new[] { ".mp4", ".mov", ".h264", ".gif", ".png", ".jpg", ".jpeg" })
             {
                 var alternate = baseNoExt + ext;
                 if (File.Exists(alternate)) return alternate;
@@ -21430,6 +23752,7 @@ private static string CreateExportPackageBaseName(string templateId)
 
     private static bool IsSupportedBackgroundMediaFile(string path) =>
         path.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+        path.EndsWith(".mov", StringComparison.OrdinalIgnoreCase) ||
         path.EndsWith(".h264", StringComparison.OrdinalIgnoreCase) ||
         path.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ||
         path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ||
@@ -21571,6 +23894,8 @@ private static string CreateExportPackageBaseName(string templateId)
         UseActiveCheck.Content = GetText(text, "top.useActiveTemplate", "Use active template");
         OfflineModeCheck.Content = GetText(text, "top.offlineMode", "Offline");
         OfflineModeCheck.ToolTip = GetText(text, "tooltips.offlineMode", "Work on a local copy without sending changes to L-Connect");
+        ApplyOrientationButton.Content = GetText(text, "top.changeOrientation", "Change Orientation");
+        ApplyOrientationButton.ToolTip = GetText(text, "tooltips.changeOrientation", "Save as a new theme with the selected orientation");
         ActiveThemeButton.Content = GetText(text, "top.activeTheme", "Active Theme");
         NewThemeButton.Content = GetText(text, "top.newTheme", "New Theme");
         LoadButton.Content = GetText(text, "top.load", "Load");
@@ -21622,6 +23947,7 @@ private static string CreateExportPackageBaseName(string templateId)
         OwnedHydroshiftCCheck.Content = GetText(text, "devices.hydroshiftC", "Hydroshift II LCD-C");
         OwnedUniversal88Check.Content = GetText(text, "devices.universal88", "8.8\" Universal Screen");
         OwnedVm92Check.Content = GetText(text, "devices.vm92", "VM 9.2 LCD");
+        OwnedOledCurveCheck.Content = GetText(text, "devices.oledCurve", "HydroShift II OLED Curve");
         ApplyDeviceNameTextBoxLanguage(text);
         Universal88DeviceCountText.Text = GetText(text, "settings.universal88DeviceCount", "8.8 screen count");
         SettingsLanguageThemeTitleText.Text = GetText(text, "settings.languageTheme", "Language & theme");
@@ -21658,6 +23984,7 @@ private static string CreateExportPackageBaseName(string templateId)
         LocalFilterHydroshiftCCheck.Content = GetText(text, "devices.hydroshiftC", "Hydroshift II LCD-C");
         LocalFilterUniversal88Check.Content = GetText(text, "devices.universal88", "8.8\" Universal Screen");
         LocalFilterVm92Check.Content = GetText(text, "devices.vm92", "VM 9.2 LCD");
+        LocalFilterOledCurveCheck.Content = GetText(text, "devices.oledCurve", "HydroShift II OLED Curve");
         LocalFilterLandscapeCheck.Content = GetText(text, "preview.landscape", "Landscape");
         LocalFilterPortraitCheck.Content = GetText(text, "preview.portrait", "Portrait");
         LocalFilterAutoCheck.Content = GetText(text, "preview.auto", "Auto");
@@ -21858,6 +24185,16 @@ private static string CreateExportPackageBaseName(string templateId)
         ThemeTestDescText.Text = GetText(text, "convertFix.themeTestDesc", "A validation workspace for checking template structure, required assets, background orientation, package references, and common L-Connect compatibility problems before sharing.");
         ThemeTestBrowsePackageButton.Content = GetText(text, "common.browse", "Browse");
         ThemeTestRunButton.Content = GetText(text, "convertFix.runThemeTest", "Run theme test");
+        ConvertFix88To92TitleText.Text = GetText(text, "convertFix.convert88To92Title", "8.8 to VM 9.2");
+        ConvertFix88To92BetaText.Text = GetText(text, "convertFix.beta", "BETA");
+        ConvertFix88To92DescText.Text = GetText(text, "convertFix.convert88To92Desc", "Import an 8.8 L-Connect ZIP and export a VM 9.2 ZIP that can be imported from L-Connect. This beta path rewrites canvas metadata and converts the background to 9.2 H.264.");
+        ConvertFix88To92WarningText.Text = GetText(text, "convertFix.convert88To92Warning", "Only the landscape/horizontal themes are supported.");
+        ConvertFix88To92Button.Content = GetText(text, "convertFix.convert88To92Button", "Convert 8.8 ZIP to VM 9.2 ZIP");
+        if (string.IsNullOrWhiteSpace(ConvertFix88To92StatusText.Text) ||
+            ConvertFix88To92StatusText.Text.Equals("Beta converter. Test the output in L-Connect before sharing.", StringComparison.OrdinalIgnoreCase))
+        {
+            ConvertFix88To92StatusText.Text = GetText(text, "convertFix.convert88To92Status", "Beta converter. Test the output in L-Connect before sharing.");
+        }
 
         FitPreviewButton.ToolTip = GetText(text, "tooltips.fitPreview", "Fit preview to the available area");
         OrientationLabel.Text = GetText(text, "preview.orientation", "ORIENTATION");
@@ -22150,7 +24487,7 @@ private static string CreateExportPackageBaseName(string templateId)
         var displayName = GetText(text, "settings.displayNameTooltip", "Display name");
         var universalDisplayName = GetText(text, "settings.universalDisplayNameTooltip", "8.8 #{0} display name");
 
-        foreach (var textBox in new[] { HydroshiftSNameBox, HydroshiftCNameBox, Vm92NameBox })
+        foreach (var textBox in new[] { HydroshiftSNameBox, HydroshiftCNameBox, Vm92NameBox, OledCurveNameBox })
         {
             if (textBox == null) continue;
             textBox.Tag = placeholder;
@@ -22628,8 +24965,9 @@ private static string CreateExportPackageBaseName(string templateId)
     {
         foreach (var button in new[]
                  {
-                     ActiveThemeButton, LoadButton, BackupButton, RestoreBackupButton,
+                    ActiveThemeButton, LoadButton, BackupButton, RestoreBackupButton,
                      NewThemeButton, UndoButton, RedoButton, ExportLConnectButton,
+                     ApplyOrientationButton,
                      EditorImportThemeButton, GallerySendThemesButton,
                      CheckUpdatesButton, OpenGitHubButton, BugReportButton,
                      FeatureRequestButton, CopyDiagnosticInfoButton,
@@ -22897,13 +25235,180 @@ private static string CreateExportPackageBaseName(string templateId)
         }
     }
 
+    private IEnumerable<string> GetCurrentLayerFontNames()
+    {
+        foreach (var layer in Layers.Where(layer => !layer.IsEditorMetadata))
+        {
+            if (!string.IsNullOrWhiteSpace(layer.Font))
+            {
+                yield return layer.Font;
+            }
+
+            if (!string.IsNullOrWhiteSpace(layer.SensorFontFamily))
+            {
+                yield return layer.SensorFontFamily;
+            }
+        }
+    }
+
+    private void PopulateCurrentLayerFonts()
+    {
+        PopulateFontCombos(GetCurrentLayerFontNames());
+    }
+
+    private void PopulateD3AddTextOptions()
+    {
+        if (AddTextBox == null || D3AddTextPresetCombo == null || D3AddTextPresetPanel == null)
+        {
+            return;
+        }
+
+        var selection = GetComboValue(AddTextBox);
+        var presetSelection = GetComboValue(D3AddTextPresetCombo);
+        AddTextBox.Items.Clear();
+        D3AddTextPresetCombo.Items.Clear();
+
+        var cache = GetCurrentD3PreviewCache();
+        if (cache != null)
+        {
+            foreach (var key in cache.Text.Keys
+                         .Select(D3TextKeyToDisplayText)
+                         .Where(value => !string.IsNullOrWhiteSpace(value))
+                         .Distinct(StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
+            {
+                AddTextBox.Items.Add(new ComboBoxItem
+                {
+                    Content = key,
+                    Tag = key
+                });
+                D3AddTextPresetCombo.Items.Add(new ComboBoxItem
+                {
+                    Content = key,
+                    Tag = key
+                });
+            }
+        }
+
+        D3AddTextPresetPanel.Visibility =
+            D3AddTextPresetCombo.Items.Count > 0 &&
+            (AddLayerTypeCombo?.SelectedItem as ComboBoxItem)?.Tag?.ToString() == "Text"
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+
+        if (!string.IsNullOrWhiteSpace(selection))
+        {
+            SetComboText(AddTextBox, selection);
+        }
+
+        if (!string.IsNullOrWhiteSpace(presetSelection))
+        {
+            SetComboText(D3AddTextPresetCombo, presetSelection);
+        }
+    }
+
+    private D3PreviewCache? GetCurrentD3PreviewCache()
+    {
+        if (!IsOledCurveDeviceSelected() ||
+            string.IsNullOrWhiteSpace(_currentTemplatePath) ||
+            !File.Exists(_currentTemplatePath))
+        {
+            return null;
+        }
+
+        return GetD3PreviewCache(new LayerRow { SourceTemplatePath = _currentTemplatePath });
+    }
+
+    private static string D3TextKeyToDisplayText(string key)
+    {
+        var value = (key ?? "").Trim();
+        return value.Equals("KB-S", StringComparison.OrdinalIgnoreCase) ? "KB/s" :
+               value.Equals("MB-S", StringComparison.OrdinalIgnoreCase) ? "MB/s" :
+               value;
+    }
+
+    private void PopulateD3EditTextOptions(LayerRow? layer)
+    {
+        if (D3EditTextPresetPanel == null || D3EditTextPresetCombo == null)
+        {
+            return;
+        }
+
+        D3EditTextPresetCombo.Items.Clear();
+        D3EditTextPresetPanel.Visibility = Visibility.Collapsed;
+
+        if (layer == null ||
+            !string.Equals(layer.RenderMode, "D3", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var cache = GetD3PreviewCache(layer);
+        if (cache == null || cache.Text.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var key in cache.Text.Keys
+                     .Select(D3TextKeyToDisplayText)
+                     .Where(value => !string.IsNullOrWhiteSpace(value))
+                     .Distinct(StringComparer.OrdinalIgnoreCase)
+                     .OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
+        {
+            D3EditTextPresetCombo.Items.Add(new ComboBoxItem
+            {
+                Content = key,
+                Tag = key
+            });
+        }
+
+        D3EditTextPresetPanel.Visibility = D3EditTextPresetCombo.Items.Count > 0
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        SetComboText(D3EditTextPresetCombo, NormalizeLConnectText(layer.Text));
+    }
+
+    private static bool IsD3TextLayer(LayerRow? layer)
+    {
+        return layer != null &&
+               string.Equals(layer.RenderMode, "D3", StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase) &&
+               string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void D3AddTextPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        var value = GetComboValue(D3AddTextPresetCombo);
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            SetComboText(AddTextBox, value);
+        }
+    }
+
+    private void D3EditTextPresetCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isLoading)
+        {
+            return;
+        }
+
+        var value = GetComboValue(D3EditTextPresetCombo);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        TextBox.Text = NormalizeLConnectText(value);
+        SetTextCheck.IsChecked = true;
+        OnInputChanged();
+    }
+
     private async Task RunDeferredStartupWorkAsync()
     {
         try
         {
-            await LoadInitialThemeAsync();
-            await RefreshTemplateListAsync(selectFirstWhenMissing: true);
-
             await Task.Run(() => 
             {
                 var sys = System.Windows.Media.Fonts.SystemFontFamilies.Select(f => f.Source)
@@ -22912,8 +25417,12 @@ private static string CreateExportPackageBaseName(string templateId)
 
                 InitializeCustomFonts();
             });
-
             await LoadFontsDeferredAsync();
+            ClearTextPreviewCaches();
+
+            await LoadInitialThemeAsync();
+            await RefreshTemplateListAsync(selectFirstWhenMissing: true);
+
             await RefreshGraphStylesAsync();
             PopulateFontCombos(new[] { GetDefaultLayerFontName() }.Concat(_systemFonts).Concat(_customFontNames));
             _ = CheckForUpdatesOnStartupAsync();
@@ -22939,7 +25448,7 @@ private static string CreateExportPackageBaseName(string templateId)
             return;
         }
 
-        PopulateFontCombos(fonts.Concat(_systemFonts).Concat(_customFontNames));
+        PopulateFontCombos(fonts.Concat(_systemFonts).Concat(_customFontNames).Concat(GetCurrentLayerFontNames()));
         SetComboText(FontCombo, string.IsNullOrWhiteSpace(selectedFont) ? GetDefaultLayerFontName() : selectedFont);
         SetComboText(AddFontCombo, string.IsNullOrWhiteSpace(selectedAddFont) ? GetDefaultLayerFontName() : selectedAddFont);
     }
@@ -23152,6 +25661,14 @@ private static string CreateExportPackageBaseName(string templateId)
 
     private string GetLayerDisplayType(LayerRow layer)
     {
+        if (string.Equals(layer.RenderMode, "D3", StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(layer.Type, "GraphItem", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase)
+                ? "3D Text"
+                : "3D Data";
+        }
+
         return (layer.Type ?? "") switch
         {
             "GraphAnimation" => GetLanguageText("add.typeAnimation", "Animation"),
@@ -23595,6 +26112,95 @@ private static string CreateExportPackageBaseName(string templateId)
         }
     }
 
+    private void ExportLayerMediaButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (LayerGrid.SelectedItem is not LayerRow layer)
+        {
+            return;
+        }
+
+        var sourcePath = ResolveLayerMediaExportPath(layer);
+        if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+        {
+            MessageBox.Show(
+                this,
+                GetLanguageText("messages.layerMediaExportMissing", "No image or background file could be found for this layer."),
+                GetLanguageText("messages.exportFailed", "Export failed"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        var extension = Path.GetExtension(sourcePath);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".png";
+        }
+
+        var baseName = SanitizeFileName(Path.GetFileNameWithoutExtension(FirstNonEmpty(layer.Media, sourcePath)));
+        if (string.IsNullOrWhiteSpace(baseName))
+        {
+            baseName = string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase)
+                ? "background"
+                : $"layer-{layer.Index}";
+        }
+
+        var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        if (string.IsNullOrWhiteSpace(desktop) || !Directory.Exists(desktop))
+        {
+            desktop = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = GetLanguageText("dialogs.exportLayerMedia", "Export layer media"),
+            InitialDirectory = desktop,
+            FileName = baseName + extension,
+            DefaultExt = extension,
+            AddExtension = true,
+            Filter = GetLayerMediaExportFilter(extension)
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!string.Equals(Path.GetFullPath(sourcePath), Path.GetFullPath(dialog.FileName), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourcePath, dialog.FileName, overwrite: true);
+            }
+
+            SetStatus(FormatLanguageText("status.layerMediaExported", "Exported: {0}", dialog.FileName));
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                this,
+                ex.Message,
+                GetLanguageText("messages.exportFailed", "Export failed"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private static string GetLayerMediaExportFilter(string extension)
+    {
+        extension = extension.ToLowerInvariant();
+        return extension switch
+        {
+            ".png" => "PNG image (*.png)|*.png|All files (*.*)|*.*",
+            ".jpg" or ".jpeg" => "JPEG image (*.jpg;*.jpeg)|*.jpg;*.jpeg|All files (*.*)|*.*",
+            ".bmp" => "Bitmap image (*.bmp)|*.bmp|All files (*.*)|*.*",
+            ".gif" => "GIF image (*.gif)|*.gif|All files (*.*)|*.*",
+            ".mp4" => "MP4 video (*.mp4)|*.mp4|All files (*.*)|*.*",
+            ".mov" => "QuickTime video (*.mov)|*.mov|All files (*.*)|*.*",
+            ".h264" => "H.264 video (*.h264)|*.h264|All files (*.*)|*.*",
+            _ => $"{extension.TrimStart('.').ToUpperInvariant()} file (*{extension})|*{extension}|All files (*.*)|*.*"
+        };
+    }
+
     // Format presets loading & selection
     private void FormatCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -23710,6 +26316,14 @@ private static string CreateExportPackageBaseName(string templateId)
 
         AddTextPanel.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
         AddTextButton.Visibility = isText ? Visibility.Visible : Visibility.Collapsed;
+        if (isText)
+        {
+            PopulateD3AddTextOptions();
+        }
+        else if (D3AddTextPresetPanel != null)
+        {
+            D3AddTextPresetPanel.Visibility = Visibility.Collapsed;
+        }
 
         if (isRingGraph)
         {
@@ -24102,6 +26716,12 @@ private static string CreateExportPackageBaseName(string templateId)
             AddFormatOption(combo, "Weekday", "Day_en");
             SelectFormatOption(combo, box?.Text);
         }
+        else if (source is "RAMLOAD" or "DRVLOAD")
+        {
+            combo.Visibility = Visibility.Visible;
+            AddFormatOption(combo, "Percent", "1");
+            SelectFormatOption(combo, string.IsNullOrWhiteSpace(box?.Text) ? "1" : box.Text);
+        }
         else
         {
             combo.Visibility = Visibility.Collapsed;
@@ -24132,7 +26752,7 @@ private static string CreateExportPackageBaseName(string templateId)
     private static bool SupportsFormat(string dataSource)
     {
         var source = NormalizeDataSourceKey(dataSource);
-        return source is "TIME" or "DATE" or "DAY";
+        return source is "TIME" or "DATE" or "DAY" or "RAMLOAD" or "DRVLOAD";
     }
 
     private static string DefaultFormatForDataSource(string dataSource)
@@ -24142,6 +26762,7 @@ private static string CreateExportPackageBaseName(string templateId)
             "TIME" => "h:m",
             "DATE" => "Y-M-D",
             "DAY" => "Day_en",
+            "RAMLOAD" or "DRVLOAD" => "1",
             _ => ""
         };
     }
@@ -24771,9 +27392,16 @@ private static string CreateExportPackageBaseName(string templateId)
 
         if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
         {
-            return IsUniversal88TemplateControllerPath(path) ||
+            return IsVm92TemplateControllerPath(path) ||
                    path.Contains("vm", StringComparison.OrdinalIgnoreCase) ||
                    path.Contains("9.2", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (string.Equals(deviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return IsOledCurveControllerPath(path) ||
+                   path.Contains("oled", StringComparison.OrdinalIgnoreCase) ||
+                   path.Contains("curve", StringComparison.OrdinalIgnoreCase);
         }
 
         if (IsHydroShiftDeviceModel(deviceModel))
@@ -24793,6 +27421,14 @@ private static string CreateExportPackageBaseName(string templateId)
         path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
         path.Contains("pid_a088", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsVm92TemplateControllerPath(string path) =>
+        path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
+        path.Contains("pid_a092", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsOledCurveControllerPath(string path) =>
+        path.Contains("vid_1cbe", StringComparison.OrdinalIgnoreCase) &&
+        path.Contains("pid_a068", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsWirelessTransmitterControllerPath(string path) =>
         path.Contains("vid_0416", StringComparison.OrdinalIgnoreCase) &&
         path.Contains("pid_8040", StringComparison.OrdinalIgnoreCase);
@@ -24802,7 +27438,8 @@ private static string CreateExportPackageBaseName(string templateId)
         string deviceModel,
         string templatePath,
         string backgroundPath,
-        bool updatePreview = true)
+        bool updatePreview = true,
+        bool applyBackgroundOverride = false)
     {
         if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
@@ -24810,7 +27447,18 @@ private static string CreateExportPackageBaseName(string templateId)
                 templateId,
                 templatePath,
                 backgroundPath,
-                updatePreview: updatePreview);
+                updatePreview: updatePreview,
+                applyBackgroundOverride: applyBackgroundOverride);
+        }
+
+        if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return await ActivateVm92ThemeAsync(
+                templateId,
+                templatePath,
+                backgroundPath,
+                updatePreview: updatePreview,
+                applyBackgroundOverride: applyBackgroundOverride);
         }
 
         var activatedId = await _themeInstallationService.ActivateAsync(
@@ -24850,6 +27498,11 @@ private static string CreateExportPackageBaseName(string templateId)
             return await ActivateUniversal88InstalledSelectionOnlyAsync(candidates);
         }
 
+        if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return await ActivateVm92InstalledSelectionOnlyAsync(candidates);
+        }
+
         var accepted = false;
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
         foreach (var candidateId in candidates)
@@ -24875,6 +27528,48 @@ private static string CreateExportPackageBaseName(string templateId)
         }
 
         return false;
+    }
+
+    private async Task<bool> ActivateVm92InstalledSelectionOnlyAsync(IReadOnlyList<string> candidates)
+    {
+        var accepted = false;
+        using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(6) };
+        foreach (var path in GetLConnectDevicePaths(Vm92DeviceModel))
+        {
+            await SendLConnectDeviceRequestAsync(client, path, "ReloadAssets", "{}");
+            foreach (var candidateId in candidates.Where(id => !string.IsNullOrWhiteSpace(id)))
+            {
+                accepted |= await Task.Run(() => TrySetActiveTemplateProfile(candidateId, Vm92DeviceModel));
+                try
+                {
+                    var candidateJson = JsonSerializer.Serialize(candidateId);
+                    accepted |= await SendLConnectDeviceRequestAsync(client, path, "ApplyTemplate", candidateJson);
+                    if (accepted)
+                    {
+                        await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+                        return true;
+                    }
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        if (!accepted)
+        {
+            foreach (var candidateId in candidates.Where(id => !string.IsNullOrWhiteSpace(id)))
+            {
+                accepted |= await Task.Run(() => TrySetActiveTemplateProfile(candidateId, Vm92DeviceModel));
+                if (accepted)
+                {
+                    await ReloadInstalledTemplatesInLConnectAsync();
+                    break;
+                }
+            }
+        }
+
+        return accepted;
     }
 
     private async Task<bool> ActivateUniversal88InstalledSelectionOnlyAsync(IReadOnlyList<string> candidates)
@@ -24926,6 +27621,175 @@ private static string CreateExportPackageBaseName(string templateId)
         }
 
         return accepted;
+    }
+
+    private async Task<bool> ActivateVm92ThemeAsync(
+        string templateId,
+        string templatePath,
+        string backgroundPath,
+        bool updatePreview = true,
+        bool applyBackgroundOverride = false)
+    {
+        var candidates = ThemeInstallationService
+            .BuildActivationCandidates(templateId, templatePath, backgroundPath)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (candidates.Count == 0 && !string.IsNullOrWhiteSpace(templateId))
+        {
+            candidates.Add(templateId);
+        }
+
+        if (updatePreview)
+        {
+            try
+            {
+                await SaveAndApplyThemePreviewAsync(
+                    Vm92DeviceModel,
+                    templatePath,
+                    templateId,
+                    candidates.Concat(GetTemplatePreviewAliases(templateId)),
+                    embedInTemplate: false);
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning($"VM 9.2 preview update skipped during activation: {ex.Message}");
+            }
+        }
+
+        async Task<bool> TryApplyCandidateAsync(HttpClient client, string path, string candidateId)
+        {
+            if (string.IsNullOrWhiteSpace(candidateId))
+            {
+                return false;
+            }
+
+            var runtimeBackgroundPath = ResolveLConnectRuntimeBackgroundPath(backgroundPath, Vm92DeviceModel);
+            var hasBackground = applyBackgroundOverride &&
+                                !string.IsNullOrWhiteSpace(runtimeBackgroundPath) &&
+                                File.Exists(runtimeBackgroundPath);
+            var prePatchProfile = await Task.Run(() => TrySetActiveTemplateProfile(candidateId, Vm92DeviceModel));
+            var prePatchBackground = false;
+            if (hasBackground)
+            {
+                var profileBackgroundPath = ResolveProfileBackgroundPathForLConnect(
+                    Vm92DeviceModel,
+                    runtimeBackgroundPath,
+                    backgroundPath,
+                    candidateId);
+                prePatchBackground = await Task.Run(() =>
+                    TrySetTemplateBackgroundProfileWithRetry(candidateId, profileBackgroundPath, Vm92DeviceModel));
+            }
+
+            AppLogger.Info(
+                $"VM 9.2 activation candidate={candidateId}; " +
+                $"profilePatched={prePatchProfile}; backgroundPatched={prePatchBackground}; " +
+                $"background={DescribeFileForLog(runtimeBackgroundPath)}");
+
+            var candidateJson = JsonSerializer.Serialize(candidateId);
+            var accepted = await SendLConnectDeviceRequestAsync(client, path, "ApplyTemplate", candidateJson);
+            var selected = accepted && await WaitForSelectedTemplateAsync(client, path, candidateId);
+            if (!accepted)
+            {
+                return false;
+            }
+
+            await SendLConnectDeviceRequestAsync(client, path, "SaveProfile", "{}");
+            if (hasBackground)
+            {
+                await CopyTemplateBackgroundAsync(
+                    client,
+                    path,
+                    Vm92DeviceModel,
+                    candidateId,
+                    runtimeBackgroundPath,
+                    backgroundPath);
+            }
+
+            AppLogger.Info(
+                $"VM 9.2 activation applied candidate={candidateId}; " +
+                $"selectedConfirmed={selected}; backgroundApplied={hasBackground}");
+            return true;
+        }
+
+        try
+        {
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+            foreach (var path in GetLConnectDevicePaths(Vm92DeviceModel))
+            {
+                await SendLConnectDeviceRequestAsync(client, path, "ReloadAssets", "{}");
+                var registeredIds = await GetLConnectTemplateIdsAsync(client, path);
+                var liveCandidates = ThemeInstallationService
+                    .MatchRegisteredIds(templatePath, registeredIds)
+                    .Concat(candidates.Where(id => registeredIds.Contains(id, StringComparer.OrdinalIgnoreCase)))
+                    .Concat(candidates)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+
+                foreach (var candidateId in liveCandidates)
+                {
+                    if (await TryApplyCandidateAsync(client, path, candidateId))
+                    {
+                        return true;
+                    }
+                }
+
+                var importZip = "";
+                try
+                {
+                    importZip = CreateLConnectImportZip(Vm92DeviceModel, templateId, templatePath);
+                    var importedId = await ImportTemplateIntoLConnectAsync(
+                        client,
+                        path,
+                        importZip,
+                        Vm92DeviceModel,
+                        templateId);
+                    if (!string.IsNullOrWhiteSpace(importedId) &&
+                        await TryApplyCandidateAsync(client, path, importedId))
+                    {
+                        return true;
+                    }
+                }
+                finally
+                {
+                    TryDeleteFile(importZip);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"VM 9.2 L-Connect activation phase failed: {ex.GetType().Name}: {ex.Message}");
+        }
+
+        var fallbackBackgroundPath = ResolveLConnectRuntimeBackgroundPath(backgroundPath, Vm92DeviceModel);
+        foreach (var candidateId in candidates)
+        {
+            var profilePatched = await Task.Run(() => TrySetActiveTemplateProfile(candidateId, Vm92DeviceModel));
+            var backgroundPatched = false;
+            if (applyBackgroundOverride &&
+                !string.IsNullOrWhiteSpace(fallbackBackgroundPath) &&
+                File.Exists(fallbackBackgroundPath))
+            {
+                var profileBackgroundPath = ResolveProfileBackgroundPathForLConnect(
+                    Vm92DeviceModel,
+                    fallbackBackgroundPath,
+                    backgroundPath,
+                    candidateId);
+                backgroundPatched = await Task.Run(() =>
+                    TrySetTemplateBackgroundProfileWithRetry(candidateId, profileBackgroundPath, Vm92DeviceModel));
+            }
+
+            if (profilePatched || backgroundPatched)
+            {
+                await ReloadInstalledTemplatesInLConnectAsync();
+                AppLogger.Warning(
+                    $"VM 9.2 activation fell back to local profile patch; " +
+                    $"candidate={candidateId}; profile={profilePatched}; background={backgroundPatched}");
+                return false;
+            }
+        }
+
+        return false;
     }
 
     private async Task<bool> ActivateUniversal88ThemeAsync(
@@ -25554,9 +28418,9 @@ private static string CreateExportPackageBaseName(string templateId)
         var fullPath = Path.GetFullPath(templatePath);
         foreach (var root in new[]
                  {
-                     GetTemplateRoot(deviceModel),
-                     Path.Combine(@"C:\Program Files\Lian-Li\L-Connect 3", "Assets", deviceModel, "template")
-                 })
+                      GetTemplateRoot(deviceModel),
+                      Path.Combine(LConnectPaths.ProgramFilesRoot, "Assets", deviceModel, "template")
+                  })
         {
             if (!string.IsNullOrWhiteSpace(root) &&
                 fullPath.StartsWith(Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase))
@@ -26448,6 +29312,32 @@ private static string CreateExportPackageBaseName(string templateId)
         return backgroundPath;
     }
 
+    private static bool IsLConnectTemplatePreviewImage(string backgroundPath)
+    {
+        if (string.IsNullOrWhiteSpace(backgroundPath))
+        {
+            return false;
+        }
+
+        var extension = Path.GetExtension(backgroundPath);
+        if (!extension.Equals(".png", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".jpeg", StringComparison.OrdinalIgnoreCase) &&
+            !extension.Equals(".webp", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var fileName = Path.GetFileName(backgroundPath);
+        if (!fileName.StartsWith("template_", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        var directoryName = Path.GetFileName(Path.GetDirectoryName(backgroundPath) ?? "");
+        return directoryName.Equals("preview", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static async Task EnsureUniversal88DeviceBackgroundSiblingAsync(string backgroundPath)
     {
         if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
@@ -27064,11 +29954,11 @@ private static string CreateExportPackageBaseName(string templateId)
 
         foreach (var root in new[]
                  {
-                     GetTemplateRoot(deviceModel),
-                     Path.Combine(
-                         @"C:\Program Files\Lian-Li\L-Connect 3",
-                         "Assets",
-                         deviceModel,
+                      GetTemplateRoot(deviceModel),
+                      Path.Combine(
+                          LConnectPaths.ProgramFilesRoot,
+                          "Assets",
+                          deviceModel,
                          "template")
                  })
         {
@@ -27651,19 +30541,23 @@ private static string CreateExportPackageBaseName(string templateId)
         var accepted = false;
         var selectedDeviceModel = GetSelectedDeviceModel();
         var selectedTemplateId = _currentTemplateId;
+        var profileTemplateId = GetCurrentOledCurveApplyTemplateIds(selectedTemplateId).FirstOrDefault() ?? selectedTemplateId;
         var selectedBackgroundPath = GetCurrentBackgroundPathForLConnect();
 
         // Keep the profile and the explicit API requests pointed at the same template.
         // Otherwise an early ApplyAll request can make L-Connect re-apply the theme that
         // was active before the user selected a different item in the editor.
-        if (!IsUniversalScreenSelected() && !string.IsNullOrWhiteSpace(selectedTemplateId))
+        if (!IsUniversalScreenSelected() && !string.IsNullOrWhiteSpace(profileTemplateId))
         {
             await Task.Run(() => TrySetActiveTemplateProfile(
-                selectedTemplateId,
+                profileTemplateId,
                 selectedDeviceModel));
         }
         
-        if (_backgroundDirty && !string.IsNullOrWhiteSpace(_currentTemplateId))
+        var deferBackgroundToVm92FastApply =
+            fastApply &&
+            string.Equals(selectedDeviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase);
+        if (_backgroundDirty && !string.IsNullOrWhiteSpace(_currentTemplateId) && !deferBackgroundToVm92FastApply)
         {
             accepted = await TriggerLConnectBackgroundChangeAsync();
             if (accepted) _backgroundDirty = false;
@@ -27680,10 +30574,16 @@ private static string CreateExportPackageBaseName(string templateId)
                     updatePreview: !skipUniversalPreviewUpdate);
             }
 
-            return await TriggerFastLConnectRefreshAsync(
+            var fastAccepted = await TriggerFastLConnectRefreshAsync(
                 selectedDeviceModel,
                 selectedTemplateId,
                 selectedBackgroundPath);
+            if (fastAccepted && deferBackgroundToVm92FastApply)
+            {
+                _backgroundDirty = false;
+            }
+
+            return fastAccepted;
         }
 
         if (IsUniversalScreenSelected() && !string.IsNullOrWhiteSpace(_currentTemplateId))
@@ -27697,12 +30597,14 @@ private static string CreateExportPackageBaseName(string templateId)
 
         var devicePaths = GetLConnectDevicePaths();
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-        var templateCandidates = ThemeInstallationService
-            .BuildActivationCandidates(
-                selectedTemplateId,
-                _currentTemplatePath,
-                selectedBackgroundPath)
-            .ToList();
+        var templateCandidates = GetCurrentOledCurveApplyTemplateIds(selectedTemplateId).Count > 0
+            ? GetCurrentOledCurveApplyTemplateIds(selectedTemplateId).ToList()
+            : ThemeInstallationService
+                .BuildActivationCandidates(
+                    selectedTemplateId,
+                    _currentTemplatePath,
+                    selectedBackgroundPath)
+                .ToList();
 
         foreach (var path in devicePaths)
         {
@@ -27719,6 +30621,25 @@ private static string CreateExportPackageBaseName(string templateId)
                 .ToList();
 
             var pathApplied = false;
+            if (string.Equals(selectedDeviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var candidateId in liveTemplateCandidates)
+                {
+                    if (await ApplyOledCurveTemplateToPathAsync(client, path, candidateId))
+                    {
+                        accepted = true;
+                        await Task.Run(() => TrySetActiveTemplateProfile(candidateId, selectedDeviceModel));
+                        pathApplied = true;
+                        break;
+                    }
+                }
+
+                if (pathApplied)
+                {
+                    continue;
+                }
+            }
+
             foreach (var type in new[] { "ApplyTemplate", "SetTemplate", "ChangeTemplate" })
             {
                 if (pathApplied)
@@ -27793,6 +30714,27 @@ private static string CreateExportPackageBaseName(string templateId)
             return false;
         }
 
+        if (string.Equals(deviceModel, OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            var oledAccepted = false;
+            var oledTemplateIds = GetCurrentOledCurveApplyTemplateIds(templateId);
+            if (oledTemplateIds.Count == 0)
+            {
+                oledTemplateIds = new[] { templateId };
+            }
+            using var oledClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            foreach (var path in GetLConnectDevicePaths(deviceModel))
+            {
+                oledAccepted |= await SendLConnectDeviceRequestAsync(oledClient, path, "ReloadAssets", "{}");
+                foreach (var oledTemplateId in oledTemplateIds)
+                {
+                    oledAccepted |= await ApplyOledCurveTemplateToPathAsync(oledClient, path, oledTemplateId);
+                }
+            }
+
+            return oledAccepted;
+        }
+
         var isWideScreen = IsWideScreenDeviceModel(deviceModel);
         if (isWideScreen)
         {
@@ -27815,7 +30757,8 @@ private static string CreateExportPackageBaseName(string templateId)
             await Task.Run(() => TrySetActiveTemplateProfile(templateId, deviceModel));
             using var wideClient = new HttpClient { Timeout = TimeSpan.FromSeconds(2) };
             var wideCandidateJson = JsonSerializer.Serialize(templateId);
-            foreach (var path in GetLConnectDevicePaths())
+            var isVm92 = string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase);
+            foreach (var path in isVm92 ? GetLConnectDevicePaths(deviceModel) : GetLConnectDevicePaths())
             {
                 try
                 {
@@ -27824,11 +30767,14 @@ private static string CreateExportPackageBaseName(string templateId)
                         path,
                         "ApplyTemplate",
                         wideCandidateJson);
-                    wideAccepted |= await SendLConnectDeviceRequestAsync(
-                        wideClient,
-                        path,
-                        "Apply2DTemplate",
-                        wideCandidateJson);
+                    if (!isVm92)
+                    {
+                        wideAccepted |= await SendLConnectDeviceRequestAsync(
+                            wideClient,
+                            path,
+                            "Apply2DTemplate",
+                            wideCandidateJson);
+                    }
                     wideAccepted |= await SendLConnectDeviceRequestAsync(
                         wideClient,
                         path,
@@ -27852,11 +30798,14 @@ private static string CreateExportPackageBaseName(string templateId)
                             path,
                             "SaveProfile",
                             "{}");
-                        wideAccepted |= await SendLConnectDeviceRequestAsync(
-                            wideClient,
-                            path,
-                            "ApplyScreenContent",
-                            "{}");
+                        if (!isVm92)
+                        {
+                            wideAccepted |= await SendLConnectDeviceRequestAsync(
+                                wideClient,
+                                path,
+                                "ApplyScreenContent",
+                                "{}");
+                        }
                     }
                 }
                 catch
@@ -27902,6 +30851,80 @@ private static string CreateExportPackageBaseName(string templateId)
 
         // We optimistically return the profile patch success immediately.
         return accepted;
+    }
+
+    private IReadOnlyList<string> GetCurrentOledCurveApplyTemplateIds(string fallbackTemplateId)
+    {
+        if (!string.Equals(GetSelectedDeviceModel(), OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase) ||
+            _currentOledCurveGroupTemplateIds.Count == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        return _currentOledCurveGroupTemplateIds
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .DefaultIfEmpty(fallbackTemplateId)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private async Task<bool> ApplyOledCurveTemplateToPathAsync(HttpClient client, string devicePath, string templateId)
+    {
+        if (string.IsNullOrWhiteSpace(templateId))
+        {
+            return false;
+        }
+
+        var accepted = false;
+        foreach (var command in BuildOledCurveApplyCommands(templateId, _currentTemplatePixelWidth))
+        {
+            accepted |= await SendLConnectDeviceRequestAsync(client, devicePath, command.Name, command.Body);
+            if (accepted)
+            {
+                break;
+            }
+        }
+
+        if (!accepted)
+        {
+            return false;
+        }
+
+        await SendLConnectDeviceRequestAsync(client, devicePath, "SaveProfile", "{}");
+        await SendLConnectDeviceRequestAsync(client, devicePath, "ApplyScreenContent", "{}");
+        return true;
+    }
+
+    private static IReadOnlyList<(string Name, string Body)> BuildOledCurveApplyCommands(string templateId, int templateWidth = 0)
+    {
+        var quotedId = JsonSerializer.Serialize(templateId);
+        var screenType = GuessOledCurveScreenType(templateId, templateWidth);
+        var applyTemplateBody = JsonSerializer.Serialize(new { ScreenType = screenType, TemplateId = templateId });
+
+        if (templateId.StartsWith("3D", StringComparison.OrdinalIgnoreCase))
+        {
+            return new[] { ("Apply3DTemplate", quotedId), ("SetFullScreen3DSelectedTemplateId", quotedId) };
+        }
+
+        if (screenType == 0)
+        {
+            return new[] { ("Apply2DTemplate", quotedId), ("Apply2DTemplateEditMode", applyTemplateBody) };
+        }
+
+        return new[] { ("ApplyTemplate", applyTemplateBody), ("Apply2DTemplateEditMode", applyTemplateBody) };
+    }
+
+    private static int GuessOledCurveScreenType(string templateId, int templateWidth = 0)
+    {
+        if (templateId.StartsWith("dualleft", StringComparison.OrdinalIgnoreCase)) return 1;
+        if (templateId.StartsWith("dualright", StringComparison.OrdinalIgnoreCase)) return 2;
+        if (templateId.StartsWith("tripleleft", StringComparison.OrdinalIgnoreCase)) return 3;
+        if (templateId.StartsWith("triplemiddle", StringComparison.OrdinalIgnoreCase)) return 4;
+        if (templateId.StartsWith("tripleright", StringComparison.OrdinalIgnoreCase)) return 5;
+        if (templateWidth == 1392) return 1;
+        if (templateWidth == 880) return 2;
+        if (templateWidth == 752) return 3;
+        return 0;
     }
 
     private async Task<bool> TriggerLConnectBackgroundChangeAsync(
@@ -28179,6 +31202,7 @@ private static string CreateExportPackageBaseName(string templateId)
         NewThemeButton.IsEnabled = !isBusy;
         LoadButton.IsEnabled = !isBusy;
         OfflineModeCheck.IsEnabled = !isBusy;
+        ApplyOrientationButton.IsEnabled = !isBusy && SupportsOrientationSelectionSelected();
         SaveButton.IsEnabled = !isBusy && directApplySupported;
         BackupButton.IsEnabled = !isBusy;
         RestoreBackupButton.IsEnabled = !isBusy;
@@ -28194,10 +31218,14 @@ private static string CreateExportPackageBaseName(string templateId)
         AddImageButton.IsEnabled = !isBusy;
         AddGraphButton.IsEnabled = !isBusy;
         BackgroundButton.IsEnabled = !isBusy;
+        ExportLayerMediaButton.IsEnabled = !isBusy &&
+                                           LayerGrid.SelectedItem is LayerRow selectedMediaLayer &&
+                                           !string.IsNullOrWhiteSpace(ResolveLayerMediaExportPath(selectedMediaLayer));
         ApplyAllButton.IsEnabled = !isBusy && directApplySupported;
         RestartButton.IsEnabled = !isBusy;
         ExportLConnectButton.IsEnabled = !isBusy;
         Convert88To92Button.IsEnabled = !isBusy && IsVm92Selected();
+        ConvertFix88To92Button.IsEnabled = !isBusy;
         if (!isBusy)
         {
             UpdateDeleteTemplateButtonState();
@@ -28504,7 +31532,7 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             _ = RefreshSensorPreviewAsync(layer);
         }
-        else if (IsThemeEngineGraphPreviewLayer(layer))
+        else if (IsThemeEngineGraphPreviewLayer(layer) && !IsOledCurveDeviceSelected())
         {
             _ = RefreshGraphPreviewAsync(layer);
         }
@@ -28640,10 +31668,11 @@ private static string CreateExportPackageBaseName(string templateId)
                 layer.TypeName,
                 layer.SubTypeName);
             var output = Path.Combine(root, SanitizeFileName(key) + ".png");
+            var supporterLayer = GetSupporterPreviewLayer(layer);
             var rendered = await _supporter.RenderGraphPreviewAsync(
                 GetSelectedDeviceModel(),
                 _currentTemplatePath,
-                layer,
+                supporterLayer,
                 output,
                 Math.Max(1, (int)Math.Round(_templateCanvasWidth)),
                 Math.Max(1, (int)Math.Round(_templateCanvasHeight)),
@@ -28685,6 +31714,22 @@ private static string CreateExportPackageBaseName(string templateId)
                type.Contains("GraphLine", StringComparison.OrdinalIgnoreCase) ||
                type.Contains("GraphDynamicBar", StringComparison.OrdinalIgnoreCase) ||
                type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsOledCurveDeviceSelected() =>
+        string.Equals(GetSelectedDeviceModel(), OledCurveDeviceModel, StringComparison.OrdinalIgnoreCase);
+
+    private LayerRow GetSupporterPreviewLayer(LayerRow layer)
+    {
+        if (!IsOledCurveDeviceSelected() || string.IsNullOrWhiteSpace(layer.SourceLayerIndex))
+        {
+            return layer;
+        }
+
+        var clone = CloneLayerState(layer);
+        clone.Index = layer.SourceLayerIndex;
+        clone.Type = layer.Type;
+        return clone;
     }
 
     private void FontCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -28746,9 +31791,10 @@ private static string CreateExportPackageBaseName(string templateId)
                 !string.IsNullOrWhiteSpace(source) &&
                 !source.Equals("StaticText", StringComparison.OrdinalIgnoreCase))
             {
+                var previewText = NormalizeDynamicDataPreviewText(source, FormatBox.Text, normalizedText);
                 layer.PreviewValueEdited = true;
-                layer.Text = normalizedText;
-                _previewSampleOverrides[GetPreviewOverrideKey(layer)] = normalizedText;
+                layer.Text = previewText;
+                _previewSampleOverrides[GetPreviewOverrideKey(layer)] = previewText;
             }
         }
         OnInputChanged();
@@ -28946,6 +31992,7 @@ private static string CreateExportPackageBaseName(string templateId)
                     OwnedHydroshiftCCheck.IsChecked = owned.Contains("hydroshift-ii-lcd-c");
                     OwnedUniversal88Check.IsChecked = owned.Contains(UniversalScreenDeviceModel);
                     OwnedVm92Check.IsChecked = owned.Contains(Vm92DeviceModel);
+                    OwnedOledCurveCheck.IsChecked = owned.Contains(OledCurveDeviceModel);
                 }
             }
             else
@@ -29086,6 +32133,7 @@ private static string CreateExportPackageBaseName(string templateId)
         if (OwnedHydroshiftCCheck != null) OwnedHydroshiftCCheck.IsChecked = true;
         if (OwnedUniversal88Check != null) OwnedUniversal88Check.IsChecked = true;
         if (OwnedVm92Check != null) OwnedVm92Check.IsChecked = true;
+        if (OwnedOledCurveCheck != null) OwnedOledCurveCheck.IsChecked = true;
     }
 
     private void LoadDeviceDisplayNames(JsonElement root)
@@ -29121,6 +32169,7 @@ private static string CreateExportPackageBaseName(string templateId)
         SetDeviceNameBoxText(Universal88Name3Box, $"{UniversalScreenDeviceModel}#3");
         SetDeviceNameBoxText(Universal88Name4Box, $"{UniversalScreenDeviceModel}#4");
         SetDeviceNameBoxText(Vm92NameBox, Vm92DeviceModel);
+        SetDeviceNameBoxText(OledCurveNameBox, OledCurveDeviceModel);
         UpdateUniversal88NameFieldsVisibility();
     }
 
@@ -29151,6 +32200,7 @@ private static string CreateExportPackageBaseName(string templateId)
         SetConfiguredDeviceDisplayName($"{UniversalScreenDeviceModel}#3", Universal88Name3Box?.Text);
         SetConfiguredDeviceDisplayName($"{UniversalScreenDeviceModel}#4", Universal88Name4Box?.Text);
         SetConfiguredDeviceDisplayName(Vm92DeviceModel, Vm92NameBox?.Text);
+        SetConfiguredDeviceDisplayName(OledCurveDeviceModel, OledCurveNameBox?.Text);
     }
 
     private void SetConfiguredDeviceDisplayName(string key, string? value)
@@ -29281,6 +32331,7 @@ private static string CreateExportPackageBaseName(string templateId)
         SetGalleryDeviceFilterVisibility(GalleryFilterHydroshiftCCheck, owned.Contains("hydroshift-ii-lcd-c"));
         SetGalleryDeviceFilterVisibility(GalleryFilterUniversal88Check, owned.Contains(UniversalScreenDeviceModel));
         SetGalleryDeviceFilterVisibility(GalleryFilterVm92Check, owned.Contains(Vm92DeviceModel));
+        SetGalleryDeviceFilterVisibility(GalleryFilterOledCurveCheck, owned.Contains(OledCurveDeviceModel));
         if (!_isLoading)
         {
             ApplyGalleryFilter(resetPage: true);
@@ -29293,6 +32344,7 @@ private static string CreateExportPackageBaseName(string templateId)
         SetGalleryDeviceFilterVisibility(LocalFilterHydroshiftCCheck, owned.Contains("hydroshift-ii-lcd-c"));
         SetGalleryDeviceFilterVisibility(LocalFilterUniversal88Check, owned.Contains(UniversalScreenDeviceModel));
         SetGalleryDeviceFilterVisibility(LocalFilterVm92Check, owned.Contains(Vm92DeviceModel));
+        SetGalleryDeviceFilterVisibility(LocalFilterOledCurveCheck, owned.Contains(OledCurveDeviceModel));
         if (!_isLoading && LocalThemesItemsControl != null)
         {
             RefreshLocalThemesList();
@@ -29326,6 +32378,7 @@ private static string CreateExportPackageBaseName(string templateId)
         if (OwnedHydroshiftCCheck?.IsChecked == true) result.Add("hydroshift-ii-lcd-c");
         if (OwnedUniversal88Check?.IsChecked == true) result.Add(UniversalScreenDeviceModel);
         if (OwnedVm92Check?.IsChecked == true) result.Add(Vm92DeviceModel);
+        if (OwnedOledCurveCheck?.IsChecked == true) result.Add(OledCurveDeviceModel);
         return result;
     }
 
@@ -30356,22 +33409,6 @@ private static string CreateExportPackageBaseName(string templateId)
                     manifest.DeviceModel,
                     extractedTemplatePath,
                     effectivePreviewPath);
-                if (IsWideScreenDeviceModel(manifest.DeviceModel))
-                {
-                    try
-                    {
-                        await _supporter.UpdateAnimationPreviewBitmapsAsync(
-                            manifest.DeviceModel,
-                            extractedTemplatePath,
-                            effectivePreviewPath);
-                    }
-                    catch (Exception ex)
-                    {
-                        AppLogger.Warning(
-                            $"Package animation preview could not be embedded for {safeId}: " +
-                            $"{ex.GetType().Name}: {ex.Message}");
-                    }
-                }
 
                 if (!templateEntry.FullName.Equals(normalizedTemplateName, StringComparison.OrdinalIgnoreCase))
                 {
