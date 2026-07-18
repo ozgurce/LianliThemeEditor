@@ -451,15 +451,6 @@
       "packageUrl": "packages/spaceship-dashboard-vertical.lltheme"
     },
     {
-      "id": "colored-cards-4bbd9d8c",
-      "name": "Colored Cards",
-      "author": "\u00D6zg\u00FCr",
-      "deviceModel": "universal-screen-8.8-inch",
-      "deviceName": "8.8\u0022 Universal Screen",
-      "previewUrl": "previews/colored-cards-4bbd9d8c.png",
-      "packageUrl": "packages/colored-cards-4bbd9d8c.lltheme"
-    },
-    {
       "id": "greenclock-1b5f0b54",
       "name": "GreenClock",
       "author": "Turzx",
@@ -620,17 +611,6 @@
       "packageUrl": "packages/aida-one-dial-fda4762f.zip"
     },
     {
-      "id": "brickwall-bar-cene-vertical-d58d55fb",
-      "name": "Brickwall bar cene vertical",
-      "author": "Galrim",
-      "description": "",
-      "deviceModel": "universal-screen-8.8-inch",
-      "deviceName": "8.8\u0022 Universal Screen",
-      "previewUrl": "previews/brickwall-bar-cene-vertical-d58d55fb.png",
-      "packageUrl": "packages/brickwall-bar-cene-vertical-d58d55fb.zip",
-      "orientation": "portrait"
-    },
-    {
       "id": "comprehensive-blue-panel-5eb78314",
       "name": "Comprehensive blue panel",
       "author": "Galrim",
@@ -775,16 +755,6 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.png",
       "packageUrl": "packages/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.zip"
-    },
-    {
-      "id": "hydroshift-ii-lcd-c-b6c35a17",
-      "name": "hydroshift-ii-lcd-c",
-      "author": "aaa",
-      "description": "",
-      "deviceModel": "hydroshift-ii-lcd-c",
-      "deviceName": "Hydroshift II LCD-C",
-      "previewUrl": "previews/hydroshift-ii-lcd-c-b6c35a17.png",
-      "packageUrl": "packages/hydroshift-ii-lcd-c-b6c35a17.zip"
     },
     {
       "id": "white-black-5-dials-26343047",
