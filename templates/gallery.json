@@ -1006,6 +1006,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/simple-black-vertical-f953dcef.png",
       "packageUrl": "packages/simple-black-vertical-f953dcef.zip"
+    },
+    {
+      "id": "simple-white-vertical-25524e71",
+      "name": "Simple White Vertical",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/simple-white-vertical-25524e71.png",
+      "packageUrl": "packages/simple-white-vertical-25524e71.zip"
     }
   ]
 }
