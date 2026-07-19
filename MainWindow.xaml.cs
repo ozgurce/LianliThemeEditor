@@ -19753,6 +19753,12 @@ public partial class MainWindow : Window
                     existingKeys.TryGetValue(mergeKey, out var existingIndex))
                 {
                     var existingTheme = GalleryThemes[existingIndex];
+                    if (IsPendingCommunityGalleryTheme(theme) &&
+                        !IsPendingCommunityGalleryTheme(existingTheme))
+                    {
+                        continue;
+                    }
+
                     if (!string.Equals(existingTheme.Id, theme.Id, StringComparison.OrdinalIgnoreCase))
                     {
                         GalleryThemes[existingIndex] = theme;
