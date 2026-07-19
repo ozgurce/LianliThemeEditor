@@ -8,12 +8,12 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>LianLiThemeEditor</AssemblyName>
     <RootNamespace>ThemeEditorCSharp</RootNamespace>
-    <Version>2.5.8</Version>
-    <AssemblyVersion>2.5.8.0</AssemblyVersion>
-    <FileVersion>2.5.8.0</FileVersion>
-    <InformationalVersion>2.5.8</InformationalVersion>
-    <Title>Lian Li LCD Template Editor 2.5.8</Title>
-    <AssemblyTitle>Lian Li LCD Template Editor 2.5.8</AssemblyTitle>
+    <Version>2.6.0</Version>
+    <AssemblyVersion>2.6.0.0</AssemblyVersion>
+    <FileVersion>2.6.0.0</FileVersion>
+    <InformationalVersion>2.6.0</InformationalVersion>
+    <Title>Lian Li LCD Template Editor 2.6.0</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor 2.6.0</AssemblyTitle>
     <Product>Lian Li LCD Template Editor</Product>
     <Description>Theme editor for Lian Li LCD devices</Description>
     <Company>Ozgur Yalcin</Company>
