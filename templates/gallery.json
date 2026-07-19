@@ -1018,6 +1018,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/doom-3c85572e.png",
       "packageUrl": "packages/doom-3c85572e.zip"
+    },
+    {
+      "id": "graymetal-e3071ec2",
+      "name": "GrayMetal",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/graymetal-e3071ec2.png",
+      "packageUrl": "packages/graymetal-e3071ec2.zip"
     }
   ]
 }
