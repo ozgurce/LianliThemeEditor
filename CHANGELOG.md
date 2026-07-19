@@ -1,5 +1,19 @@
 # Changelog
 
+## V 2.5.9
+
+- Fixed active theme background recovery after backgrounds are changed or reverted in L-Connect outside the editor.
+- Improved loaded background resolution by falling back through `GraphAnimation` media paths, template ids, stable aliases, and L-Connect media folders when profile paths are stale or missing.
+- Fixed stale L-Connect service log entries overriding newer profile background state after a background revert.
+- Improved background video preview reliability in the editor by retrying failed playback with a temporary preview-friendly MP4 before falling back to a still frame.
+- Updated editor preview FFmpeg lookup to use the detected L-Connect install path instead of assuming the default Program Files location.
+- Fixed theme selector loading state after importing a theme so later selections load normally.
+- Kept Gallery installs on the Gallery tab instead of switching back to the editor after reinstall/download.
+- Fixed pending community gallery entries overriding approved GitHub gallery themes with the same id/name.
+- Preserved original L-Connect ZIP gallery submissions that already include `.template` and `.h264` files, avoiding unnecessary background reprocessing and layer/font id rewrites.
+- Fixed Universal 8.8" portrait gallery packages whose MP4 preview companions were incorrectly encoded as landscape while the H.264 runtime background was already portrait.
+- Corrected portrait metadata for Universal 8.8" gallery themes using the preview image as the source of truth, including `Doom`, `Doom the Dark Ages V2 Vertical`, `GrayMetal`, and older vertical `.lltheme` packages.
+
 ## V 2.5.8
 
 - Added OLED Curve D3 text layer creation support with theme-specific 3D text preset selection.
