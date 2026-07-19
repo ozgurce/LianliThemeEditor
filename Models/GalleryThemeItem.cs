@@ -20,6 +20,7 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     private double _averageRating;
     private int _userRating;
     private int _hoverRating;
+    private string _orientation = "";
     private string _installedLabel = "Installed";
     private string _downloadLabel = "Download";
     private string _reinstallLabel = "Reinstall";
@@ -37,7 +38,21 @@ public sealed class GalleryThemeItem : INotifyPropertyChanged
     public string Changelog { get; set; } = "";
     public string DeviceModel { get; set; } = "";
     public string DeviceName { get; set; } = "";
-    public string Orientation { get; set; } = "";
+    public string Orientation
+    {
+        get => _orientation;
+        set
+        {
+            if (SetField(ref _orientation, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CardWidth)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CardHeight)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreviewHeight)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AspectLabel)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(PreviewStretch)));
+            }
+        }
+    }
     public string PackageUrl { get; set; } = "";
     public string PreviewUrl { get; set; } = "";
     public DateTime GallerySortTimeUtc { get; set; } = DateTime.MinValue;
