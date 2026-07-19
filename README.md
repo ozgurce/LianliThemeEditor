@@ -4,6 +4,11 @@ Windows desktop editor for creating, converting, validating, installing, and sha
 
 The app focuses on L-Connect 3 LCD devices such as HydroShift II LCD S/C, the 8.8" Universal Screen, and the 9.2" VM display. It edits L-Connect `.template` files, works with `.turtheme` packages, includes an in-app theme gallery, and now integrates Phone Link for optional local phone control.
 
+# If you want to support this project you can donate here, so i can get new devices like Curve Oled to add support for it
+
+https://ozgurce.lemonsqueezy.com/
+
+
 ## Current Version
 
 `2.5.2`
