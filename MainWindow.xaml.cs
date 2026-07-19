@@ -2184,12 +2184,12 @@ public partial class MainWindow : Window
                 return;
             }
             var result = await ImportThemePackageAsync(importPath, installThroughLConnect: true);
-            _isLoading = true;
-            RefreshTemplateList();
-            _isLoading = false;
+            await RefreshTemplateListAsync();
+            SelectTemplateCombo(result.Path);
             UseActiveCheck.IsChecked = false;
             TemplateIdBox.Text = result.Id;
             _currentTemplatePath = result.Path;
+            _currentTemplateId = result.Id;
             await LoadLayersAsync(true);
             await ActivateInstalledThemeAsync(
                 string.IsNullOrWhiteSpace(result.LConnectId) ? result.Id : result.LConnectId,
@@ -14804,7 +14804,7 @@ public partial class MainWindow : Window
             }
 
             SetBusy(true, GetLanguageText("status.applyingTheme", "Applying theme..."));
-            SelectDeviceModelForLocalTheme(option.DeviceModel, selectedDeviceTag);
+            await SelectDeviceModelForLocalThemeAsync(option.DeviceModel, selectedDeviceTag);
             TemplateCombo.SelectedItem = TemplateOptions.FirstOrDefault(templateOption =>
                 string.Equals(templateOption.Id, option.Id, StringComparison.OrdinalIgnoreCase) ||
                 templateOption.GroupedTemplatePaths.Any(path => string.Equals(path, option.Path, StringComparison.OrdinalIgnoreCase)));
@@ -15124,7 +15124,7 @@ public partial class MainWindow : Window
             : "";
     }
 
-    private void SelectDeviceModelForLocalTheme(string deviceModel, string deviceTag)
+    private async Task SelectDeviceModelForLocalThemeAsync(string deviceModel, string deviceTag)
     {
         if (string.IsNullOrWhiteSpace(deviceModel) ||
             (string.Equals(GetSelectedDeviceModel(), deviceModel, StringComparison.OrdinalIgnoreCase) &&
@@ -15150,7 +15150,7 @@ public partial class MainWindow : Window
             UpdateSelectedDeviceChrome();
             UpdateDeviceCapabilityNotice();
             UpdateCanvasConfiguration(resetZoom: true);
-            RefreshTemplateList(selectFirstWhenMissing: true);
+            await RefreshTemplateListAsync(selectFirstWhenMissing: true);
         }
         finally
         {
@@ -21628,7 +21628,7 @@ public partial class MainWindow : Window
             SetBusy(true, FormatLanguageText("gallery.statusInstallingTheme", "Installing theme: {0}", item.Name));
             var installDeviceModel = item.DeviceModel;
             var installDeviceTag = GetPreferredDeviceTagForModel(installDeviceModel);
-            SelectDeviceModelForLocalTheme(installDeviceModel, installDeviceTag);
+            await SelectDeviceModelForLocalThemeAsync(installDeviceModel, installDeviceTag);
 
             var imported = await ImportThemePackageAsync(
                 installPackage,
@@ -21638,7 +21638,7 @@ public partial class MainWindow : Window
                 installThroughLConnect: true);
             installDeviceModel = FirstNonEmpty(imported.DeviceModel, item.DeviceModel, installDeviceModel);
             installDeviceTag = GetPreferredDeviceTagForModel(installDeviceModel);
-            SelectDeviceModelForLocalTheme(installDeviceModel, installDeviceTag);
+            await SelectDeviceModelForLocalThemeAsync(installDeviceModel, installDeviceTag);
             await RefreshTemplateListAsync(selectFirstWhenMissing: true);
             SelectTemplateCombo(imported.Path);
             UseActiveCheck.IsChecked = false;
@@ -26513,13 +26513,20 @@ private static string CreateExportPackageBaseName(string templateId)
         if (LayerGrid.SelectedItem is LayerRow sensorLayer &&
             string.Equals(sensorLayer.Type, "GraphSensor", StringComparison.OrdinalIgnoreCase))
         {
+            var wasLoading = _isLoading;
             _isLoading = true;
-            sensorLayer.SensorType = data;
-            sensorLayer.DataSource = SensorDataSourceFromType(data);
-            RefreshLayerDataSourceDisplay(sensorLayer);
-            sensorLayer.Text = SampleValueFor(sensorLayer.DataSource);
-            TextBox.Text = sensorLayer.Text;
-            _isLoading = false;
+            try
+            {
+                sensorLayer.SensorType = data;
+                sensorLayer.DataSource = SensorDataSourceFromType(data);
+                RefreshLayerDataSourceDisplay(sensorLayer);
+                sensorLayer.Text = SampleValueFor(sensorLayer.DataSource);
+                TextBox.Text = sensorLayer.Text;
+            }
+            finally
+            {
+                _isLoading = wasLoading;
+            }
             LayerGrid.Items.Refresh();
             OnInputChanged();
             return;
@@ -26528,26 +26535,33 @@ private static string CreateExportPackageBaseName(string templateId)
         if (LayerGrid.SelectedItem is LayerRow layer &&
             !string.Equals(layer.DataSource, data, StringComparison.OrdinalIgnoreCase))
         {
+            var wasLoading = _isLoading;
             _isLoading = true;
-            layer.DataSource = ResolveCaseFanDataSource(data, CaseFanCombo);
-            RefreshLayerDataSourceDisplay(layer);
-            layer.ForceText = false;
-            layer.PreviewValueEdited = false;
-            _previewSampleOverrides.Remove(GetPreviewOverrideKey(layer));
-            SetTextCheck.IsChecked = string.Equals(data, "StaticText", StringComparison.OrdinalIgnoreCase);
-            if (!string.Equals(data, "StaticText", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                var format = DefaultFormatForDataSource(layer.DataSource);
-                layer.Format = format;
-                FormatBox.Text = format;
-                TextBox.Text = SampleValueFor(layer.DataSource, format);
+                layer.DataSource = ResolveCaseFanDataSource(data, CaseFanCombo);
+                RefreshLayerDataSourceDisplay(layer);
+                layer.ForceText = false;
+                layer.PreviewValueEdited = false;
+                _previewSampleOverrides.Remove(GetPreviewOverrideKey(layer));
+                SetTextCheck.IsChecked = string.Equals(data, "StaticText", StringComparison.OrdinalIgnoreCase);
+                if (!string.Equals(data, "StaticText", StringComparison.OrdinalIgnoreCase))
+                {
+                    var format = DefaultFormatForDataSource(layer.DataSource);
+                    layer.Format = format;
+                    FormatBox.Text = format;
+                    TextBox.Text = SampleValueFor(layer.DataSource, format);
+                }
+                else
+                {
+                    layer.Format = "";
+                    FormatBox.Text = "";
+                }
             }
-            else
+            finally
             {
-                layer.Format = "";
-                FormatBox.Text = "";
+                _isLoading = wasLoading;
             }
-            _isLoading = false;
             LayerGrid.Items.Refresh();
         }
         SyncCaseFanSelector(LayerGrid.SelectedItem is LayerRow selectedLayer ? selectedLayer.DataSource : data, CaseFanPanel, CaseFanCombo);
