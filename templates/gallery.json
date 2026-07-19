@@ -1028,6 +1028,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/graymetal-e3071ec2.png",
       "packageUrl": "packages/graymetal-e3071ec2.zip"
+    },
+    {
+      "id": "radioactive-c302c775",
+      "name": "Radioactive",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/radioactive-c302c775.png",
+      "packageUrl": "packages/radioactive-c302c775.zip"
     }
   ]
 }
