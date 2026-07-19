@@ -420,6 +420,7 @@
       "author": "Galrim",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/007-fl-vertical.png",
       "packageUrl": "packages/007-fl-vertical.lltheme"
     },
@@ -429,6 +430,7 @@
       "author": "Galrim",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/cyberpunk2077-v5lc-vertical.png",
       "packageUrl": "packages/cyberpunk2077-v5lc-vertical.lltheme"
     },
@@ -438,6 +440,7 @@
       "author": "Galrim",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/doom-the-dark-ages-v2-vert.png",
       "packageUrl": "packages/doom-the-dark-ages-v2-vert.lltheme"
     },
@@ -447,6 +450,7 @@
       "author": "Galrim",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/spaceship-dashboard-vertical.png",
       "packageUrl": "packages/spaceship-dashboard-vertical.lltheme"
     },
@@ -793,6 +797,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/sw-l2-vertical-98d1474a.png",
       "packageUrl": "packages/sw-l2-vertical-98d1474a.zip"
     },
@@ -884,6 +889,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/btf-v1-vert-ba6b9e69.png",
       "packageUrl": "packages/btf-v1-vert-ba6b9e69.zip"
     },
@@ -964,6 +970,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/simpleblack-vertical-with-time-69e4ec26.png",
       "packageUrl": "packages/simpleblack-vertical-with-time-69e4ec26.zip"
     },
@@ -974,6 +981,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/simple-black-vertical-f953dcef.png",
       "packageUrl": "packages/simple-black-vertical-f953dcef.zip"
     },
@@ -984,6 +992,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/simple-white-vertical-25524e71.png",
       "packageUrl": "packages/simple-white-vertical-25524e71.zip"
     },
@@ -1016,6 +1025,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/doom-3c85572e.png",
       "packageUrl": "packages/doom-3c85572e.zip"
     },
@@ -1026,6 +1036,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/graymetal-e3071ec2.png",
       "packageUrl": "packages/graymetal-e3071ec2.zip"
     },
