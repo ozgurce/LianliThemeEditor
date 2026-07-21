@@ -11,7 +11,9 @@
 
     <SummaryInformation Description="Lian Li LCD Template Editor installer" Manufacturer="Ozgur Yalcin" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="none" />
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Lian Li LCD Template Editor is already installed." />
+    <MajorUpgrade
+      AllowSameVersionUpgrades="yes"
+      DowngradeErrorMessage="A newer version of Lian Li LCD Template Editor is already installed." />
     <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
     <Property Id="INSTALLFOLDER">
       <RegistrySearch
