@@ -12,6 +12,7 @@
     <AssemblyVersion>2.6.1.0</AssemblyVersion>
     <FileVersion>2.6.1.0</FileVersion>
     <InformationalVersion>2.6.1</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Title>Lian Li LCD Template Editor 2.6.1</Title>
     <AssemblyTitle>Lian Li LCD Template Editor 2.6.1</AssemblyTitle>
     <Product>Lian Li LCD Template Editor</Product>
