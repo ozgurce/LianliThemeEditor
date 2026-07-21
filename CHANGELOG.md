@@ -1,5 +1,11 @@
 # Changelog
 
+## V 2.6.1
+
+- Fixed gallery-installed themes being treated as custom-background activations, so reverting a background change in L-Connect restores the theme's original background instead of clearing it.
+- Fixed portrait gallery packages whose internal `themePic` preview was still stored as a landscape image, including `Memento Mori V1`, `Memento Mori V2`, `Doom`, and `GrayMetal`.
+- Fixed the packaged background media for `Memento Mori V2` so gallery installs use the correct original portrait background.
+
 ## V 2.5.9
 
 - Fixed active theme background recovery after backgrounds are changed or reverted in L-Connect outside the editor.

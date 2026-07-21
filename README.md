@@ -11,9 +11,9 @@ https://ozgurce.lemonsqueezy.com/
 
 ## Current Version
 
-`2.5.2`
+`2.6.1`
 
-Version 2.5.2 improves VM 9.2 handling, HydroShift background detection, gallery filtering, and L-Connect data source formatting.
+Version 2.6.1 fixes gallery-installed theme background revert behavior and corrects portrait gallery package previews/background media.
 
 ## Main Features
 

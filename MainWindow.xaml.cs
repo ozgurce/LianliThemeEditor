@@ -21755,7 +21755,7 @@ public partial class MainWindow : Window
             templatePath,
             backgroundPath,
             updatePreview,
-            applyBackgroundOverride: true);
+            applyBackgroundOverride: false);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(20));
         var completedTask = await Task.WhenAny(activationTask, timeoutTask);
         if (completedTask == activationTask)
