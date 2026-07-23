@@ -69,6 +69,14 @@ internal static class Program
                 }
 
                 SupporterApplication.NormalizeTurzxTheme(theme, args[2]);
+                if (args.Any(arg => string.Equals(arg, "--no-video", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SupporterApplication.RemoveTurzxVideoReferences(theme);
+                }
+                if (args.Any(arg => string.Equals(arg, "--drop-animation", StringComparison.OrdinalIgnoreCase)))
+                {
+                    SupporterApplication.DropTurzxAnimationGraphs(theme);
+                }
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(args[2]))!);
                 using var output = File.Create(args[2]);
                 formatter.Serialize(output, theme);
@@ -255,6 +263,12 @@ internal static class Program
                 return;
             }
 
+            if (_args.Has("InspectThemeTree"))
+            {
+                WriteJsonOrLines(InspectThemeTree(theme), row => Json.Serialize(row));
+                return;
+            }
+
             if (_args.Has("ExtractD3CacheManifest"))
             {
                 ExtractD3CacheManifest();
@@ -342,9 +356,25 @@ internal static class Program
                 return;
             }
 
+            if (_args.HasValue("SetBackgroundRefs"))
+            {
+                SetBackgroundRefs(theme, _args.Get("SetBackgroundRefs"));
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
+                return;
+            }
+
             if (_args.HasValue("AddAnimation"))
             {
                 AddAnimation(theme, _args.Get("AddAnimation"));
+                TemplateSerializer.Save(theme, _templatePath);
+                Console.WriteLine("Updated: " + _templatePath);
+                return;
+            }
+
+            if (_args.HasValue("AddDynamicThemeFrom"))
+            {
+                AddDynamicThemeFrom(theme, _args.Get("AddDynamicThemeFrom"));
                 TemplateSerializer.Save(theme, _templatePath);
                 Console.WriteLine("Updated: " + _templatePath);
                 return;
@@ -641,6 +671,268 @@ internal static class Program
             {
                 Console.WriteLine($"{row["Index"],3} {row["Type"],16} {row["Property"],28} {row["Width"],5}x{row["Height"],-5} x={row["X"],5} y={row["Y"],5} zoom={row["ZoomRate"],5} img={row["ImgName"]}");
             }
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> InspectThemeTree(object theme)
+        {
+            foreach (var row in InspectThemeNode(theme, "root"))
+            {
+                yield return row;
+            }
+        }
+
+        private static IEnumerable<Dictionary<string, object?>> InspectThemeNode(object node, string path)
+        {
+            var graphList = GetMemberValue(node, "GraphList") as IEnumerable;
+            var themeList = GetMemberValue(node, "ThemeList") as IEnumerable;
+            var imgBytes = GetMemberValue(node, "ImgH264Bytes") as IEnumerable;
+            var frames = GetMemberValue(node, "Frames") as IDictionary;
+            var graphs = graphList?.Cast<object>().ToList() ?? new List<object>();
+            var children = themeList?.Cast<object>().ToList() ?? new List<object>();
+
+            yield return new Dictionary<string, object?>
+            {
+                ["Path"] = path,
+                ["Name"] = GetMemberValue(node, "name"),
+                ["ThemeType"] = GetMemberValue(node, "ThemeType")?.ToString(),
+                ["ThemeMode"] = GetMemberValue(node, "ThemeMode")?.ToString(),
+                ["ModularType"] = GetMemberValue(node, "ModularType")?.ToString(),
+                ["ScreenType"] = GetMemberValue(node, "ScreenType")?.ToString(),
+                ["SplitType"] = GetMemberValue(node, "SplitType")?.ToString(),
+                ["IsLandscape"] = GetMemberValue(node, "isLanscape"),
+                ["IsTempTheme"] = GetMemberValue(node, "isTempTheme"),
+                ["IsAidaTransparent"] = GetMemberValue(node, "isAidaTransparent"),
+                ["X"] = GetMemberValue(node, "X"),
+                ["Y"] = GetMemberValue(node, "Y"),
+                ["Width"] = GetMemberValue(node, "width"),
+                ["Height"] = GetMemberValue(node, "height"),
+                ["ZoomRate"] = GetMemberValue(node, "ZoomRate"),
+                ["VideoPath"] = GetMemberValue(node, "videoPath"),
+                ["VideoPathAlpha"] = GetMemberValue(node, "videoPathAlpha"),
+                ["VideoPath2"] = GetMemberValue(node, "videoPath2"),
+                ["VideoPath3"] = GetMemberValue(node, "videoPath3"),
+                ["VideoName"] = GetMemberValue(node, "videoName"),
+                ["OVideoPath"] = GetMemberValue(node, "o_videoPath"),
+                ["ThemePath"] = GetMemberValue(node, "themePath"),
+                ["ThemePic"] = DescribeBitmap(GetMemberValue(node, "themePic")),
+                ["VideoPic"] = DescribeBitmap(GetMemberValue(node, "VideoPic")),
+                ["BgImg"] = DescribeBitmap(GetMemberValue(node, "BgImg")),
+                ["ImgH264ByteLengths"] = DescribeByteArrayList(imgBytes),
+                ["FramesCount"] = frames?.Count,
+                ["GraphCount"] = graphs.Count,
+                ["ThemeCount"] = children.Count,
+                ["GraphMedia"] = graphs
+                    .Select((graph, index) => new Dictionary<string, object?>
+                    {
+                        ["Index"] = index,
+                        ["TypeName"] = GetMemberValue(graph, "TypeName"),
+                        ["Type"] = graph.GetType().FullName,
+                        ["FilePath"] = GetMemberValue(graph, "FilePath"),
+                        ["ImgName"] = GetMemberValue(graph, "ImgName"),
+                        ["videoName"] = GetMemberValue(graph, "videoName"),
+                        ["posX"] = GetMemberValue(graph, "posX"),
+                        ["posY"] = GetMemberValue(graph, "posY"),
+                        ["width"] = GetMemberValue(graph, "width"),
+                        ["height"] = GetMemberValue(graph, "height"),
+                        ["hide"] = GetMemberValue(graph, "hide")
+                    })
+                    .Where(row => row.Values.Any(value => value is string s && !string.IsNullOrWhiteSpace(s)))
+                    .ToList()
+            };
+
+            for (var i = 0; i < children.Count; i++)
+            {
+                foreach (var childRow in InspectThemeNode(children[i], path + ".ThemeList[" + i + "]"))
+                {
+                    yield return childRow;
+                }
+            }
+        }
+
+        private static string? DescribeBitmap(object? value)
+        {
+            return value is Bitmap bitmap ? bitmap.Width + "x" + bitmap.Height : null;
+        }
+
+        private static List<object?>? DescribeByteArrayList(IEnumerable? values)
+        {
+            if (values == null) return null;
+            var result = new List<object?>();
+            foreach (var value in values)
+            {
+                result.Add(value is byte[] bytes ? bytes.Length : null);
+            }
+            return result;
+        }
+
+        private static object? GetMemberValue(object source, string name)
+        {
+            var type = source.GetType();
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var property = type.GetProperty(name, flags);
+            if (property != null && property.GetIndexParameters().Length == 0)
+            {
+                try
+                {
+                    return property.GetValue(source);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+
+            var field = type.GetField(name, flags) ??
+                        type.GetField("<" + name + ">k__BackingField", flags);
+            if (field == null) return null;
+            try
+            {
+                return field.GetValue(source);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void AddDynamicThemeFrom(object theme, string sourceTemplatePath)
+        {
+            if (string.IsNullOrWhiteSpace(sourceTemplatePath))
+            {
+                throw new ArgumentException("Source template path is empty.", nameof(sourceTemplatePath));
+            }
+
+            var sourceTheme = TemplateSerializer.Load(sourceTemplatePath);
+            var sourceChildren = GetMemberValue(sourceTheme, "ThemeList") as IEnumerable;
+            var donor = sourceChildren?.Cast<object>().FirstOrDefault(child =>
+                string.Equals(GetMemberValue(child, "ThemeMode")?.ToString(), "Dynamic", StringComparison.OrdinalIgnoreCase) &&
+                !string.IsNullOrWhiteSpace(GetMemberValue(child, "videoPathAlpha") as string));
+            if (donor == null)
+            {
+                throw new InvalidDataException("Source template does not contain a dynamic videoPathAlpha child.");
+            }
+
+            var clone = InvokeClone(donor);
+            SetMemberValue(clone, "name", _args.Get("DynamicName", "Time5_MOV_Dynamic"));
+            SetMemberValue(clone, "videoPathAlpha", CopyMediaToDeviceVideoDirectory(_args.Get("DynamicMedia", GetMemberValue(donor, "videoPathAlpha") as string ?? "")));
+            SetMemberValue(clone, "videoPath", null);
+            SetMemberValue(clone, "videoPath2", null);
+            SetMemberValue(clone, "videoPath3", null);
+            SetMemberValue(clone, "videoName", null);
+            SetMemberValue(clone, "o_videoPath", null);
+            var dynamicWidth = _args.GetInt("DynamicWidth", GetIntMember(theme, "width"));
+            var dynamicHeight = _args.GetInt("DynamicHeight", GetIntMember(theme, "height"));
+            SetMemberValue(clone, "width", dynamicWidth);
+            SetMemberValue(clone, "height", dynamicHeight);
+            SetMemberValue(clone, "X", _args.GetInt("DynamicX", 0));
+            SetMemberValue(clone, "Y", _args.GetInt("DynamicY", 0));
+            SetMemberValue(clone, "isLanscape", GetMemberValue(theme, "isLanscape"));
+            SetEnumMemberValue(clone, "SplitType", "None");
+            SetMemberValue(clone, "ImgH264Bytes", CreateNullByteArrayList(clone.GetType().Assembly));
+            SetMemberValue(clone, "themePic", new Bitmap(dynamicWidth, dynamicHeight));
+            SetMemberValue(clone, "themePath", Path.Combine(_templateRoot, _args.Get("DynamicName", "Time5_MOV_Dynamic") + ".theme"));
+
+            var targetChildren = GetMemberValue(theme, "ThemeList") as IList;
+            if (targetChildren == null)
+            {
+                var listType = typeof(List<>).MakeGenericType(clone.GetType());
+                targetChildren = (IList)Activator.CreateInstance(listType)!;
+                SetMemberValue(theme, "ThemeList", targetChildren);
+            }
+
+            targetChildren.Add(clone);
+        }
+
+        private string CopyMediaToDeviceVideoDirectory(string mediaPath)
+        {
+            if (string.IsNullOrWhiteSpace(mediaPath))
+            {
+                throw new ArgumentException("Dynamic media path is empty.", nameof(mediaPath));
+            }
+
+            var source = Path.GetFullPath(mediaPath);
+            if (!File.Exists(source))
+            {
+                throw new FileNotFoundException("Dynamic media file not found.", source);
+            }
+
+            var videoDirectory = Path.Combine(DefaultProgramData, _deviceModel, "video");
+            Directory.CreateDirectory(videoDirectory);
+            var destination = Path.Combine(videoDirectory, Path.GetFileName(source));
+            if (!File.Exists(destination) ||
+                new FileInfo(destination).Length != new FileInfo(source).Length)
+            {
+                File.Copy(source, destination, true);
+            }
+
+            return destination;
+        }
+
+        private static int GetIntMember(object source, string name)
+        {
+            var value = GetMemberValue(source, name);
+            return value == null ? 0 : Convert.ToInt32(value, CultureInfo.InvariantCulture);
+        }
+
+        private static object InvokeClone(object source)
+        {
+            if (source is ICloneable cloneable)
+            {
+                return cloneable.Clone();
+            }
+
+            var clone = source.GetType().GetMethod("Clone", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.Invoke(source, null);
+            if (clone == null)
+            {
+                throw new InvalidOperationException("Theme clone failed.");
+            }
+
+            return clone;
+        }
+
+        private static void SetMemberValue(object source, string name, object? value)
+        {
+            var type = source.GetType();
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            var property = type.GetProperty(name, flags);
+            if (property != null && property.CanWrite && property.GetIndexParameters().Length == 0)
+            {
+                property.SetValue(source, value);
+                return;
+            }
+
+            var field = type.GetField(name, flags) ??
+                        type.GetField("<" + name + ">k__BackingField", flags);
+            if (field == null)
+            {
+                throw new MissingMemberException(type.FullName, name);
+            }
+
+            field.SetValue(source, value);
+        }
+
+        private static IList CreateNullByteArrayList(Assembly themeAssembly)
+        {
+            var listType = typeof(List<>).MakeGenericType(typeof(byte[]));
+            var list = (IList)Activator.CreateInstance(listType)!;
+            list.Add(null);
+            list.Add(null);
+            list.Add(null);
+            return list;
+        }
+
+        private static void SetEnumMemberValue(object source, string name, string enumName)
+        {
+            var member = source.GetType().GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var targetType = member?.PropertyType ??
+                             source.GetType().GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.FieldType ??
+                             source.GetType().GetField("<" + name + ">k__BackingField", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.FieldType;
+            if (targetType == null || !targetType.IsEnum)
+            {
+                return;
+            }
+
+            SetMemberValue(source, name, Enum.Parse(targetType, enumName));
         }
 
         private void ExtractBitmaps(object theme)
@@ -1278,6 +1570,44 @@ internal static class Program
             Reflection.TrySet(theme, "videoPathAlpha", target);
             Reflection.TrySet(theme, "isAidaTransparent", true);
             Console.WriteLine("AlphaMediaPath: " + target);
+        }
+
+        private void SetBackgroundRefs(object theme, string mediaPath)
+        {
+            if (!File.Exists(mediaPath))
+            {
+                throw new FileNotFoundException("Background media not found: " + mediaPath);
+            }
+
+            var fileName = Path.GetFileName(mediaPath);
+            Reflection.TrySet(theme, "width", _args.GetInt("CanvasWidth", 480));
+            Reflection.TrySet(theme, "height", _args.GetInt("CanvasHeight", 1920));
+            Reflection.TrySet(theme, "isLanscape", _args.GetBool("Landscape", false));
+            Reflection.TrySet(theme, "videoName", fileName);
+            foreach (var name in new[] { "videoPath", "o_videoPath", "videoPath2", "videoPath3" })
+            {
+                Reflection.TrySet(theme, name, mediaPath);
+            }
+
+            var animations = Graphs(theme).Cast<object>()
+                .Where(layer => layer.GetType().Name == "GraphAnimation")
+                .ToList();
+            if (animations.Count > 0)
+            {
+                var layer = animations[0];
+                Reflection.TrySet(layer, "ImgName", fileName);
+                Reflection.TrySet(layer, "videoName", fileName);
+                Reflection.TrySet(layer, "FilePath", mediaPath);
+                Reflection.TrySet(layer, "Path", mediaPath);
+                Reflection.TrySet(layer, "ImagePath", mediaPath);
+                Reflection.TrySet(layer, "posX", 0);
+                Reflection.TrySet(layer, "posY", 0);
+                Reflection.TrySet(layer, "zoom_rate", 1.0);
+                Reflection.TrySet(layer, "ZoomRate", 1.0);
+                Reflection.TrySet(layer, "hide", false);
+            }
+
+            Console.WriteLine("BackgroundRefsPath: " + mediaPath);
         }
 
         private List<object> EnsureBackgroundLayer(object theme, bool resetMedia)
@@ -2604,22 +2934,37 @@ internal static class Program
             {
                 SetThemeZoomRate(theme, zoom);
             }
-            Reflection.TrySet(layer, "zoom_rate", zoom);
+            var normalizedZoom = Math.Max(0.01, zoom);
+            Reflection.TrySet(layer, "zoom_rate", normalizedZoom);
+            Reflection.TrySet(layer, "ZoomRate", normalizedZoom);
             var name = Reflection.GetString(layer, "ImgName");
             var path = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "image", name);
             if (File.Exists(path))
             {
                 using var bitmap = new Bitmap(path);
-                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
+                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * normalizedZoom)));
                 return;
             }
 
-            if (layer.GetType().Name == "GraphClock" &&
-                Reflection.Get(layer, "O_bitmap") is Bitmap originalBitmap)
+            if ((layer.GetType().Name == "GraphClock" || layer.GetType().Name == "GraphImage") &&
+                FindOriginalLayerBitmap(layer) is { } originalBitmap)
             {
                 using var bitmap = new Bitmap(originalBitmap);
-                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * zoom)));
+                EmbedImage(layer, bitmap, Math.Max(1, (int)Math.Round(bitmap.Width * normalizedZoom)));
             }
+        }
+
+        private static Bitmap? FindOriginalLayerBitmap(object layer)
+        {
+            foreach (var propertyName in new[] { "O_bitmap", "bitmap", "S_bitmap" })
+            {
+                if (Reflection.Get(layer, propertyName) is Bitmap bitmap)
+                {
+                    return bitmap;
+                }
+            }
+
+            return null;
         }
 
         private static void SetThemeZoomRate(object theme, double zoom)
@@ -3089,9 +3434,89 @@ internal static class Program
         {
             var data = Reflection.Get(layer, "m_data");
             if (data == null) return;
-            value = NormalizeDynamicDataValue(Reflection.GetString(data, "DataName"), value);
+            var dataName = Reflection.GetString(data, "DataName");
+            value = string.Equals(dataName, "StaticText", StringComparison.OrdinalIgnoreCase)
+                ? DecodeStaticTextLiteral(value)
+                : NormalizeDynamicDataValue(dataName, value);
             Reflection.TrySet(data, "Value", value);
             Reflection.TrySet(data, "ValueWithUnit", value);
+            if (string.Equals(dataName, "StaticText", StringComparison.OrdinalIgnoreCase))
+            {
+                UpdateStaticTextLineHeight(layer, value);
+            }
+        }
+
+        private static string DecodeStaticTextLiteral(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value ?? "";
+
+            var builder = new StringBuilder(value.Length);
+            for (var i = 0; i < value.Length; i++)
+            {
+                if (value[i] != '\\' || i == value.Length - 1)
+                {
+                    builder.Append(value[i]);
+                    continue;
+                }
+
+                var next = value[++i];
+                switch (next)
+                {
+                    case 'r' when i + 1 < value.Length && value[i + 1] == '\\' && i + 2 < value.Length && value[i + 2] == 'n':
+                        builder.Append(Environment.NewLine);
+                        i += 2;
+                        break;
+                    case 'n':
+                        builder.Append(Environment.NewLine);
+                        break;
+                    case 'r':
+                        builder.Append(Environment.NewLine);
+                        break;
+                    case 't':
+                        builder.Append('\t');
+                        break;
+                    case '\\':
+                        builder.Append('\\');
+                        break;
+                    default:
+                        builder.Append('\\').Append(next);
+                        break;
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        private static void UpdateStaticTextLineHeight(object layer, string value)
+        {
+            if (string.IsNullOrEmpty(value) || !value.Contains(Environment.NewLine)) return;
+
+            var fontConfig = Reflection.Get(layer, "fontConfig");
+            if (fontConfig == null) return;
+
+            var fontName = Reflection.GetString(fontConfig, "name");
+            var fontSize = Math.Max(1, Reflection.GetInt(fontConfig, "size"));
+            var style = FontStyle.Regular;
+            if (Reflection.GetBool(fontConfig, "isBold")) style |= FontStyle.Bold;
+            if (Reflection.GetBool(fontConfig, "IsItalic")) style |= FontStyle.Italic;
+
+            try
+            {
+                using var family = string.IsNullOrWhiteSpace(fontName)
+                    ? new FontFamily("Arial")
+                    : new FontFamily(fontName);
+                using var font = new Font(family, fontSize, style);
+                using var bitmap = new Bitmap(200, 200);
+                using var graphics = Graphics.FromImage(bitmap);
+                var line = value.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
+                    .OrderByDescending(text => text.Length)
+                    .FirstOrDefault() ?? value;
+                Reflection.TrySet(layer, "LineHeight", (int)Math.Ceiling(graphics.MeasureString(line, font).Height));
+            }
+            catch
+            {
+                Reflection.TrySet(layer, "LineHeight", (int)Math.Ceiling(fontSize * 1.25));
+            }
         }
 
         private static string NormalizeDynamicDataValue(string dataSource, string value)
@@ -3496,6 +3921,9 @@ internal static class Program
                 Reflection.GetString(sourceTheme, "videoName"),
                 Path.GetFileName(Reflection.GetString(sourceTheme, "videoPath")),
                 Path.GetFileName(Reflection.GetString(sourceTheme, "o_videoPath")));
+            var sourceWidth = Reflection.GetInt(sourceTheme, "width", 480);
+            var sourceHeight = Reflection.GetInt(sourceTheme, "height", 480);
+            var transposeWideToTurzxPortrait = false;
 
             var target = new UsbMonitorL.Theme
             {
@@ -3509,10 +3937,10 @@ internal static class Program
                 aidaLoadMark = null,
                 reload = Reflection.GetBool(sourceTheme, "reload"),
                 name = templateName,
-                width = Reflection.GetInt(sourceTheme, "width", 480),
-                height = Reflection.GetInt(sourceTheme, "height", 480),
+                width = transposeWideToTurzxPortrait ? 480 : sourceWidth,
+                height = transposeWideToTurzxPortrait ? 1920 : sourceHeight,
                 themePath = outputPath,
-                themePic = Reflection.Get(sourceTheme, "themePic") as Bitmap,
+                themePic = PrepareTurzxThemePic(Reflection.Get(sourceTheme, "themePic") as Bitmap, transposeWideToTurzxPortrait),
                 videoPath = backgroundPath,
                 o_videoPath = backgroundPath,
                 videoTargetPath = string.IsNullOrWhiteSpace(backgroundName) ? null : "/mnt/UDISK/video/" + backgroundName,
@@ -3524,7 +3952,13 @@ internal static class Program
 
             foreach (var graph in Graphs(sourceTheme).Cast<object>())
             {
-                target.GraphList.Add(ToTurzxGraph(graph, backgroundName, backgroundPath));
+                var turzxGraph = ToTurzxGraph(graph, backgroundName, backgroundPath);
+                if (transposeWideToTurzxPortrait)
+                {
+                    TransposeTurzxGraphCoordinates(turzxGraph);
+                }
+
+                target.GraphList.Add(turzxGraph);
             }
 
             ApplyTurzxBackgroundPreviewBitmaps(target, backgroundPath);
@@ -3537,6 +3971,52 @@ internal static class Program
             formatter.Serialize(stream, target);
 #pragma warning restore SYSLIB0011
             Console.WriteLine("TurzxThemeExported: " + outputPath);
+        }
+
+        private static Bitmap? PrepareTurzxThemePic(Bitmap? source, bool transpose)
+        {
+            if (source == null)
+            {
+                return null;
+            }
+
+            return transpose ? TransposeBitmap(source) : source;
+        }
+
+        private static Bitmap TransposeBitmap(Bitmap source)
+        {
+            var destination = new Bitmap(source.Height, source.Width, PixelFormat.Format32bppArgb);
+            for (var y = 0; y < source.Height; y++)
+            {
+                for (var x = 0; x < source.Width; x++)
+                {
+                    destination.SetPixel(y, x, source.GetPixel(x, y));
+                }
+            }
+
+            return destination;
+        }
+
+        private static void TransposeTurzxGraphCoordinates(UsbMonitorL.GraphItem graph)
+        {
+            var x = graph.posX;
+            graph.posX = graph.posY;
+            graph.posY = x;
+
+            if (graph is UsbMonitorL.GraphStatuBar statusBar)
+            {
+                (statusBar.width, statusBar.height) = (statusBar.height, statusBar.width);
+            }
+            else if (graph is UsbMonitorL.GraphLine line)
+            {
+                var width = Reflection.GetInt(line, "_width");
+                var height = Reflection.GetInt(line, "_height");
+                if (width > 0 || height > 0)
+                {
+                    Reflection.TrySet(line, "_width", height);
+                    Reflection.TrySet(line, "_height", width);
+                }
+            }
         }
 
         private static void ApplyTurzxBackgroundPreviewBitmaps(UsbMonitorL.Theme theme, string backgroundPath)
@@ -3632,11 +4112,15 @@ internal static class Program
 
         internal static void NormalizeTurzxTheme(UsbMonitorL.Theme theme, string outputPath)
         {
+            var outputDirectory = Path.GetDirectoryName(Path.GetFullPath(outputPath)) ?? Directory.GetCurrentDirectory();
             var backgroundName = First(
                 theme.videoName,
                 Path.GetFileName(theme.videoPath),
                 Path.GetFileName(theme.o_videoPath),
                 Path.GetFileName(theme.videoTargetPath));
+            var localBackgroundPath = string.IsNullOrWhiteSpace(backgroundName)
+                ? ""
+                : Path.Combine(outputDirectory, backgroundName);
 
             theme.aidaLoadMark = null;
             theme.name = First(Path.GetFileNameWithoutExtension(outputPath), theme.name);
@@ -3646,10 +4130,14 @@ internal static class Program
             if (!string.IsNullOrWhiteSpace(backgroundName))
             {
                 theme.videoName = backgroundName;
+                theme.videoPath = localBackgroundPath;
+                theme.o_videoPath = localBackgroundPath;
                 theme.videoTargetPath = "/mnt/UDISK/video/" + backgroundName;
             }
             else
             {
+                theme.videoPath = "";
+                theme.o_videoPath = "";
                 theme.videoTargetPath = null;
             }
 
@@ -3657,6 +4145,7 @@ internal static class Program
             {
                 graph.enabled = false;
                 graph.SubTypeName = null;
+                NormalizeTurzxGraphDataBinding(graph);
 
                 if (graph is UsbMonitorL.GraphAnimation animation)
                 {
@@ -3667,14 +4156,122 @@ internal static class Program
                     animation.ration = 1;
                     animation.SWith = 0;
                     animation.SHeight = 0;
-                    if (!string.IsNullOrWhiteSpace(theme.videoPath))
+                    if (!string.IsNullOrWhiteSpace(localBackgroundPath))
                     {
-                        animation.FilePath = theme.videoPath;
+                        animation.FilePath = localBackgroundPath;
                     }
                 }
                 else if (graph is UsbMonitorL.GraphImage image)
                 {
                     image.step = image.step > 0 ? image.step : 0.02;
+                }
+            }
+        }
+
+        private static void NormalizeTurzxGraphDataBinding(UsbMonitorL.GraphItem graph)
+        {
+            if (string.Equals(graph.TypeName, "Text", StringComparison.OrdinalIgnoreCase))
+            {
+                graph.AcceptDataList = new List<string> { "StaticText" };
+                EnsureTurzxFontObject(graph, 18);
+                if (graph.m_data != null)
+                {
+                    graph.m_data.DataName = "StaticText";
+                    graph.m_data.Sanma_Eng_Name = "StaticText";
+                    graph.m_data.b_DataName = "StaticText";
+                    graph.m_data.ShowUnit = true;
+                }
+                return;
+            }
+
+            if (!string.Equals(graph.TypeName, "Data", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            graph.AcceptDataList = DefaultTurzxAcceptDataList();
+            EnsureTurzxFontObject(graph, 33);
+            if (graph.m_data == null)
+            {
+                return;
+            }
+
+            graph.m_data.DataName = NormalizeTurzxDataName(graph.m_data.DataName);
+            graph.m_data.b_DataName = NormalizeTurzxDataName(graph.m_data.b_DataName);
+            graph.m_data.Sanma_Eng_Name = NormalizeTurzxSensorDisplayName(graph.m_data.DataName, graph.m_data.Sanma_Eng_Name);
+            graph.m_data.DisplayName = First(graph.m_data.DisplayName, graph.m_data.Sanma_Eng_Name, graph.m_data.DataName);
+        }
+
+        private static void EnsureTurzxFontObject(UsbMonitorL.GraphItem graph, int fallbackSize)
+        {
+            graph.fontConfig ??= new UsbMonitorL.FontConfig();
+            if (string.IsNullOrWhiteSpace(graph.fontConfig.name))
+            {
+                graph.fontConfig.name = "Noto Sans TC";
+            }
+            if (graph.fontConfig.size <= 0)
+            {
+                graph.fontConfig.size = fallbackSize;
+            }
+            if (graph.fontConfig.color.IsEmpty)
+            {
+                graph.fontConfig.color = Color.White;
+            }
+            graph.fontConfig.alignment ??= new UsbMonitorL.TextAlignment();
+        }
+
+        private static string NormalizeTurzxDataName(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return value;
+            return value.Trim().ToUpperInvariant() switch
+            {
+                "FPS_AVG" or "AVERAGE_FPS" => "FPS",
+                _ => value
+            };
+        }
+
+        private static string NormalizeTurzxSensorDisplayName(string dataName, string displayName)
+        {
+            if (!string.IsNullOrWhiteSpace(displayName) &&
+                !displayName.Equals("Average FPS", StringComparison.OrdinalIgnoreCase))
+            {
+                return displayName;
+            }
+
+            return dataName switch
+            {
+                "FPS" => "FPS",
+                _ => displayName
+            };
+        }
+
+        internal static void RemoveTurzxVideoReferences(UsbMonitorL.Theme theme)
+        {
+            theme.videoPath = null;
+            theme.o_videoPath = null;
+            theme.videoName = null;
+            theme.videoTargetPath = null;
+
+            foreach (var graph in theme.GraphList)
+            {
+                if (graph is UsbMonitorL.GraphAnimation animation)
+                {
+                    animation.FilePath = "";
+                    animation.videoName = null;
+                    animation.hide = true;
+                    animation.enabled = false;
+                }
+            }
+        }
+
+        internal static void DropTurzxAnimationGraphs(UsbMonitorL.Theme theme)
+        {
+            for (var i = theme.GraphList.Count - 1; i >= 0; i--)
+            {
+                if (theme.GraphList[i] is UsbMonitorL.GraphAnimation ||
+                    string.Equals(theme.GraphList[i].TypeName, "Animation", StringComparison.OrdinalIgnoreCase))
+                {
+                    theme.GraphList.RemoveAt(i);
                 }
             }
         }
@@ -3841,6 +4438,11 @@ internal static class Program
             target.useGradient = Reflection.GetBool(source, "useGradient");
             target.enabled = false;
             target.TypeName = Reflection.GetString(source, "TypeName");
+            if (target.TypeName.Equals("Sensor", StringComparison.OrdinalIgnoreCase))
+            {
+                target.TypeName = "Data";
+                target.AcceptDataList = DefaultTurzxAcceptDataList();
+            }
             target.SubTypeName = null;
             Reflection.TrySet(target, "_DisplayName", First(Reflection.GetString(source, "DisplayName"), target.TypeName));
             target.posX = Reflection.GetInt(source, "posX");
@@ -3893,6 +4495,15 @@ internal static class Program
                 }
             };
         }
+
+        private static List<string> DefaultTurzxAcceptDataList() => new()
+        {
+            "CPUTEMP", "CPUCLOCK", "CPULOAD", "CPUPWR", "CPUFAN", "CPUVOLTAGE", "CPUMODEL",
+            "GPUTEMP", "GPUCLOCK", "GPURAMLOAD", "GPURAM", "GPULOAD", "GPUPWR", "GPUVALIDRAM",
+            "GPUFAN", "GPUVOLTAGE", "GPUMODEL", "RAMLOAD", "RAM", "RAMVALID", "RAMMODEL",
+            "WATERPUMP", "DRVLOAD", "HDDTEMP", "UPSPEED", "DOWNDSPEED", "TIME", "DATE", "DAY",
+            "Weather", "Volume", "FPS"
+        };
 
         private static Color GetColor(object source, string name, Color fallback)
         {
@@ -4377,35 +4988,38 @@ internal static class Program
                 _ => ""
             };
             var filter = rotation +
-                         $"scale={canvasWidth}:{canvasHeight}:force_original_aspect_ratio=increase:flags=lanczos," +
+                         $"scale={canvasWidth}:{canvasHeight}:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc," +
                          $"crop={canvasWidth}:{canvasHeight},setsar=1,fps=30,format=yuv420p";
             if (isUniversal88)
             {
                 var targetWidth = canvasWidth >= canvasHeight ? 1920 : 480;
                 var targetHeight = canvasWidth >= canvasHeight ? 480 : 1920;
-                filter = rotation + $"scale={targetWidth}:{targetHeight},setsar=1";
+                filter = rotation + $"scale={targetWidth}:{targetHeight}:out_range=pc,setsar=1";
             }
             var h264Filter = isUniversal88
                 ? canvasWidth >= canvasHeight
-                    ? "transpose=clock,scale=480:1920,setsar=1"
-                    : "scale=480:1920,setsar=1"
+                    ? "transpose=clock,scale=480:1920:out_range=pc,setsar=1"
+                    : "scale=480:1920:out_range=pc,setsar=1"
                 : isVm92
                     ? canvasWidth >= canvasHeight
-                        ? "transpose=clock,scale=464:1920,setsar=1"
-                        : "scale=464:1920,setsar=1"
+                        ? "transpose=clock,scale=464:1920:out_range=pc,setsar=1"
+                        : "scale=464:1920:out_range=pc,setsar=1"
                 : filter;
             var encoder = isUniversal88
                 ? new[]
                 {
                     "-an", "-r", "24", "-c:v", "libx264", "-preset", "ultrafast",
-                    "-threads", "0", "-x264opts", "bframes=0", "-pix_fmt", "yuv420p"
+                    "-threads", "0", "-x264opts", "bframes=0", "-color_range", "pc",
+                    "-profile:v", "baseline", "-level:v", "3.1", "-refs", "1",
+                    "-tune", "zerolatency", "-x264-params", "fullrange=on", "-pix_fmt", "yuv420p"
                 }
                 : new[]
             {
                 "-an", "-c:v", "libx264", "-preset", "ultrafast",
                 "-x264opts", "bframes=0", "-profile:v", "baseline",
                 "-level", "3.1", "-refs", "1", "-b:v", "2400k",
-                "-tune", "zerolatency", "-pix_fmt", "yuv420p"
+                "-tune", "zerolatency", "-color_range", "pc",
+                "-x264-params", "fullrange=on", "-pix_fmt", "yuv420p"
             };
             var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
             try
@@ -4417,8 +5031,8 @@ internal static class Program
                     h264InputWidth == 480 &&
                     h264InputHeight == 1920)
                 {
-                    var cropFilter = "crop=464:1920:8:0,setsar=1,fps=30,format=yuv420p";
-                    var previewFilter = "crop=464:1920:8:0,transpose=cclock,setsar=1,fps=30,format=yuv420p";
+                    var cropFilter = "crop=464:1920:8:0,scale=464:1920:out_range=pc,setsar=1,fps=30,format=yuv420p";
+                    var previewFilter = "crop=464:1920:8:0,transpose=cclock,scale=1920:464:out_range=pc,setsar=1,fps=30,format=yuv420p";
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", previewFilter }).Concat(encoder).Concat(new[] { "-movflags", "+faststart", tempMp4 }));
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", cropFilter }).Concat(encoder).Concat(new[] { "-f", "h264", tempH264 }));
                     RunFfmpeg(ffmpeg, GetBackgroundInputArguments(sourcePath, extension).Prepend("-y").Concat(new[] { "-vf", previewFilter, "-frames:v", "1", tempPreview }));
@@ -4699,6 +5313,8 @@ internal static class Program
                 : IsGraphLayer(graph) ? GraphPreviewPath(graph, templatePath)
                 : type == "GraphAnimation" ? AnimationMediaPath(graph, templatePath)
                 : ImagePath(graph, templatePath, index);
+            var mediaHasAppliedZoom = type.Equals("GraphImage", StringComparison.OrdinalIgnoreCase) &&
+                                      IsGraphImageRenderedBitmapPath(mediaPath);
             object? width = Reflection.Get(graph, "width");
             object? height = Reflection.Get(graph, "height");
             FillImageDimensionsFromMedia(type, mediaPath, ref width, ref height);
@@ -4722,6 +5338,8 @@ internal static class Program
                 ["Media"] = First(Reflection.GetString(graph, "ImgName"), Reflection.GetString(graph, "videoName"),
                     Path.GetFileName(Reflection.GetString(graph, "FilePath"))),
                 ["MediaPath"] = mediaPath,
+                ["MediaHasAppliedZoom"] = mediaHasAppliedZoom,
+                ["MediaAppliedZoomRate"] = mediaHasAppliedZoom ? GetZoomRate(theme, graph) : "",
                 ["Width"] = width, ["Height"] = height,
                 ["Radius"] = Reflection.Get(graph, "radius"), ["Diameter"] = Reflection.Get(graph, "diameter"),
                 ["Thickness"] = Reflection.Get(graph, "archWidth"),
@@ -4856,9 +5474,10 @@ internal static class Program
             var direct = First(Reflection.GetString(graph, "FilePath"), Reflection.GetString(graph, "Path"), Reflection.GetString(graph, "ImagePath"));
             if (File.Exists(direct)) return direct;
             var name = Reflection.GetString(graph, "ImgName");
-            var candidate = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(templatePath)!)!, "image", name);
-            if (File.Exists(candidate)) return candidate;
-            foreach (var property in new[] { "O_bitmap", "bitmap" })
+            var embeddedBitmapProperties = graph.GetType().Name.Equals("GraphImage", StringComparison.OrdinalIgnoreCase)
+                ? new[] { "bitmap", "S_bitmap", "O_bitmap" }
+                : new[] { "O_bitmap", "bitmap", "S_bitmap" };
+            foreach (var property in embeddedBitmapProperties)
             {
                 if (Reflection.Get(graph, property) is not Bitmap bitmap) continue;
                 try
@@ -4889,7 +5508,22 @@ internal static class Program
                 }
                 catch { }
             }
+            var candidate = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(templatePath)!)!, "image", name);
+            if (File.Exists(candidate)) return candidate;
             return candidate;
+        }
+
+        private static bool IsGraphImageRenderedBitmapPath(string mediaPath)
+        {
+            if (string.IsNullOrWhiteSpace(mediaPath))
+            {
+                return false;
+            }
+
+            var fileName = Path.GetFileNameWithoutExtension(mediaPath);
+            return fileName.IndexOf("-GraphImage-", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   (fileName.IndexOf("-bitmap-", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    fileName.IndexOf("-S_bitmap-", StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         private static string SensorImagePath(object graph, string templatePath)
@@ -5295,9 +5929,9 @@ internal static class Program
 
         private static object GetZoomRate(object? theme, object graph)
         {
+            var graphZoom = Reflection.Get(graph, "zoom_rate") ?? Reflection.Get(graph, "ZoomRate");
             if (graph.GetType().Name == "GraphAnimation")
             {
-                var graphZoom = Reflection.Get(graph, "zoom_rate");
                 if (graphZoom != null)
                 {
                     return NormalizeZoomRate(graphZoom);
@@ -5307,7 +5941,12 @@ internal static class Program
                 return NormalizeZoomRate(themeZoom);
             }
 
-            return Reflection.Get(graph, "zoom_rate") ?? "";
+            if (graphZoom != null)
+            {
+                return NormalizeZoomRate(graphZoom);
+            }
+
+            return "";
         }
 
         private static object NormalizeZoomRate(object? value)

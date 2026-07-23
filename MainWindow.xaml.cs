@@ -2224,7 +2224,7 @@ public partial class MainWindow : Window
         {
             Title = GetLanguageText("dialogs.exportLConnect", "Export for L-Connect"),
             Filter = GetLanguageText("dialogs.lConnectTemplateFilter", "L-Connect template package (*.zip)|*.zip"),
-            FileName = $"{CreateExportPackageBaseName(_currentTemplateId)}-LConnect.zip",
+            FileName = $"{CreateExportPackageBaseName(_currentTemplateId)}-ThemeEditor.zip",
             DefaultExt = ".zip",
             AddExtension = true
         };
@@ -2655,12 +2655,11 @@ public partial class MainWindow : Window
             
             if (!string.IsNullOrWhiteSpace(activeTemplatePath) && File.Exists(activeTemplatePath))
             {
-                var result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath, inspectBitmaps: false));
+                var result = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, activeTemplatePath, inspectBitmaps: true));
                 if (result != null && !string.IsNullOrWhiteSpace(result.TemplatePath) && File.Exists(result.TemplatePath))
                 {
                     var fastBackground = ThemeEditorCSharp.Services.FastProfileReader.GetActiveTemplateBackground(deviceModel, result.TemplateId ?? activeTemplateId);
-                    if (!string.IsNullOrWhiteSpace(fastBackground) &&
-                        File.Exists(fastBackground))
+                    if (ShouldUseFastProfileBackground(result, fastBackground))
                     {
                         result.BackgroundPath = fastBackground;
                         result.Background = System.IO.Path.GetFileName(fastBackground);
@@ -2687,6 +2686,31 @@ public partial class MainWindow : Window
             Debug.WriteLine($"Active template profile lookup failed: {ex.Message}");
             return null;
         }
+    }
+
+    private static bool ShouldUseFastProfileBackground(TemplateLoadResult result, string fastBackground)
+    {
+        if (string.IsNullOrWhiteSpace(fastBackground) || !File.Exists(fastBackground))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(result.BackgroundPath) || !File.Exists(result.BackgroundPath))
+        {
+            return true;
+        }
+
+        var existingName = Path.GetFileNameWithoutExtension(result.BackgroundPath);
+        var fastName = Path.GetFileNameWithoutExtension(fastBackground);
+        var templateId = result.TemplateId ?? "";
+        if (string.IsNullOrWhiteSpace(existingName) || string.IsNullOrWhiteSpace(fastName))
+        {
+            return false;
+        }
+
+        return !string.IsNullOrWhiteSpace(templateId) &&
+               fastName.StartsWith(templateId, StringComparison.OrdinalIgnoreCase) &&
+               !existingName.StartsWith(templateId, StringComparison.OrdinalIgnoreCase);
     }
 
     private void ApplyTemplateResult(TemplateLoadResult result)
@@ -4974,7 +4998,8 @@ public partial class MainWindow : Window
         if (_pendingLayerDeletes.Count > 0)
         {
             var deleteStopwatch = Stopwatch.StartNew();
-            await ApplyPendingLayerDeletesAsync(deviceModel, templatePath);
+            var appliedDeleteIndexes = await ApplyPendingLayerDeletesAsync(deviceModel, templatePath);
+            RebaseLayerSourceIndexesAfterDeletes(appliedDeleteIndexes);
             AppLogger.Info(
                 $"ApplyDirtyLayers deletes completed in {deleteStopwatch.ElapsedMilliseconds} ms; " +
                 $"remainingDirty={_dirtyLayers.Count}");
@@ -5252,11 +5277,11 @@ public partial class MainWindow : Window
         return -1;
     }
 
-    private async Task ApplyPendingLayerDeletesAsync(string deviceModel, string templatePath)
+    private async Task<IReadOnlyList<string>> ApplyPendingLayerDeletesAsync(string deviceModel, string templatePath)
     {
         if (_pendingLayerDeletes.Count == 0)
         {
-            return;
+            return Array.Empty<string>();
         }
 
         var indexes = _pendingLayerDeletes
@@ -5275,6 +5300,77 @@ public partial class MainWindow : Window
 
         _pendingLayerDeletes.Clear();
         _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
+        return indexes;
+    }
+
+    private void RebaseLayerSourceIndexesAfterDeletes(IReadOnlyList<string> deletedIndexes)
+    {
+        if (deletedIndexes.Count == 0)
+        {
+            return;
+        }
+
+        var deletedRootIndexes = deletedIndexes
+            .Select(index => int.TryParse(index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : -1)
+            .Where(index => index >= 0)
+            .OrderBy(index => index)
+            .ToList();
+
+        var deletedNestedIndexes = deletedIndexes
+            .Select(TryParseNestedLayerIndex)
+            .Where(item => item.HasValue)
+            .Select(item => item!.Value)
+            .GroupBy(item => item.ThemeIndex)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(item => item.ChildIndex).OrderBy(index => index).ToList());
+
+        foreach (var layer in Layers)
+        {
+            if (layer.IsEditorMetadata || IsOledCurveSyntheticBackgroundLayer(layer))
+            {
+                continue;
+            }
+
+            var sourceIndex = string.IsNullOrWhiteSpace(layer.SourceLayerIndex)
+                ? layer.Index
+                : layer.SourceLayerIndex;
+
+            if (int.TryParse(sourceIndex, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rootIndex))
+            {
+                var shift = deletedRootIndexes.Count(deletedIndex => deletedIndex < rootIndex);
+                if (shift > 0)
+                {
+                    layer.SourceLayerIndex = (rootIndex - shift).ToString(CultureInfo.InvariantCulture);
+                }
+                continue;
+            }
+
+            var nested = TryParseNestedLayerIndex(sourceIndex);
+            if (nested.HasValue &&
+                deletedNestedIndexes.TryGetValue(nested.Value.ThemeIndex, out var deletedChildren))
+            {
+                var shift = deletedChildren.Count(deletedIndex => deletedIndex < nested.Value.ChildIndex);
+                if (shift > 0)
+                {
+                    layer.SourceLayerIndex = $"theme:{nested.Value.ThemeIndex}:{nested.Value.ChildIndex - shift}";
+                }
+            }
+        }
+    }
+
+    private static (int ThemeIndex, int ChildIndex)? TryParseNestedLayerIndex(string? index)
+    {
+        var parts = (index ?? "").Split(':');
+        if (parts.Length == 3 &&
+            parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
+            int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
+        {
+            return (themeIndex, childIndex);
+        }
+
+        return null;
     }
 
     private static long GetLayerDeleteSortKey(string index)
@@ -6507,7 +6603,7 @@ public partial class MainWindow : Window
             var imagePath = ResolveLayerMediaPath(layer);
             if (!string.IsNullOrWhiteSpace(imagePath))
             {
-                return CreatePreviewLayerHitTarget(bounds, CreatePreviewImage(imagePath, bounds.Width, bounds.Height, selected, layer.Rotate));
+                return CreatePreviewLayerHitTarget(bounds, CreatePreviewImage(imagePath, bounds.Width, bounds.Height, selected, layer.Rotate, layer.Rect));
             }
         }
 
@@ -9727,7 +9823,8 @@ public partial class MainWindow : Window
         double width,
         double height,
         bool selected,
-        string rotationText = "0")
+        string rotationText = "0",
+        string sourceRectText = "")
     {
         var border = new Border
         {
@@ -9740,7 +9837,7 @@ public partial class MainWindow : Window
         {
             var image = new Image
             {
-                Source = GetCachedPreviewImage(imagePath),
+                Source = GetPreviewImageSource(imagePath, sourceRectText),
                 Stretch = Stretch.Uniform,
                 RenderTransformOrigin = new Point(0.5, 0.5)
             };
@@ -9755,6 +9852,33 @@ public partial class MainWindow : Window
             border.Child = new Rectangle { Fill = NewBrush("#4F8CFF", "#4F8CFF") };
         }
         return border;
+    }
+
+    private BitmapSource GetPreviewImageSource(string imagePath, string sourceRectText)
+    {
+        var source = GetCachedPreviewImage(imagePath);
+        if (!TryParseLayerSourceRect(sourceRectText, out var rect))
+        {
+            return source;
+        }
+
+        var crop = ClampSourceRect(rect, source.PixelWidth, source.PixelHeight);
+        if (crop.Width <= 0 || crop.Height <= 0)
+        {
+            return source;
+        }
+
+        if (crop.X == 0 &&
+            crop.Y == 0 &&
+            crop.Width == source.PixelWidth &&
+            crop.Height == source.PixelHeight)
+        {
+            return source;
+        }
+
+        var cropped = new CroppedBitmap(source, crop);
+        cropped.Freeze();
+        return cropped;
     }
 
     private string GetH2GraphPreviewStyle(LayerRow layer)
@@ -10687,10 +10811,12 @@ public partial class MainWindow : Window
         else if (type.Contains("Image", StringComparison.OrdinalIgnoreCase) ||
                  type.Contains("Animation", StringComparison.OrdinalIgnoreCase))
         {
-            var size = GetLayerMediaPixelSize(layer, fallbackWidth: 80.0, fallbackHeight: 80.0);
+            var size = TryParseLayerSourceRect(layer.Rect, out var sourceRect) && sourceRect.Width > 0 && sourceRect.Height > 0
+                ? new Size(sourceRect.Width, sourceRect.Height)
+                : GetLayerMediaPixelSize(layer, fallbackWidth: 80.0, fallbackHeight: 80.0);
             double w = size.Width;
             double h = size.Height;
-            double zoom = TryParseZoom(layer.ZoomRate, out var zr) && zr > 0 ? zr : 1.0;
+            double zoom = GetImagePreviewZoomFactor(layer);
             w *= zoom;
             h *= zoom;
             if (int.TryParse(layer.Rotate, out var imageRotation) && imageRotation % 180 != 0)
@@ -10711,6 +10837,61 @@ public partial class MainWindow : Window
             }
             return GetGdiTextLayerRender(layer, text).Bounds;
         }
+    }
+
+    private static double GetImagePreviewZoomFactor(LayerRow layer)
+    {
+        var currentZoom = TryParseZoom(layer.ZoomRate, out var parsedCurrent) && parsedCurrent > 0
+            ? parsedCurrent
+            : 1.0;
+        if (!layer.MediaHasAppliedZoom)
+        {
+            return currentZoom;
+        }
+
+        var appliedZoom = TryParseZoom(layer.MediaAppliedZoomRate, out var parsedApplied) && parsedApplied > 0
+            ? parsedApplied
+            : currentZoom;
+        return currentZoom / Math.Max(0.01, appliedZoom);
+    }
+
+    private static bool TryParseLayerSourceRect(string? value, out Int32Rect rect)
+    {
+        rect = default;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        var parts = Regex.Split(value.Trim(), @"[,; ]+")
+            .Where(part => part.Length > 0)
+            .ToArray();
+        if (parts.Length != 4)
+        {
+            return false;
+        }
+
+        if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var x) ||
+            !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var y) ||
+            !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var width) ||
+            !int.TryParse(parts[3], NumberStyles.Integer, CultureInfo.InvariantCulture, out var height) ||
+            width <= 0 ||
+            height <= 0)
+        {
+            return false;
+        }
+
+        rect = new Int32Rect(x, y, width, height);
+        return true;
+    }
+
+    private static Int32Rect ClampSourceRect(Int32Rect rect, int pixelWidth, int pixelHeight)
+    {
+        var x = Math.Clamp(rect.X, 0, Math.Max(0, pixelWidth));
+        var y = Math.Clamp(rect.Y, 0, Math.Max(0, pixelHeight));
+        var right = Math.Clamp(rect.X + rect.Width, 0, Math.Max(0, pixelWidth));
+        var bottom = Math.Clamp(rect.Y + rect.Height, 0, Math.Max(0, pixelHeight));
+        return new Int32Rect(x, y, Math.Max(0, right - x), Math.Max(0, bottom - y));
     }
 
     private Size GetLayerMediaPixelSize(LayerRow layer, double fallbackWidth, double fallbackHeight)
@@ -18230,7 +18411,7 @@ public partial class MainWindow : Window
         {
             Title = GetLanguageText("dialogs.saveLianLiPackage", "Save L-Connect ZIP package"),
             Filter = GetLanguageText("dialogs.zipFilter", "ZIP (*.zip)|*.zip"),
-            FileName = $"{SanitizeFileName(Path.GetFileNameWithoutExtension(themePath))}-LConnect.zip"
+            FileName = $"{SanitizeFileName(Path.GetFileNameWithoutExtension(themePath))}-ThemeEditor.zip"
         };
         if (outputDialog.ShowDialog(this) != true) return;
 
@@ -19188,7 +19369,7 @@ public partial class MainWindow : Window
                     Dispatcher.Invoke(() =>
                     {
                         progressBar.Value = progress;
-                        statusText.Text = FormatLanguageText("updates.downloadingProgress", "Downloading version {0}... {1:0}%", latestVersion, progress);
+                        statusText.Text = FormatLanguageText("updates.downloadingProgress", "Downloading version {0}... {1}%", latestVersion, Math.Round(progress));
                     });
                 }, cts.Token);
 
@@ -22678,7 +22859,7 @@ public partial class MainWindow : Window
             name = Path.GetFileNameWithoutExtension(name);
         }
 
-        name = Regex.Replace(name, @"(?i)[-_ ]?LConnect$", "");
+        name = Regex.Replace(name, @"(?i)[-_ ]?(?:LConnect|ThemeEditor)$", "");
         name = Regex.Replace(name, @"\s+", "_").Trim(' ', '.', '_', '-');
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -22911,7 +23092,7 @@ public partial class MainWindow : Window
                     filters.Add("transpose=cclock");
                 }
 
-                filters.Add($"scale={targetWidth}:{targetHeight}:force_original_aspect_ratio=increase:flags=lanczos");
+                filters.Add($"scale={targetWidth}:{targetHeight}:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc");
                 filters.Add($"crop={targetWidth}:{targetHeight}");
                 filters.Add("setsar=1");
                 filters.Add("fps=24");
@@ -22922,11 +23103,13 @@ public partial class MainWindow : Window
             else
             {
                 startInfo.ArgumentList.Add(
-                    $"scale={canvas.Width}:{canvas.Height}:force_original_aspect_ratio=increase:flags=lanczos," +
+                    $"scale={canvas.Width}:{canvas.Height}:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc," +
                     $"crop={canvas.Width}:{canvas.Height},setsar=1,fps=24,format=yuv420p");
             }
             startInfo.ArgumentList.Add("-c:v");
             startInfo.ArgumentList.Add("libx264");
+            startInfo.ArgumentList.Add("-color_range");
+            startInfo.ArgumentList.Add("pc");
             if (isWideScreen)
             {
                 startInfo.ArgumentList.Add("-r");
@@ -22937,6 +23120,16 @@ public partial class MainWindow : Window
                 startInfo.ArgumentList.Add("0");
                 startInfo.ArgumentList.Add("-x264opts");
                 startInfo.ArgumentList.Add("bframes=0");
+                startInfo.ArgumentList.Add("-profile:v");
+                startInfo.ArgumentList.Add("baseline");
+                startInfo.ArgumentList.Add("-level:v");
+                startInfo.ArgumentList.Add("3.1");
+                startInfo.ArgumentList.Add("-refs");
+                startInfo.ArgumentList.Add("1");
+                startInfo.ArgumentList.Add("-tune");
+                startInfo.ArgumentList.Add("zerolatency");
+                startInfo.ArgumentList.Add("-x264-params");
+                startInfo.ArgumentList.Add("fullrange=on");
                 startInfo.ArgumentList.Add("-pix_fmt");
                 startInfo.ArgumentList.Add("yuv420p");
             }
@@ -22947,13 +23140,17 @@ public partial class MainWindow : Window
                 startInfo.ArgumentList.Add("-crf");
                 startInfo.ArgumentList.Add("14");
                 startInfo.ArgumentList.Add("-profile:v");
-                startInfo.ArgumentList.Add("main");
-                startInfo.ArgumentList.Add("-level");
+                startInfo.ArgumentList.Add("baseline");
+                startInfo.ArgumentList.Add("-x264opts");
+                startInfo.ArgumentList.Add("bframes=0");
+                startInfo.ArgumentList.Add("-x264-params");
+                startInfo.ArgumentList.Add("fullrange=on");
+                startInfo.ArgumentList.Add("-level:v");
                 startInfo.ArgumentList.Add("3.1");
                 startInfo.ArgumentList.Add("-refs");
                 startInfo.ArgumentList.Add("1");
-                startInfo.ArgumentList.Add("-bf");
-                startInfo.ArgumentList.Add("1");
+                startInfo.ArgumentList.Add("-tune");
+                startInfo.ArgumentList.Add("zerolatency");
                 startInfo.ArgumentList.Add("-g");
                 startInfo.ArgumentList.Add("24");
                 startInfo.ArgumentList.Add("-keyint_min");
@@ -23331,10 +23528,10 @@ private static string CreateExportPackageBaseName(string templateId)
         "",
         RegexOptions.IgnoreCase);
 
-    // Varsa sondaki LConnect ifadesini kaldır.
+    // Varsa export soneklerini kaldır.
     baseId = Regex.Replace(
         baseId,
-        @"(?i)[-_ ]?LConnect$",
+        @"(?i)[-_ ]?(?:LConnect|ThemeEditor)$",
         "");
 
     baseId = baseId.Trim(' ', '.', '_', '-');
@@ -25346,10 +25543,23 @@ private static string CreateExportPackageBaseName(string templateId)
     private string FormatLanguageText(string key, string fallback, params object[] values)
     {
         var value = GetLanguageText(key, fallback);
+        try
+        {
+            return string.Format(CultureInfo.CurrentCulture, value, values);
+        }
+        catch (FormatException)
+        {
+            return ReplaceSimplePlaceholders(value, values);
+        }
+    }
+
+    private static string ReplaceSimplePlaceholders(string value, params object[] values)
+    {
         for (var index = 0; index < values.Length; index++)
         {
-            value = value.Replace($"{{{index}}}", values[index]?.ToString() ?? "");
+            value = value.Replace($"{{{index}}}", Convert.ToString(values[index], CultureInfo.CurrentCulture) ?? "", StringComparison.Ordinal);
         }
+
         return value;
     }
 
@@ -29539,9 +29749,10 @@ private static string CreateExportPackageBaseName(string templateId)
             foreach (var arg in new[]
                      {
                          "-y", "-f", "h264", "-i", h264Path,
-                         "-vf", "transpose=cclock,scale=1920:480,setsar=1,fps=30,format=yuv420p",
+                         "-vf", "transpose=cclock,scale=1920:480:out_range=pc,setsar=1,fps=30,format=yuv420p",
                          "-an", "-c:v", "libx264", "-preset", "ultrafast",
-                         "-x264opts", "bframes=0", "-pix_fmt", "yuv420p",
+                         "-x264opts", "bframes=0", "-color_range", "pc",
+                         "-x264-params", "fullrange=on", "-pix_fmt", "yuv420p",
                          "-movflags", "+faststart", tempPath
                      })
             {
@@ -29713,9 +29924,11 @@ private static string CreateExportPackageBaseName(string templateId)
             foreach (var arg in new[]
                      {
                          "-y", "-i", mp4Path,
-                         "-vf", "transpose=clock,scale=480:1920,setsar=1,fps=30,format=yuv420p",
+                         "-vf", "transpose=clock,scale=480:1920:out_range=pc,setsar=1,fps=30,format=yuv420p",
                          "-an", "-c:v", "libx264", "-preset", "ultrafast",
-                         "-x264opts", "bframes=0", "-pix_fmt", "yuv420p",
+                         "-x264opts", "bframes=0", "-color_range", "pc",
+                         "-profile:v", "baseline", "-level:v", "3.1", "-refs", "1",
+                         "-tune", "zerolatency", "-x264-params", "fullrange=on", "-pix_fmt", "yuv420p",
                          "-f", "h264", tempPath
                      })
             {

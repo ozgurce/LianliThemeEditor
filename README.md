@@ -4,16 +4,11 @@ Windows desktop editor for creating, converting, validating, installing, and sha
 
 The app focuses on L-Connect 3 LCD devices such as HydroShift II LCD S/C, the 8.8" Universal Screen, and the 9.2" VM display. It edits L-Connect `.template` files, works with `.turtheme` packages, includes an in-app theme gallery, and now integrates Phone Link for optional local phone control.
 
-# If you want to support this project you can donate here, so i can get new devices like Curve Oled to add support for it
-
-https://ozgurce.lemonsqueezy.com/
-
-
 ## Current Version
 
-`2.6.1`
+`2.6.5`
 
-Version 2.6.1 fixes gallery-installed theme background revert behavior and corrects portrait gallery package previews/background media.
+Version 2.6.5 fixes PNG preview zoom/source handling for HydroShift II and Universal 8.8" themes, restores gauge needle previews, improves active-theme background loading, and updates H.264 export/apply plus Gallery companions for full-range color while preserving device-compatible orientation and resolution.
 
 ## Main Features
 
@@ -33,6 +28,7 @@ Version 2.6.1 fixes gallery-installed theme background revert behavior and corre
 
 - HydroShift II LCD S
 - HydroShift II LCD C
+- HydroShift II OLED Curve 8.2" (alpha testing)
 - Universal Screen 8.8"
 - VM 9.2"
 

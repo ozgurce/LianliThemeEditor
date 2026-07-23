@@ -81,8 +81,11 @@ public sealed class SupporterBridge : ISupporterBridge
         return styles ?? new List<GraphStyleOption>();
     }
 
-    private static string NormalizeLayerText(string value) =>
-        (value ?? "").Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
+    private static string NormalizeLayerText(string value)
+    {
+        var normalized = (value ?? "").Replace("\r\n", "\n").Replace('\r', '\n');
+        return normalized.Replace("\\", "\\\\").Replace("\n", "\\n");
+    }
 
     private List<string> BuildApplyLayerArgs(string deviceModel, string templatePath, LayerRow layer)
     {
@@ -963,6 +966,8 @@ public sealed class SupporterBridge : ISupporterBridge
                     Text = NormalizeDisplayText(GetValue(layer, "Text")),
                     Media = GetValue(layer, "Media"),
                     MediaPath = GetValue(layer, "MediaPath"),
+                    MediaHasAppliedZoom = GetBoolValue(layer, "MediaHasAppliedZoom"),
+                    MediaAppliedZoomRate = GetValue(layer, "MediaAppliedZoomRate"),
                     X = GetValue(layer, "X"),
                     Y = GetValue(layer, "Y"),
                     Size = GetValue(layer, "Size"),
@@ -1179,6 +1184,22 @@ public sealed class SupporterBridge : ISupporterBridge
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : 0;
+    }
+
+    private static bool GetBoolValue(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+        {
+            return false;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(property.GetString(), out var parsed) && parsed,
+            _ => false
+        };
     }
 
     private static string GetColorAlpha(string color)

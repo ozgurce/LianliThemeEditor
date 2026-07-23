@@ -8,13 +8,12 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>LianLiThemeEditor</AssemblyName>
     <RootNamespace>ThemeEditorCSharp</RootNamespace>
-    <Version>2.6.1</Version>
-    <AssemblyVersion>2.6.1.0</AssemblyVersion>
-    <FileVersion>2.6.1.0</FileVersion>
-    <InformationalVersion>2.6.1</InformationalVersion>
-    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    <Title>Lian Li LCD Template Editor 2.6.1</Title>
-    <AssemblyTitle>Lian Li LCD Template Editor 2.6.1</AssemblyTitle>
+    <Version>2.6.5</Version>
+    <AssemblyVersion>2.6.5.0</AssemblyVersion>
+    <FileVersion>2.6.5.0</FileVersion>
+    <InformationalVersion>2.6.5</InformationalVersion>
+    <Title>Lian Li LCD Template Editor 2.6.5</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor 2.6.5</AssemblyTitle>
     <Product>Lian Li LCD Template Editor</Product>
     <Description>Theme editor for Lian Li LCD devices</Description>
     <Company>Ozgur Yalcin</Company>
@@ -24,7 +23,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseAppHost>true</UseAppHost>
     <BaseOutputPath>bin_build\</BaseOutputPath>
-    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;outputs\**;tmp\**;tmp_*\**;release\**;gallery_fix_work\**;cloudflare\**;tools\**;_project-archive\**;PhoneControl\**;compare_extract\**;dim_probe\**;lc_v2_repack\**;lc_v2_verify_idnamed\**;themePic_local_fix\**;video_work\**;tmp_video_frames\**;tmp_video_frames_cv2\**;bin\**;bin_build\**;obj\**;obj_build\**;active_*.json;tmp_*;firmwares-*.json;*.fw;extracted_from_lianli88*.png</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;outputs\**;tmp\**;tmp_*\**;release\**;gallery_fix_work\**;cloudflare\**;tools\**;_project-archive\**;_cleanup_20260722\**;PhoneControl\**;compare_extract\**;dim_probe\**;lc_v2_repack\**;lc_v2_verify_idnamed\**;themePic_local_fix\**;video_work\**;tmp_video_frames\**;tmp_video_frames_cv2\**;bin\**;bin_build\**;obj\**;obj_build\**;active_*.json;tmp_*;firmwares-*.json;*.fw;extracted_from_lianli88*.png</DefaultItemExcludes>
   </PropertyGroup>
 
   <ItemGroup>

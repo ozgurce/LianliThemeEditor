@@ -1,10 +1,36 @@
 # Changelog
 
-## V 2.6.1
+## V 2.6.5
 
-- Fixed gallery-installed themes being treated as custom-background activations, so reverting a background change in L-Connect restores the theme's original background instead of clearing it.
-- Fixed portrait gallery packages whose internal `themePic` preview was still stored as a landscape image, including `Memento Mori V1`, `Memento Mori V2`, `Doom`, and `GrayMetal`.
-- Fixed the packaged background media for `Memento Mori V2` so gallery installs use the correct original portrait background.
+- Fixed HydroShift II LCD-S/C and Universal 8.8" PNG layer previews that used the wrong embedded bitmap or ignored source rectangles, causing some images to appear at the wrong position or size in the editor.
+- Fixed PNG/image zoom handling so `zoom_rate` and `ZoomRate` are both read and written, and editor previews account for images whose embedded bitmap already has zoom baked into it.
+- Fixed Universal 8.8" image-layer zoom edits that changed the layer data but did not visibly update the selected PNG in the preview.
+- Fixed active-theme startup background loading so the editor no longer shows a stale or unrelated profile background before switching themes.
+- Fixed gauge needle previews after the PNG bitmap-order fix by keeping `GraphClock`/gauge media on the original bitmap-first path while retaining rendered bitmap preference for `GraphImage` layers.
+- Improved export and apply H.264 encoding to keep L-Connect-compatible `Constrained Baseline` H.264 while enabling full-range color output (`color_range=pc`) for darker blacks and more accurate colors.
+- Updated Universal 8.8" H.264 generation to preserve the runtime orientation expected by L-Connect, including the rotated `480x1920` H.264 stream used by many landscape 8.8" themes.
+- Added stronger H.264 export/apply consistency checks around profile, level, B-frames, references, pixel format, color range, and device-specific runtime dimensions.
+- Regenerated MP4-backed GitHub Gallery H.264 companions with full-range color where safe, while preserving existing H.264 resolution and visual orientation instead of deriving them only from manifest orientation.
+- Fixed Gallery H.264 handling for landscape Universal 8.8" packages whose MP4 previews are `1920x480` but whose accepted runtime H.264 backgrounds are physically stored as `480x1920`.
+- Added missing H.264 companions for Gallery packages that previously contained MP4 backgrounds without a matching runtime H.264 file.
+
+## V 2.6.2
+
+- Fixed localized update and download progress messages so version/progress placeholders are replaced with actual values instead of appearing on screen.
+- Fixed delayed layer delete/apply sequencing so remaining layer source indexes are rebased after deletion, preventing Apply All from updating or removing the wrong layer.
+- Improved active theme reload/background recovery when L-Connect changes or reverts the background outside the editor, including fallback through `GraphAnimation` media paths, template ids, stable aliases, temp folders, and uploaded background folders.
+- Fixed stale L-Connect service log entries overriding newer profile background state after a background revert.
+- Improved background video preview reliability by retrying failed playback with a temporary preview-friendly MP4 before falling back to a still frame.
+- Updated editor preview FFmpeg lookup to use the detected L-Connect install path instead of assuming the default Program Files location.
+- Fixed theme selector loading state after importing a theme so later selections load normally.
+- Kept Gallery installs on the Gallery tab instead of switching back to the editor after reinstall/download.
+- Fixed pending community gallery entries overriding approved GitHub gallery themes with the same id/name.
+- Preserved original L-Connect ZIP gallery submissions that already include `.template` and `.h264` files, avoiding unnecessary background reprocessing and layer/font id rewrites.
+- Improved Gallery submission packaging by embedding normalized previews, inferring Universal 8.8" orientation from preview/background media, and keeping package metadata aligned with the submitted assets.
+- Fixed Universal 8.8" portrait gallery packages whose MP4 preview companions were incorrectly encoded as landscape while the H.264 runtime background was already portrait.
+- Corrected portrait metadata for Universal 8.8" gallery themes using the preview image as the source of truth, including `Doom`, `Doom the Dark Ages V2 Vertical`, `GrayMetal`, and older vertical `.lltheme` packages.
+- Added Turzx `.turtheme` export/normalization support, including `themePic`, `videoPath`/`o_videoPath`, animation graph handling, sensor/data binding normalization, and font metadata repair.
+- Added Turzx inspection and debug tooling for theme trees, bitmap fields, video references, and layer serialization checks.
 
 ## V 2.5.9
 

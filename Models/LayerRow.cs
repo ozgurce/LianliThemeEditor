@@ -34,6 +34,8 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string Text { get; set; } = "";
     public string Media { get; set; } = "";
     public string MediaPath { get; set; } = "";
+    public bool MediaHasAppliedZoom { get; set; }
+    public string MediaAppliedZoomRate { get; set; } = "";
     public string Description { get; set; } = "";
     public string TypeDisplay { get; set; } = "";
     public string LayerDataTitle =>
