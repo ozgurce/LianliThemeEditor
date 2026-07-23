@@ -643,8 +643,8 @@
       "description": "Includes FPS",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
-      "previewUrl": "https://raw.githubusercontent.com/ozgurce/LianliThemeEditor/30ddcbdb7ad932ce631ce352d91d7f3c2c55e82c/templates/previews/cyberpunk2077-v4lcvert-0f3937cf.png",
-      "packageUrl": "https://raw.githubusercontent.com/ozgurce/LianliThemeEditor/9192bc6ad603ecd4f6414bb53b3f332545cfb86c/templates/packages/cyberpunk2077-v4lcvert-0f3937cf.zip",
+      "previewUrl": "previews/cyberpunk2077-v4lcvert-0f3937cf.png",
+      "packageUrl": "packages/cyberpunk2077-v4lcvert-0f3937cf.zip",
       "orientation": "portrait"
     },
     {
