@@ -1051,6 +1051,16 @@
       "packageUrl": "packages/radioactive-c302c775.zip",
       "orientation": "portrait",
       "approvedAt": "2026-07-19T20:26:00Z"
+    },
+    {
+      "id": "techtheme-d151464d",
+      "name": "TechTheme",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/techtheme-d151464d.png",
+      "packageUrl": "packages/techtheme-d151464d.zip"
     }
   ]
 }
