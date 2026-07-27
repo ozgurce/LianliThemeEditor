@@ -1,5 +1,32 @@
 # Changelog
 
+## V 2.8.1
+
+- Fixed 8.8" Universal Screen ring graph previews that could appear oversized in the editor preview on first load.
+- Fixed ring graph previews shrinking while dragging or editing and then growing again after the async ThemeEngine preview refresh completed.
+- Kept GraphSensor preview media stable during edits so the preview does not jump between the local fallback drawing and rendered bitmap paths.
+- Fixed toolbar tooltips for export, import, orientation, and Apply All buttons so icon-only buttons no longer show WPF control type names such as `System.Windows.Shapes.Rectangle`.
+
+## V 2.7.1
+
+- Fixed Universal 8.8" L-Connect ZIP imports that could incorrectly mark horizontal themes as portrait when the package contained only a rotated runtime `.h264` background stream such as `480x1920`.
+- Stopped using background, template, package, or theme file names as orientation evidence during Universal 8.8" import/conversion paths, avoiding fragile `portrait`/`landscape` inference from names.
+- Added stronger Universal 8.8" orientation detection from the imported `.template` content itself, using embedded preview/canvas dimensions such as `1920x480` before falling back to other reliable metadata.
+- Kept raw `.h264` dimensions from forcing portrait detection, because L-Connect can store horizontal Universal 8.8" runtime backgrounds in a physically vertical H.264 layout.
+- Verified the `Static_Theme_Metallic-ThemeEditor.zip` sample imports as a horizontal theme source by reading its embedded template preview dimensions as `1920x480`.
+- Confirmed the sample `.h264` can still be converted into a horizontal editor preview MP4 at `1920x480`.
+
+## V 2.7.0
+
+- Fixed delayed multi-layer delete flows so queued deletes keep a stable editor layer identity and original template source index, preventing shifted UI layer numbers from deleting the wrong layer after earlier deletes.
+- Added batched template-layer deletion in the template worker, so multiple queued deletes are applied against one loaded template in descending source order instead of repeatedly rewriting the file with shifting indexes.
+- Improved delete and move verification by matching layers with richer signatures and logging queued/delete target snapshots when the layer list changes unexpectedly.
+- Fixed local layer source-index tracking after deletes, moves, and duplicates so later Apply All operations continue targeting the intended persisted layer.
+- Fixed imported Universal 8.8" themes whose background appeared in the editor only after manually reloading a background.
+- Improved Universal 8.8" import normalization: MP4 backgrounds are inspected for orientation, converted to the runtime H.264 format expected by L-Connect, and referenced back from the template while keeping MP4 preview companions.
+- Regenerated broken import `themePic` previews when needed so packaged/imported themes open with a valid preview and background reference.
+- Reduced unnecessary template rewrites by keeping structural changes queued locally until Apply All where possible, while forcing a sync only before operations that depend on the persisted layer order.
+
 ## V 2.6.5
 
 - Fixed HydroShift II LCD-S/C and Universal 8.8" PNG layer previews that used the wrong embedded bitmap or ignored source rectangles, causing some images to appear at the wrong position or size in the editor.

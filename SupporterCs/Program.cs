@@ -207,6 +207,7 @@ internal static class Program
         private readonly string _profileDir;
         private string _templateRoot;
         private string _templatePath;
+        private readonly Dictionary<string, string> _previewSensorData;
 
         public SupporterApplication(Arguments args)
         {
@@ -216,6 +217,7 @@ internal static class Program
             _profileDir = args.Get("ProfileDir", Path.Combine(DefaultProgramData, "profile"));
             _templateRoot = args.Get("TemplateRoot", Path.Combine(DefaultProgramData, _deviceModel, "template"));
             _templatePath = args.Get("TemplatePath", "");
+            _previewSensorData = LoadPreviewSensorData(args.Get("PreviewDataPath", ""));
         }
 
         public void Run()
@@ -1728,6 +1730,7 @@ internal static class Program
                 SetDataSource(layer, _args.Get("AddDataSource", "CPULOAD"));
                 Reflection.TrySet(layer, "posX", _args.GetInt("AddX", 240));
                 Reflection.TrySet(layer, "posY", _args.GetInt("AddY", 240));
+                ApplyAddedGraphSize(layer, _args.GetInt("AddSize", 80));
                 SetGraphColors(layer, _args.Get("AddFrontColor", "#FFFFFF"), _args.Get("AddBackColor", "#20FFFFFF"));
                 Graphs(theme).Add(layer);
             }
@@ -1853,6 +1856,7 @@ internal static class Program
                 _args.Get("SensorFont", "Noto Sans TC"),
                 _args.Get("SensorTopFontColor", _args.Get("SensorTextColor", "#FFFFFF")),
                 _args.Get("SensorBottomFontColor", _args.Get("SensorTextColor", "#FFFFFF")));
+            SetSensorZoom(layer, _args.GetDouble("SensorZoom", _args.GetDouble("LayerSensorZoom", 0.5)));
             SetDataValue(layer, _args.Get("SensorValue", "52"));
             var drawStyle = Reflection.Get(layer, "drawStyle") ?? throw new InvalidOperationException("Sensor draw style was not created.");
             var method = drawStyle.GetType().GetMethod("GetValImage", new[] { typeof(int), typeof(FontFamily) })
@@ -2062,7 +2066,6 @@ internal static class Program
             var output = _args.Get(
                 "Output",
                 Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "theme-engine-canvas.png"));
-
             using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
             using (var graphics = Graphics.FromImage(bitmap))
             {
@@ -2073,7 +2076,11 @@ internal static class Program
 
                 if (!_args.Has("NoBackground"))
                 {
-                    DrawThemeBackground(graphics, theme, width, height);
+                    var backgroundOverride = _args.Get("BackgroundPath", "");
+                    if (!DrawThemeBackground(graphics, backgroundOverride, width, height))
+                    {
+                        DrawThemeBackground(graphics, theme, width, height);
+                    }
                 }
 
                 var d3Cache = TryLoadD3Cache(theme);
@@ -2126,6 +2133,11 @@ internal static class Program
                 {
                     continue;
                 }
+                if (_args.Has("SkipGraphAnimation") &&
+                    layer.GetType().Name.Equals("GraphAnimation", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
 
                 try
                 {
@@ -2152,7 +2164,7 @@ internal static class Program
             }
         }
 
-        private static void SetThemeEnginePreviewData(object layer)
+        private void SetThemeEnginePreviewData(object layer)
         {
             var data = Reflection.Get(layer, "m_data");
             if (data == null)
@@ -2166,11 +2178,76 @@ internal static class Program
                 return;
             }
 
+            if (_previewSensorData.TryGetValue(NormalizePreviewDataName(dataName), out var previewValue) &&
+                !string.IsNullOrWhiteSpace(previewValue))
+            {
+                SetDataValue(layer, previewValue);
+                return;
+            }
+
+            if (IsStringModelDataName(dataName))
+            {
+                return;
+            }
+
             var value = Reflection.GetString(data, "Value");
             if (string.IsNullOrWhiteSpace(value) || value == "0")
             {
+                Console.Error.WriteLine("ThemePreviewDataMissing: " + dataName);
                 SetDataValue(layer, SamplePreviewValue(dataName));
             }
+        }
+
+        private static Dictionary<string, string> LoadPreviewSensorData(string path)
+        {
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            {
+                return result;
+            }
+
+            try
+            {
+                var raw = Json.Deserialize<Dictionary<string, string>>(File.ReadAllText(path));
+                if (raw == null)
+                {
+                    return result;
+                }
+
+                foreach (var item in raw)
+                {
+                    var key = NormalizePreviewDataName(item.Key);
+                    if (!string.IsNullOrWhiteSpace(key) && !string.IsNullOrWhiteSpace(item.Value))
+                    {
+                        result[key] = item.Value;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("PreviewSensorDataLoadFailed: " + ex.Message);
+            }
+
+            return result;
+        }
+
+        private static string NormalizePreviewDataName(string dataName)
+        {
+            var key = (dataName ?? "").Trim().ToUpperInvariant();
+            return key switch
+            {
+                "CPUPOWER" => "CPUPWR",
+                "GPUPOWER" => "GPUPWR",
+                "DOWNSPEED" => "DOWNDSPEED",
+                "FPS" => "FPS_AVG",
+                _ => key
+            };
+        }
+
+        private static bool IsStringModelDataName(string dataName)
+        {
+            var key = NormalizePreviewDataName(dataName);
+            return key is "CPUMODEL" or "GPUMODEL" or "RAMMODEL";
         }
 
         private static string SamplePreviewValue(string dataName)
@@ -2318,21 +2395,27 @@ internal static class Program
         private void DrawThemeBackground(Graphics graphics, object theme, int width, int height)
         {
             var backgroundPath = ResolveTemplateBackgroundPath(theme);
+            DrawThemeBackground(graphics, backgroundPath, width, height);
+        }
+
+        private bool DrawThemeBackground(Graphics graphics, string backgroundPath, int width, int height)
+        {
             if (string.IsNullOrWhiteSpace(backgroundPath) || !File.Exists(backgroundPath))
             {
-                return;
+                return false;
             }
 
             var framePath = PrepareThemeRenderBackgroundFrame(backgroundPath, width, height);
             if (string.IsNullOrWhiteSpace(framePath) || !File.Exists(framePath))
             {
-                return;
+                return false;
             }
 
             try
             {
                 using var image = Image.FromFile(framePath);
                 graphics.DrawImage(image, new Rectangle(0, 0, width, height));
+                return true;
             }
             finally
             {
@@ -2544,6 +2627,19 @@ internal static class Program
 
         private void ApplyRemoveDuplicateMove(object theme)
         {
+            if (_args.HasValue("RemoveLayerIndexes"))
+            {
+                foreach (var layerIndex in ParseLayerIndexList(_args.Get("RemoveLayerIndexes"))
+                             .OrderByDescending(GetLayerIndexSortKey))
+                {
+                    var target = ResolveLayerTarget(theme, layerIndex);
+                    var list = target.List;
+                    var index = target.Index;
+                    if (list[index]!.GetType().Name == "GraphAnimation" && !_args.Has("ForceRemoveBaseLayer"))
+                        throw new InvalidOperationException("Background animation layer cannot be removed.");
+                    list.RemoveAt(index);
+                }
+            }
             if (_args.HasValue("RemoveLayerIndex"))
             {
                 var target = ResolveLayerTarget(theme, _args.Get("RemoveLayerIndex"));
@@ -2576,6 +2672,31 @@ internal static class Program
                 list[index] = list[target];
                 list[target] = item;
             }
+        }
+
+        private static IEnumerable<string> ParseLayerIndexList(string value) =>
+            (value ?? "")
+            .Split(new[] { '|', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(index => index.Trim())
+            .Where(index => index.Length > 0);
+
+        private static long GetLayerIndexSortKey(string index)
+        {
+            if (int.TryParse(index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rootIndex))
+            {
+                return (2L << 48) | (uint)rootIndex;
+            }
+
+            var parts = (index ?? "").Split(':');
+            if (parts.Length == 3 &&
+                parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
+                int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
+            {
+                return (1L << 48) | ((long)(uint)themeIndex << 24) | (uint)childIndex;
+            }
+
+            return 0;
         }
 
         private void ApplyLayerEdit(object theme)
@@ -3232,6 +3353,35 @@ internal static class Program
             var backColor = ColorParser.Parse(back);
             foreach (var name in new[] { "FrontColor", "LineColor", "FillColor" }) Reflection.TrySet(graph, name, frontColor);
             foreach (var name in new[] { "BackColor", "BorderColor" }) Reflection.TrySet(graph, name, backColor);
+        }
+
+        private static void ApplyAddedGraphSize(object graph, int size)
+        {
+            size = Math.Max(1, size);
+            switch (graph.GetType().Name)
+            {
+                case "GraphArchBar":
+                    Reflection.TrySet(graph, "diameter", size);
+                    if (Reflection.GetInt(graph, "archWidth") <= 0)
+                    {
+                        Reflection.TrySet(graph, "archWidth", Math.Max(4, size / 8));
+                    }
+                    break;
+                case "GraphLine":
+                    Reflection.TrySet(graph, "width", size);
+                    if (Reflection.GetInt(graph, "height") <= 0)
+                    {
+                        Reflection.TrySet(graph, "height", Math.Max(20, size / 2));
+                    }
+                    break;
+                default:
+                    Reflection.TrySet(graph, "width", size);
+                    if (Reflection.GetInt(graph, "height") <= 0)
+                    {
+                        Reflection.TrySet(graph, "height", Math.Max(8, size / 4));
+                    }
+                    break;
+            }
         }
 
         private void SetIfProvided(object target, string property, string argument)
@@ -4438,7 +4588,12 @@ internal static class Program
             target.useGradient = Reflection.GetBool(source, "useGradient");
             target.enabled = false;
             target.TypeName = Reflection.GetString(source, "TypeName");
-            if (target.TypeName.Equals("Sensor", StringComparison.OrdinalIgnoreCase))
+            if (IsTurzxDataGraph(target))
+            {
+                target.TypeName = "Data";
+                target.AcceptDataList = DefaultTurzxAcceptDataList();
+            }
+            else if (target.TypeName.Equals("Sensor", StringComparison.OrdinalIgnoreCase))
             {
                 target.TypeName = "Data";
                 target.AcceptDataList = DefaultTurzxAcceptDataList();
@@ -4456,17 +4611,24 @@ internal static class Program
         private static UsbMonitorL.M_Data ToTurzxData(object? source)
         {
             if (source == null) return new UsbMonitorL.M_Data();
+            var dataName = First(
+                Reflection.GetString(source, "DataName"),
+                Reflection.GetString(source, "b_DataName"));
+            var displayName = First(
+                Reflection.GetString(source, "DisplayName"),
+                Reflection.GetString(source, "Sanma_Eng_Name"),
+                dataName);
             var value = new UsbMonitorL.M_Data
             {
                 content = Reflection.GetString(source, "content"),
                 DataQueue = Reflection.Get(source, "DataQueue") as Queue<string> ?? new Queue<string>(),
                 queueLen = Reflection.GetInt(source, "queueLen"),
                 ShowUnit = Reflection.GetBool(source, "ShowUnit"),
-                DataName = Reflection.GetString(source, "DataName"),
-                Sanma_Eng_Name = Reflection.GetString(source, "Sanma_Eng_Name"),
+                DataName = dataName,
+                Sanma_Eng_Name = First(Reflection.GetString(source, "Sanma_Eng_Name"), displayName),
                 SubName = Reflection.GetString(source, "SubName"),
-                b_DataName = Reflection.GetString(source, "b_DataName"),
-                DisplayName = Reflection.GetString(source, "DisplayName"),
+                b_DataName = First(Reflection.GetString(source, "b_DataName"), dataName),
+                DisplayName = displayName,
                 Rate = Reflection.GetDouble(source, "Rate"),
                 ValueWithUnit = Reflection.GetString(source, "ValueWithUnit")
             };
@@ -4504,6 +4666,12 @@ internal static class Program
             "WATERPUMP", "DRVLOAD", "HDDTEMP", "UPSPEED", "DOWNDSPEED", "TIME", "DATE", "DAY",
             "Weather", "Volume", "FPS"
         };
+
+        private static bool IsTurzxDataGraph(UsbMonitorL.GraphItem graph) =>
+            graph is UsbMonitorL.GraphStatuBar or
+                UsbMonitorL.GraphDynamicBar or
+                UsbMonitorL.GraphArchBar or
+                UsbMonitorL.GraphLine;
 
         private static Color GetColor(object source, string name, Color fallback)
         {
@@ -4756,6 +4924,17 @@ internal static class Program
             {
                 return "";
             }
+            var searchBaseNames = new List<string> { baseName };
+            var layerIndexedBaseName = Regex.Replace(
+                baseName,
+                @"_\d+$",
+                "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!string.IsNullOrWhiteSpace(layerIndexedBaseName) &&
+                !searchBaseNames.Contains(layerIndexedBaseName, StringComparer.OrdinalIgnoreCase))
+            {
+                searchBaseNames.Add(layerIndexedBaseName);
+            }
 
             var lConnectAssetRoot = Path.Combine(_lConnectDir, "Assets");
             var searchModels = new List<string> { _deviceModel };
@@ -4807,8 +4986,9 @@ internal static class Program
 
                 try
                 {
-                    var match = Directory.EnumerateFiles(root, baseName + "*.*")
-                        .Where(path => IsSupportedBackgroundMediaFile(path) && IsBackgroundNameCandidate(path, baseName))
+                    var match = searchBaseNames
+                        .SelectMany(candidateBaseName => Directory.EnumerateFiles(root, candidateBaseName + "*.*")
+                            .Where(path => IsSupportedBackgroundMediaFile(path) && IsBackgroundNameCandidate(path, candidateBaseName)))
                         .OrderBy(path => Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
                         .ThenByDescending(path => new FileInfo(path).Length)
                         .FirstOrDefault();
@@ -4938,7 +5118,8 @@ internal static class Program
                 ? candidateBaseName.Substring(baseName.Length)
                 : "";
             return suffix.StartsWith("_", StringComparison.Ordinal) ||
-                   suffix.StartsWith("-", StringComparison.Ordinal);
+                   suffix.StartsWith("-", StringComparison.Ordinal) ||
+                   suffix.StartsWith(".", StringComparison.Ordinal);
         }
 
         private string SyncUploadedBackgroundMedia(string sourcePath, int rotationDegrees)

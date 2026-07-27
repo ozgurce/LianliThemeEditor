@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -259,7 +259,8 @@ public partial class MainWindow : Window
     private string _oledCurvePreviewSplitMode = "full";
     private bool _suppressDeviceSyncFromTemplatePath;
     private DateTime _currentTemplateWriteStampUtc = DateTime.MinValue;
-    private bool IsOfflineMode => OfflineModeCheck?.IsChecked == true;
+    private bool _offlineModeEnabled;
+    private bool IsOfflineMode => _offlineModeEnabled;
     private string _currentBackgroundPath = "";
     private string _selectedBackgroundSourcePath = "";
     private double _backgroundPreviewAutoRotationDegrees;
@@ -305,14 +306,37 @@ public partial class MainWindow : Window
 
     // Undo/Redo and Shadow Pairing States
     private sealed record EditSnapshot(string Description, byte[] Layers, DateTime CreatedAtUtc);
-    private sealed record PendingLayerMove(int SourceIndex, int TargetIndex);
+    private sealed record PendingLayerMove(int SourceIndex, int TargetIndex, LayerDeleteSignature Signature);
     private sealed record PendingLayerDuplicate(LayerRow Layer, LayerRow SourceLayer, int SourceIndex);
-    private sealed record PendingLayerDelete(string SourceIndex);
+    private sealed record PendingLayerDelete(string EditorLayerId, string OriginalSourceIndex, string OperationId, string UiSnapshot);
+    private sealed record LayerDeleteSignature(
+        string Type,
+        string TypeName,
+        string SubTypeName,
+        string DataSource,
+        string Text,
+        string Media,
+        string X,
+        string Y,
+        string Width,
+        string Height,
+        string Radius,
+        string Diameter,
+        string Size,
+        string Font,
+        string Color,
+        string GraphStyle,
+        string SensorStyle,
+        string SensorType,
+        string ClockCenterX,
+        string ClockCenterY);
     private readonly Stack<EditSnapshot> _undoStack = new();
     private readonly Stack<EditSnapshot> _redoStack = new();
     private readonly List<PendingLayerMove> _pendingLayerMoves = new();
     private readonly List<PendingLayerDuplicate> _pendingLayerDuplicates = new();
     private readonly List<PendingLayerDelete> _pendingLayerDeletes = new();
+    private readonly Dictionary<string, string> _pendingDeleteSourceIndexesByEditorId = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _sourceIndexByEditorLayerId = new(StringComparer.OrdinalIgnoreCase);
     private bool _editorUndoArmed;
     private readonly HashSet<string> _lockedLayerKeys = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<LayerRow> _dirtyLayers = new();
@@ -389,6 +413,7 @@ public partial class MainWindow : Window
     private readonly System.Windows.Threading.DispatcherTimer _livePreviewTimer;
     private static readonly string HwInfoSensorsPath = Path.Combine(LConnectPaths.ProgramDataRoot, "hwinfo-sensors.json");
     private static readonly Dictionary<string, string> _liveSensorValueCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, string> _hardwareModelCache = new(StringComparer.OrdinalIgnoreCase);
     private static DateTime _liveSensorCacheWriteUtc;
     private static DateTime _liveSensorCacheReadUtc;
     private readonly System.Windows.Threading.DispatcherTimer _previewDrawTimer;
@@ -2075,14 +2100,17 @@ public partial class MainWindow : Window
         await LoadLayersAsync(false);
     }
 
-    private async void OfflineModeCheck_Changed(object sender, RoutedEventArgs e)
+    private async void OfflineModeButton_Click(object sender, RoutedEventArgs e)
     {
         if (_isLoading || !IsLoaded)
         {
             return;
         }
 
-        if (OfflineModeCheck.IsChecked == true)
+        _offlineModeEnabled = !_offlineModeEnabled;
+        UpdateOfflineModeButtonVisual();
+
+        if (_offlineModeEnabled)
         {
             try
             {
@@ -2097,6 +2125,8 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
+                _offlineModeEnabled = false;
+                UpdateOfflineModeButtonVisual();
                 SetBusy(false, GetLanguageText("status.loadFailed", "Load failed."));
                 MessageBox.Show(this, ex.Message, GetLanguageText("messages.loadFailed", "Load failed"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -2104,6 +2134,27 @@ public partial class MainWindow : Window
         else
         {
             SetStatus(GetLanguageText("status.offlineModeDisabled", "Offline mode disabled."));
+        }
+    }
+
+    private void UpdateOfflineModeButtonVisual()
+    {
+        if (OfflineModeButton == null)
+        {
+            return;
+        }
+
+        if (_offlineModeEnabled)
+        {
+            OfflineModeButton.Background = NewBrush("#243B82F6", "#243B82F6");
+            OfflineModeButton.BorderBrush = NewBrush("#7AA7C7FF", "#7AA7C7FF");
+            OfflineModeButton.Foreground = NewBrush("#A7C7FF", "#A7C7FF");
+        }
+        else
+        {
+            OfflineModeButton.ClearValue(Control.BackgroundProperty);
+            OfflineModeButton.ClearValue(Control.BorderBrushProperty);
+            OfflineModeButton.ClearValue(Control.ForegroundProperty);
         }
     }
 
@@ -2134,7 +2185,9 @@ public partial class MainWindow : Window
             var target = await ResolveTemplateTargetAsync();
             var deviceModel = target.DeviceModel;
             await ApplyDirtyLayersAsync(deviceModel, target.TemplatePath);
-            var exportSnapshot = CreateThemeExportSnapshot(deviceModel);
+            var exportSnapshot = CreateThemeExportSnapshot(
+                deviceModel,
+                templatePath: target.TemplatePath);
             await ExportThemePackageAsync(dialog.FileName, exportSnapshot);
             SetBusy(false, GetLanguageText("status.themeExported", "Theme package exported."));
             ShowThemedMessage(
@@ -2190,7 +2243,7 @@ public partial class MainWindow : Window
             TemplateIdBox.Text = result.Id;
             _currentTemplatePath = result.Path;
             _currentTemplateId = result.Id;
-            await LoadLayersAsync(true);
+            await LoadImportedThemeIntoEditorAsync(GetSelectedDeviceModel(), result);
             await ActivateInstalledThemeAsync(
                 string.IsNullOrWhiteSpace(result.LConnectId) ? result.Id : result.LConnectId,
                 GetSelectedDeviceModel(), result.Path, result.BackgroundPath);
@@ -2588,6 +2641,54 @@ public partial class MainWindow : Window
         }
     }
 
+    private async Task LoadImportedThemeIntoEditorAsync(string deviceModel, TemplateOption imported)
+    {
+        var loaded = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, imported.Path));
+        var importedBackgroundPath = ResolveImportedThemeBackgroundPath(deviceModel, imported, loaded);
+        if (!string.IsNullOrWhiteSpace(importedBackgroundPath) && File.Exists(importedBackgroundPath))
+        {
+            loaded.BackgroundPath = importedBackgroundPath;
+            loaded.Background = Path.GetFileName(importedBackgroundPath);
+            foreach (var layer in loaded.Layers.Where(layer =>
+                         string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase)))
+            {
+                layer.Media = loaded.Background;
+                layer.MediaPath = loaded.BackgroundPath;
+            }
+        }
+
+        ApplyTemplateResult(loaded);
+        SetBusy(false, FormatLanguageText("status.layersLoaded", "Loaded {0} layer(s).", Layers.Count(layer => !layer.IsEditorMetadata)));
+    }
+
+    private string ResolveImportedThemeBackgroundPath(string deviceModel, TemplateOption imported, TemplateLoadResult loaded)
+    {
+        foreach (var candidate in new[]
+                 {
+                     imported.BackgroundPath,
+                     loaded.BackgroundPath,
+                     ResolveBackgroundPath(imported.BackgroundPath, Path.GetFileName(imported.BackgroundPath)),
+                     ResolveBackgroundPath(loaded.BackgroundPath, loaded.Background),
+                     ResolveInstalledTemplateRuntimeBackgroundPath(deviceModel, imported.Path, imported.BackgroundPath)
+                 })
+        {
+            if (!string.IsNullOrWhiteSpace(candidate) && File.Exists(candidate))
+            {
+                return EnsureUniversal88PreviewBackgroundPath(deviceModel, candidate);
+            }
+        }
+
+        if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(imported.LConnectId) &&
+            TryGetUniversal88TemplateBackgroundProfile(imported.LConnectId, out var profileBackground) &&
+            File.Exists(profileBackground))
+        {
+            return EnsureUniversal88PreviewBackgroundPath(deviceModel, profileBackground);
+        }
+
+        return "";
+    }
+
     private async Task LoadInitialThemeAsync()
     {
         SetBusy(true, GetLanguageText("status.loadingLayers", "Loading layers..."));
@@ -2748,6 +2849,10 @@ public partial class MainWindow : Window
         _pendingLayerMoves.Clear();
         _pendingLayerDuplicates.Clear();
         _pendingLayerDeletes.Clear();
+        _pendingDeleteSourceIndexesByEditorId.Clear();
+        _sourceIndexByEditorLayerId.Clear();
+        _soloSelectedLayers = false;
+        SoloLayerButton?.ClearValue(Control.BackgroundProperty);
         _editorUndoArmed = false;
         EnsureOledCurveBackgroundLayer(result);
 
@@ -2760,11 +2865,15 @@ public partial class MainWindow : Window
             var oledCurveDisplayIndex = 0;
             foreach (var layer in result.Layers)
             {
-                if (IsOledCurveDeviceSelected() &&
-                    !IsOledCurveSyntheticBackgroundLayer(layer) &&
+                if (!IsOledCurveSyntheticBackgroundLayer(layer) &&
                     string.IsNullOrWhiteSpace(layer.SourceLayerIndex))
                 {
                     layer.SourceLayerIndex = layer.Index;
+                }
+
+                if (IsOledCurveDeviceSelected() &&
+                    !IsOledCurveSyntheticBackgroundLayer(layer))
+                {
                     layer.Index = oledCurveDisplayIndex.ToString(CultureInfo.InvariantCulture);
                 }
                 if (!layer.IsEditorMetadata)
@@ -2788,9 +2897,18 @@ public partial class MainWindow : Window
                     layer.IsDirty = true;
                     _dirtyLayers.Add(layer);
                 }
+                if (IsThemeEngineGraphPreviewLayer(layer))
+                {
+                    layer.MediaPath = "";
+                }
                 RefreshLayerDataSourceDisplay(layer);
                 layer.IsLocked = IsOledCurveSyntheticBackgroundLayer(layer) ||
                                  _lockedLayerKeys.Contains(GetLayerLockKey(_currentTemplatePath, layer.Index));
+                layer.EditorLayerId = CreateEditorLayerId(
+                    string.IsNullOrWhiteSpace(layer.SourceLayerIndex) ? layer.Index : layer.SourceLayerIndex,
+                    layer.Type,
+                    tempLayers.Count);
+                RegisterOriginalSourceIndex(layer);
                 SetLayerActionTooltips(layer);
                 tempLayers.Add(layer);
             }
@@ -2866,6 +2984,117 @@ public partial class MainWindow : Window
             PopulateEditorFromSelection();
         }
         RequestPreviewDraw();
+        ScheduleLoadedLayerPreviewRefresh();
+        SchedulePostTemplateLoadPreviewRefresh();
+    }
+
+    private void SchedulePostTemplateLoadPreviewRefresh()
+    {
+        var templatePath = _currentTemplatePath;
+        var templateId = _currentTemplateId;
+        _ = Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            if (!string.Equals(_currentTemplatePath, templatePath, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(_currentTemplateId, templateId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            DrawPreview();
+            ScheduleLoadedLayerPreviewRefresh();
+            await WaitForBackgroundPreviewReadyAsync();
+            if (!string.Equals(_currentTemplatePath, templatePath, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(_currentTemplateId, templateId, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            DrawPreview();
+            await Dispatcher.InvokeAsync(
+                () => PreviewSurface.UpdateLayout(),
+                System.Windows.Threading.DispatcherPriority.Render);
+            ScheduleLoadedLayerPreviewRefresh();
+        }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+    }
+
+    private void ScheduleLoadedLayerPreviewRefresh()
+    {
+        var templatePath = _currentTemplatePath;
+        var templateId = _currentTemplateId;
+        var layers = Layers
+            .Where(layer => !layer.IsEditorMetadata &&
+                            !string.Equals(layer.Hide, "True", StringComparison.OrdinalIgnoreCase) &&
+                            (string.Equals(layer.Type, "GraphSensor", StringComparison.OrdinalIgnoreCase) ||
+                             (IsThemeEngineGraphPreviewLayer(layer) && !IsOledCurveDeviceSelected())))
+            .ToList();
+        if (layers.Count == 0)
+        {
+            return;
+        }
+
+        _ = Dispatcher.BeginInvoke(new Action(async () =>
+        {
+            await RefreshLoadedLayerPreviewsAsync(templatePath, templateId, layers);
+        }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+    }
+
+    private async Task RefreshLoadedLayerPreviewsAsync(string templatePath, string templateId, IReadOnlyList<LayerRow> layers)
+    {
+        await Dispatcher.InvokeAsync(
+            () => PreviewSurface.UpdateLayout(),
+            System.Windows.Threading.DispatcherPriority.Render);
+
+        var changed = false;
+        foreach (var layer in layers)
+        {
+            if (!string.Equals(_currentTemplatePath, templatePath, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(_currentTemplateId, templateId, StringComparison.OrdinalIgnoreCase) ||
+                !Layers.Contains(layer) ||
+                string.Equals(layer.Hide, "True", StringComparison.OrdinalIgnoreCase))
+            {
+                break;
+            }
+
+            try
+            {
+                var rendered = string.Equals(layer.Type, "GraphSensor", StringComparison.OrdinalIgnoreCase)
+                    ? await RenderSensorPreviewImageAsync(layer, CancellationToken.None)
+                    : await RenderGraphPreviewImageAsync(layer, CancellationToken.None);
+                if (string.IsNullOrWhiteSpace(rendered) || !File.Exists(rendered))
+                {
+                    if (IsThemeEngineGraphPreviewLayer(layer))
+                    {
+                        layer.MediaPath = "";
+                        UpdateLayerPreviewVisual(layer);
+                    }
+                    continue;
+                }
+
+                if (IsThemeEngineGraphPreviewLayer(layer) && IsRenderedPreviewBlank(rendered))
+                {
+                    layer.MediaPath = "";
+                    InvalidatePreviewImage(rendered);
+                    UpdateLayerPreviewVisual(layer);
+                    continue;
+                }
+
+                InvalidatePreviewImage(rendered);
+                layer.MediaPath = rendered;
+                UpdateLayerPreviewVisual(layer);
+                changed = true;
+            }
+            catch
+            {
+                RequestPreviewDraw();
+            }
+        }
+
+        if (changed &&
+            string.Equals(_currentTemplatePath, templatePath, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(_currentTemplateId, templateId, StringComparison.OrdinalIgnoreCase))
+        {
+            RequestPreviewDraw();
+        }
     }
 
     private void EnsureOledCurveBackgroundLayer(TemplateLoadResult result)
@@ -3981,6 +4210,7 @@ public partial class MainWindow : Window
             var lConnectFontChanged = IsOfflineMode
                 ? false
                 : await EnsureLConnectFontsInstalledAsync(_dirtyLayers.ToList());
+            var hadStructuralChanges = HasPendingStructuralChanges();
             await ApplyDirtyLayersAsync(
                 deviceModel,
                 templatePath,
@@ -3988,6 +4218,10 @@ public partial class MainWindow : Window
                 progress: value => SetApplyProgress(
                     25 + 40.0 * value,
                     GetLanguageText("status.savingLayerChanges", "Saving layer changes...")));
+            if (hadStructuralChanges)
+            {
+                await RefreshEditorFromAppliedTemplateAsync(deviceModel, templatePath, selectedIndex);
+            }
 
             _editorUndoArmed = false;
             ClearTextPreviewCaches();
@@ -4084,6 +4318,7 @@ public partial class MainWindow : Window
                 var clone = CloneLayerState(layer);
                 clone.Type = layer.Type;
                 clone.Index = (sourceIndex + 1).ToString(CultureInfo.InvariantCulture);
+                clone.EditorLayerId = CreateEditorLayerId("", clone.Type, Layers.Count);
                 if (int.TryParse(clone.X, NumberStyles.Integer, CultureInfo.InvariantCulture, out var x))
                 {
                     clone.X = (x + 10).ToString(CultureInfo.InvariantCulture);
@@ -4136,17 +4371,28 @@ public partial class MainWindow : Window
         try
         {
             SetBusy(true, GetLanguageText("status.removingLayers", "Removing layer(s)..."));
+            foreach (var layer in selected.Where(layer => string.IsNullOrWhiteSpace(layer.EditorLayerId)))
+            {
+                layer.EditorLayerId = CreateEditorLayerId(
+                    string.IsNullOrWhiteSpace(layer.SourceLayerIndex) ? layer.Index : layer.SourceLayerIndex,
+                    layer.Type,
+                    Layers.IndexOf(layer));
+                RegisterOriginalSourceIndex(layer);
+            }
             var sortedSelected = selected
                 .Where(layer => !IsOledCurveSyntheticBackgroundLayer(layer))
                 .Select(l => new
                 {
                     Layer = l,
                     Index = int.TryParse(l.Index, out var idx) ? idx : -1,
-                    SourceIndex = !string.IsNullOrWhiteSpace(l.SourceLayerIndex) ? l.SourceLayerIndex : l.Index
+                    SourceIndex = GetOriginalSourceIndexForLayer(l)
                 })
                 .Where(x => x.Index >= 0)
                 .OrderByDescending(x => x.Index)
                 .ToList();
+            var deleteOperationId = Guid.NewGuid().ToString("N")[..8];
+            AppLogger.Info(
+                $"[LayerDelete:{deleteOperationId}] queued uiSelection=[{string.Join(" | ", sortedSelected.Select(item => DescribeLayerForDeleteLog(item.Layer, item.SourceIndex)))}]");
 
             PushUndoState(GetLanguageText("history.remove", "Remove layers"));
             foreach (var item in sortedSelected)
@@ -4159,7 +4405,12 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    _pendingLayerDeletes.Add(new PendingLayerDelete(item.SourceIndex));
+                    _pendingDeleteSourceIndexesByEditorId[item.Layer.EditorLayerId] = item.SourceIndex;
+                    _pendingLayerDeletes.Add(new PendingLayerDelete(
+                        item.Layer.EditorLayerId,
+                        item.SourceIndex,
+                        deleteOperationId,
+                        DescribeLayerForDeleteLog(item.Layer, item.SourceIndex)));
                 }
 
                 _dirtyLayers.Remove(item.Layer);
@@ -4874,6 +5125,7 @@ public partial class MainWindow : Window
                 return;
             }
 
+            var hadStructuralChanges = HasPendingStructuralChanges();
             await ApplyDirtyLayersAsync(
                 deviceModel,
                 templatePath,
@@ -4881,6 +5133,10 @@ public partial class MainWindow : Window
                 progress: value => SetApplyProgress(
                     20 + 45.0 * value,
                     GetLanguageText("status.savingLayerChanges", "Saving layer changes...")));
+            if (hadStructuralChanges)
+            {
+                await RefreshEditorFromAppliedTemplateAsync(deviceModel, templatePath, selectedIndex);
+            }
 
             SetStatus(GetLanguageText("status.sendingApplyAll", "GÃ¶nderiliyor..."));
             SetApplyProgress(88, IsOfflineMode
@@ -4941,6 +5197,27 @@ public partial class MainWindow : Window
         if (ApplyButton != null) ApplyButton.IsEnabled = false;
         if (ApplyAllButton != null) ApplyAllButton.IsEnabled = false;
         if (SaveButton != null) SaveButton.IsEnabled = false;
+    }
+
+    private bool HasPendingStructuralChanges() =>
+        _pendingLayerMoves.Count > 0 ||
+        _pendingLayerDuplicates.Count > 0 ||
+        _pendingLayerDeletes.Count > 0;
+
+    private async Task RefreshEditorFromAppliedTemplateAsync(string deviceModel, string templatePath, string preferredIndex)
+    {
+        var refreshed = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, templatePath, inspectBitmaps: false));
+        ApplyTemplateResult(refreshed);
+        ClearDirtyLayers();
+
+        if (!string.IsNullOrWhiteSpace(preferredIndex))
+        {
+            SelectLayerByIndex(preferredIndex);
+        }
+
+        AppLogger.Info(
+            $"Editor refreshed from applied template after structural changes. template={Path.GetFileName(templatePath)}; " +
+            $"layers={Layers.Count(layer => !layer.IsEditorMetadata)}");
     }
 
     private bool ConfirmApplyAllChangedLayers(IReadOnlyList<LayerRow> dirtyList)
@@ -5009,6 +5286,7 @@ public partial class MainWindow : Window
         {
             var duplicateStopwatch = Stopwatch.StartNew();
             await ApplyPendingLayerDuplicatesAsync(deviceModel, templatePath);
+            RebuildOriginalSourceIndexesFromCurrentLayerOrder();
             AppLogger.Info(
                 $"ApplyDirtyLayers duplicate inserts completed in {duplicateStopwatch.ElapsedMilliseconds} ms; " +
                 $"remainingDirty={_dirtyLayers.Count}");
@@ -5018,6 +5296,7 @@ public partial class MainWindow : Window
         {
             var moveStopwatch = Stopwatch.StartNew();
             await ApplyPendingLayerMovesAsync(deviceModel, templatePath);
+            RebuildOriginalSourceIndexesFromCurrentLayerOrder();
             AppLogger.Info($"ApplyDirtyLayers moves completed in {moveStopwatch.ElapsedMilliseconds} ms; count={_pendingLayerMoves.Count}");
         }
 
@@ -5124,6 +5403,69 @@ public partial class MainWindow : Window
     private static bool IsOledCurveSyntheticBackgroundLayer(LayerRow layer) =>
         string.Equals(layer.Index, OledCurveSyntheticBackgroundLayerIndex, StringComparison.OrdinalIgnoreCase) ||
         string.Equals(layer.SourceLayerIndex, OledCurveSyntheticBackgroundLayerIndex, StringComparison.OrdinalIgnoreCase);
+
+    private static string CreateEditorLayerId(string sourceIndex, string type, int displayOrdinal) =>
+        $"{Guid.NewGuid():N}:{NormalizeLayerSignatureValue(sourceIndex)}:{NormalizeLayerSignatureValue(type)}:{displayOrdinal.ToString(CultureInfo.InvariantCulture)}";
+
+    private void RegisterOriginalSourceIndex(LayerRow layer)
+    {
+        if (string.IsNullOrWhiteSpace(layer.EditorLayerId) ||
+            layer.IsEditorMetadata ||
+            IsOledCurveSyntheticBackgroundLayer(layer))
+        {
+            return;
+        }
+
+        var sourceIndex = FirstNonEmpty(layer.SourceLayerIndex, layer.Index);
+        if (string.IsNullOrWhiteSpace(sourceIndex))
+        {
+            return;
+        }
+
+        layer.SourceLayerIndex = sourceIndex;
+        _sourceIndexByEditorLayerId[layer.EditorLayerId] = sourceIndex;
+    }
+
+    private string GetOriginalSourceIndexForLayer(LayerRow layer)
+    {
+        if (!string.IsNullOrWhiteSpace(layer.EditorLayerId) &&
+            _sourceIndexByEditorLayerId.TryGetValue(layer.EditorLayerId, out var sourceIndex) &&
+            !string.IsNullOrWhiteSpace(sourceIndex))
+        {
+            return sourceIndex;
+        }
+
+        var fallback = FirstNonEmpty(layer.SourceLayerIndex, layer.Index);
+        if (!string.IsNullOrWhiteSpace(layer.EditorLayerId) && !string.IsNullOrWhiteSpace(fallback))
+        {
+            _sourceIndexByEditorLayerId[layer.EditorLayerId] = fallback;
+        }
+
+        return fallback;
+    }
+
+    private void RebuildOriginalSourceIndexesFromCurrentLayerOrder()
+    {
+        _sourceIndexByEditorLayerId.Clear();
+        var sourceIndex = 0;
+        foreach (var layer in Layers)
+        {
+            if (layer.IsEditorMetadata || IsOledCurveSyntheticBackgroundLayer(layer))
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(layer.EditorLayerId))
+            {
+                layer.EditorLayerId = CreateEditorLayerId(layer.Index, layer.Type, Layers.IndexOf(layer));
+            }
+
+            var persistedIndex = sourceIndex.ToString(CultureInfo.InvariantCulture);
+            layer.SourceLayerIndex = persistedIndex;
+            _sourceIndexByEditorLayerId[layer.EditorLayerId] = persistedIndex;
+            sourceIndex++;
+        }
+    }
 
     private async Task ApplyLayersToResolvedTemplateTargetsAsync(
         string deviceModel,
@@ -5285,23 +5627,136 @@ public partial class MainWindow : Window
         }
 
         var indexes = _pendingLayerDeletes
-            .Select(item => item.SourceIndex)
+            .Select(item => _pendingDeleteSourceIndexesByEditorId.TryGetValue(item.EditorLayerId, out var sourceIndex)
+                ? sourceIndex
+                : item.OriginalSourceIndex)
             .Where(index => !string.IsNullOrWhiteSpace(index))
-            .Distinct()
+            .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderByDescending(GetLayerDeleteSortKey)
             .ToList();
-        foreach (var index in indexes)
-        {
-            await Task.Run(() => _supporter.RemoveLayerAsync(
-                deviceModel,
-                templatePath,
-                index));
-        }
+        LogPendingLayerDeleteApplySnapshot(deviceModel, templatePath, indexes);
+        await Task.Run(() => _supporter.RemoveLayersAsync(deviceModel, templatePath, indexes));
 
         _pendingLayerDeletes.Clear();
+        _pendingDeleteSourceIndexesByEditorId.Clear();
         _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
         return indexes;
     }
+
+    private void LogPendingLayerDeleteApplySnapshot(string deviceModel, string templatePath, IReadOnlyList<string> indexes)
+    {
+        var operationIds = _pendingLayerDeletes
+            .Select(item => item.OperationId)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var operationLabel = operationIds.Count == 0 ? "unknown" : string.Join(",", operationIds);
+        AppLogger.Info(
+            $"[LayerDelete:{operationLabel}] apply target template={templatePath}; indexes=[{string.Join(", ", indexes)}]; " +
+            $"queued=[{string.Join(" | ", _pendingLayerDeletes.Select(item => $"{item.OriginalSourceIndex}:{item.EditorLayerId}:{item.UiSnapshot}"))}]");
+
+        try
+        {
+            var current = _supporter.LoadTemplatePathAsync(deviceModel, templatePath, inspectBitmaps: false)
+                .GetAwaiter()
+                .GetResult();
+            AppLogger.Info(
+                $"[LayerDelete:{operationLabel}] diskBefore=[{string.Join(" | ", current.Layers.Where(layer => !layer.IsEditorMetadata).Select(layer => DescribeLayerForDeleteLog(layer, FirstNonEmpty(layer.SourceLayerIndex, layer.Index))))}]");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(
+                $"[LayerDelete:{operationLabel}] disk snapshot failed: {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static string DescribeLayerForDeleteLog(LayerRow layer, string sourceIndex)
+    {
+        static string Clip(string? value)
+        {
+            value = NormalizeLayerSignatureValue(value);
+            return value.Length <= 36 ? value : value[..36] + "...";
+        }
+
+        return $"ui={layer.Index};src={sourceIndex};type={Clip(layer.Type)};typeName={Clip(layer.TypeName)};" +
+               $"data={Clip(layer.DataSource)};media={Clip(FirstNonEmpty(layer.Media, layer.MediaPath))};" +
+               $"text={Clip(layer.Text)};xy={Clip(layer.X)},{Clip(layer.Y)}";
+    }
+
+    private static LayerDeleteSignature CreateLayerDeleteSignature(LayerRow layer) =>
+        new(
+            NormalizeLayerSignatureValue(layer.Type),
+            NormalizeLayerSignatureValue(layer.TypeName),
+            NormalizeLayerSignatureValue(layer.SubTypeName),
+            NormalizeLayerSignatureValue(layer.DataSource),
+            NormalizeLayerSignatureValue(layer.Text),
+            NormalizeLayerSignatureValue(layer.Media),
+            NormalizeLayerSignatureValue(layer.X),
+            NormalizeLayerSignatureValue(layer.Y),
+            NormalizeLayerSignatureValue(layer.Width),
+            NormalizeLayerSignatureValue(layer.Height),
+            NormalizeLayerSignatureValue(layer.Radius),
+            NormalizeLayerSignatureValue(layer.Diameter),
+            NormalizeLayerSignatureValue(layer.Size),
+            NormalizeLayerSignatureValue(layer.Font),
+            NormalizeLayerSignatureValue(layer.Color),
+            NormalizeLayerSignatureValue(layer.GraphStyle),
+            NormalizeLayerSignatureValue(layer.SensorStyle),
+            NormalizeLayerSignatureValue(layer.SensorType),
+            NormalizeLayerSignatureValue(layer.ClockCenterX),
+            NormalizeLayerSignatureValue(layer.ClockCenterY));
+
+    private static int GetLayerDeleteMatchScore(LayerRow layer, LayerDeleteSignature signature)
+    {
+        var current = CreateLayerDeleteSignature(layer);
+        if (!SignatureEquals(current.Type, signature.Type))
+        {
+            return 0;
+        }
+
+        var score = 100;
+        score += ScoreSignatureField(current.TypeName, signature.TypeName, 12);
+        score += ScoreSignatureField(current.SubTypeName, signature.SubTypeName, 12);
+        score += ScoreSignatureField(current.DataSource, signature.DataSource, 60);
+        score += ScoreSignatureField(current.Text, signature.Text, 60);
+        score += ScoreSignatureField(current.Media, signature.Media, 60);
+        score += ScoreSignatureField(current.GraphStyle, signature.GraphStyle, 25);
+        score += ScoreSignatureField(current.SensorStyle, signature.SensorStyle, 25);
+        score += ScoreSignatureField(current.SensorType, signature.SensorType, 25);
+
+        // Mutable visual fields are deliberately weak signals. They help break ties,
+        // but a moved/resized layer must still be deletable.
+        score += ScoreSignatureField(current.X, signature.X, 3);
+        score += ScoreSignatureField(current.Y, signature.Y, 3);
+        score += ScoreSignatureField(current.Width, signature.Width, 2);
+        score += ScoreSignatureField(current.Height, signature.Height, 2);
+        score += ScoreSignatureField(current.Radius, signature.Radius, 2);
+        score += ScoreSignatureField(current.Diameter, signature.Diameter, 2);
+        score += ScoreSignatureField(current.Size, signature.Size, 2);
+        score += ScoreSignatureField(current.Font, signature.Font, 2);
+        score += ScoreSignatureField(current.Color, signature.Color, 2);
+        score += ScoreSignatureField(current.ClockCenterX, signature.ClockCenterX, 2);
+        score += ScoreSignatureField(current.ClockCenterY, signature.ClockCenterY, 2);
+        return score;
+    }
+
+    private static int ScoreSignatureField(string current, string expected, int weight)
+    {
+        if (string.IsNullOrWhiteSpace(expected))
+        {
+            return 0;
+        }
+
+        return SignatureEquals(current, expected) ? weight : -weight;
+    }
+
+    private static bool SignatureEquals(string left, string right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeLayerSignatureValue(string? value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? ""
+            : Regex.Replace(value.Trim(), @"\s+", " ");
 
     private void RebaseLayerSourceIndexesAfterDeletes(IReadOnlyList<string> deletedIndexes)
     {
@@ -5332,9 +5787,7 @@ public partial class MainWindow : Window
                 continue;
             }
 
-            var sourceIndex = string.IsNullOrWhiteSpace(layer.SourceLayerIndex)
-                ? layer.Index
-                : layer.SourceLayerIndex;
+            var sourceIndex = GetOriginalSourceIndexForLayer(layer);
 
             if (int.TryParse(sourceIndex, NumberStyles.Integer, CultureInfo.InvariantCulture, out var rootIndex))
             {
@@ -5342,6 +5795,7 @@ public partial class MainWindow : Window
                 if (shift > 0)
                 {
                     layer.SourceLayerIndex = (rootIndex - shift).ToString(CultureInfo.InvariantCulture);
+                    _sourceIndexByEditorLayerId[layer.EditorLayerId] = layer.SourceLayerIndex;
                 }
                 continue;
             }
@@ -5354,6 +5808,7 @@ public partial class MainWindow : Window
                 if (shift > 0)
                 {
                     layer.SourceLayerIndex = $"theme:{nested.Value.ThemeIndex}:{nested.Value.ChildIndex - shift}";
+                    _sourceIndexByEditorLayerId[layer.EditorLayerId] = layer.SourceLayerIndex;
                 }
             }
         }
@@ -6629,7 +7084,7 @@ public partial class MainWindow : Window
             var sensorPreviewPath = ResolveLayerMediaPath(layer);
             if (!string.IsNullOrWhiteSpace(sensorPreviewPath))
             {
-                return CreatePreviewLayerHitTarget(bounds, CreatePreviewImage(sensorPreviewPath, bounds.Width, bounds.Height, selected: false, rotationText: ""));
+                return CreatePreviewLayerHitTarget(bounds, CreateFittedPreviewBitmap(sensorPreviewPath, bounds.Width, bounds.Height));
             }
             return CreatePreviewLayerHitTarget(bounds, CreateSensorPreview(layer, bounds.Width, bounds.Height));
         }
@@ -6642,7 +7097,7 @@ public partial class MainWindow : Window
             var graphPreviewPath = ResolveLayerMediaPath(layer);
             if (!IsOledCurveDeviceSelected() && !string.IsNullOrWhiteSpace(graphPreviewPath))
             {
-                return CreatePreviewLayerHitTarget(bounds, CreatePreviewImage(graphPreviewPath, bounds.Width, bounds.Height, selected: false, rotationText: ""));
+                return CreatePreviewLayerHitTarget(bounds, CreateThemeEngineGraphPreviewImage(graphPreviewPath, bounds));
             }
             return CreatePreviewLayerHitTarget(bounds, CreateGraphPreview(layer, bounds.Width, bounds.Height, selected));
         }
@@ -6844,7 +7299,14 @@ public partial class MainWindow : Window
         }
 
         PreviewCanvas.Focus();
-        if (!LayerGrid.SelectedItems.Contains(layer))
+        var preserveMultiSelection = (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) != 0;
+        if (!preserveMultiSelection && (LayerGrid.SelectedItems.Count != 1 || !LayerGrid.SelectedItems.Contains(layer)))
+        {
+            LayerGrid.SelectedItems.Clear();
+            LayerGrid.SelectedItem = layer;
+            LayerGrid.SelectedItems.Add(layer);
+        }
+        else if (!LayerGrid.SelectedItems.Contains(layer))
         {
             LayerGrid.SelectedItem = layer;
         }
@@ -7042,9 +7504,10 @@ public partial class MainWindow : Window
         {
             Width = width,
             Height = height,
-            Background = Brushes.Transparent
+            Background = Brushes.Transparent,
+            ClipToBounds = true
         };
-        var scale = Math.Min(width, height) / ToPreview(400.0);
+        var scale = Math.Min(width, height) / 400.0;
         if (double.IsNaN(scale) || double.IsInfinity(scale) || scale <= 0) scale = 1.0;
         var center = new Point(width / 2.0, height / 2.0);
         var style = string.IsNullOrWhiteSpace(layer.SensorStyle) ? layer.SubTypeName : layer.SensorStyle;
@@ -7871,6 +8334,12 @@ public partial class MainWindow : Window
         {
             await RefreshSensorPreviewAsync(addedSensorLayer);
         }
+        else if (LayerGrid.SelectedItem is LayerRow addedGraphLayer &&
+                 IsThemeEngineGraphPreviewLayer(addedGraphLayer) &&
+                 !IsOledCurveDeviceSelected())
+        {
+            await RefreshGraphPreviewAsync(addedGraphLayer);
+        }
 
         RestorePendingDirtyLayersAfterAdd();
     }
@@ -7915,7 +8384,7 @@ public partial class MainWindow : Window
     {
         foreach (var property in typeof(LayerRow).GetProperties(BindingFlags.Instance | BindingFlags.Public)
                      .Where(property => property.CanRead && property.CanWrite &&
-                                        property.Name is not nameof(LayerRow.Index) and not nameof(LayerRow.Type)))
+                                        property.Name is not nameof(LayerRow.Index) and not nameof(LayerRow.Type) and not nameof(LayerRow.EditorLayerId)))
         {
             property.SetValue(target, property.GetValue(source));
         }
@@ -8029,20 +8498,33 @@ public partial class MainWindow : Window
 
         var available = Layers.Where(layer => !layer.IsEditorMetadata).ToList();
         var assigned = new HashSet<LayerRow>();
+        var signatures = available.ToDictionary(layer => layer, GetLayerGroupingSignature);
+        var byIndexAndSignature = available
+            .Where(layer => int.TryParse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            .GroupBy(layer => (
+                Index: int.Parse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture),
+                Signature: signatures[layer]))
+            .ToDictionary(
+                group => group.Key,
+                group => new Queue<LayerRow>(group));
+        var bySignature = available
+            .GroupBy(layer => signatures[layer])
+            .ToDictionary(
+                group => group.Key,
+                group => new Queue<LayerRow>(group));
+        var byIndex = available
+            .Where(layer => int.TryParse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            .GroupBy(layer => int.Parse(layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture))
+            .ToDictionary(
+                group => group.Key,
+                group => new Queue<LayerRow>(group));
         foreach (var member in metadata.Members)
         {
             var group = LayerGroups.FirstOrDefault(item => item.Id == member.GroupId);
             if (group == null) continue;
-            var layer = available.FirstOrDefault(item =>
-                            !assigned.Contains(item) &&
-                            int.TryParse(item.Index, out var index) && index == member.Index &&
-                            string.Equals(GetLayerGroupingSignature(item), member.Signature, StringComparison.Ordinal))
-                        ?? available.FirstOrDefault(item =>
-                            !assigned.Contains(item) &&
-                            string.Equals(GetLayerGroupingSignature(item), member.Signature, StringComparison.Ordinal))
-                        ?? available.FirstOrDefault(item =>
-                            !assigned.Contains(item) &&
-                            int.TryParse(item.Index, out var index) && index == member.Index);
+            var layer = DequeueUnassigned(byIndexAndSignature.GetValueOrDefault((member.Index, member.Signature)), assigned)
+                        ?? DequeueUnassigned(bySignature.GetValueOrDefault(member.Signature), assigned)
+                        ?? DequeueUnassigned(byIndex.GetValueOrDefault(member.Index), assigned);
             if (layer == null) continue;
             layer.GroupId = group.Id;
             layer.GroupName = group.Name;
@@ -8054,6 +8536,25 @@ public partial class MainWindow : Window
             }
             assigned.Add(layer);
         }
+    }
+
+    private static LayerRow? DequeueUnassigned(Queue<LayerRow>? queue, HashSet<LayerRow> assigned)
+    {
+        if (queue == null)
+        {
+            return null;
+        }
+
+        while (queue.Count > 0)
+        {
+            var layer = queue.Dequeue();
+            if (!assigned.Contains(layer))
+            {
+                return layer;
+            }
+        }
+
+        return null;
     }
 
     private static string GetLayerGroupingSignature(LayerRow layer)
@@ -9467,7 +9968,7 @@ public partial class MainWindow : Window
         if (sourceIndex == finalIndex) return;
 
         PushUndoState(GetLanguageText("history.reorderLayers", "Reorder layers"));
-        _pendingLayerMoves.Add(new PendingLayerMove(sourceIndex, finalIndex));
+        _pendingLayerMoves.Add(new PendingLayerMove(sourceIndex, finalIndex, CreateLayerDeleteSignature(source)));
         Layers.Move(sourceIndex, finalIndex);
         RefreshLayerIndexes();
         SaveEditorSettingsForLocalReorder(sourceIndex, finalIndex);
@@ -9527,12 +10028,54 @@ public partial class MainWindow : Window
         if (_pendingLayerMoves.Count == 0) return;
 
         var moves = _pendingLayerMoves.ToList();
+        var current = await Task.Run(() => _supporter.LoadTemplatePathAsync(deviceModel, templatePath, inspectBitmaps: false));
+        var currentLayers = current.Layers
+            .Where(layer => !layer.IsEditorMetadata && !IsOledCurveSyntheticBackgroundLayer(layer))
+            .ToList();
         foreach (var move in moves)
         {
-            await MoveLayerIndexToIndexAsync(deviceModel, templatePath, move.SourceIndex, move.TargetIndex, updateShadowLinks: false);
+            var sourceIndex = ResolvePendingLayerMoveSourceIndex(move, currentLayers);
+            if (sourceIndex < 0)
+            {
+                throw new InvalidOperationException(GetLanguageText(
+                    "messages.layerMoveVerificationFailed",
+                    "Layer move verification failed because the layer list changed. Reload the active theme and try moving again."));
+            }
+
+            var targetIndex = Math.Clamp(move.TargetIndex, 0, Math.Max(0, currentLayers.Count - 1));
+            await MoveLayerIndexToIndexAsync(deviceModel, templatePath, sourceIndex, targetIndex, updateShadowLinks: false);
+
+            var moved = currentLayers[sourceIndex];
+            currentLayers.RemoveAt(sourceIndex);
+            currentLayers.Insert(targetIndex, moved);
         }
         _pendingLayerMoves.Clear();
         _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
+    }
+
+    private static int ResolvePendingLayerMoveSourceIndex(PendingLayerMove move, IReadOnlyList<LayerRow> currentLayers)
+    {
+        if (move.SourceIndex >= 0 &&
+            move.SourceIndex < currentLayers.Count &&
+            GetLayerDeleteMatchScore(currentLayers[move.SourceIndex], move.Signature) >= 140)
+        {
+            return move.SourceIndex;
+        }
+
+        var matches = currentLayers
+            .Select((layer, index) => new
+            {
+                Index = index,
+                Score = GetLayerDeleteMatchScore(layer, move.Signature)
+            })
+            .Where(item => item.Score >= 140)
+            .OrderByDescending(item => item.Score)
+            .ThenBy(item => Math.Abs(item.Index - move.SourceIndex))
+            .Take(3)
+            .ToList();
+        return matches.Count == 1 || (matches.Count > 1 && matches[0].Score > matches[1].Score)
+            ? matches[0].Index
+            : -1;
     }
 
     private void SaveEditorSettingsForLocalReorder(int sourceIndex, int targetIndex)
@@ -9831,14 +10374,21 @@ public partial class MainWindow : Window
             Width = width,
             Height = height,
             BorderBrush = Brushes.Transparent,
-            BorderThickness = new Thickness(0)
+            BorderThickness = new Thickness(0),
+            ClipToBounds = true
         };
         try
         {
             var image = new Image
             {
                 Source = GetPreviewImageSource(imagePath, sourceRectText),
+                Width = width,
+                Height = height,
+                MaxWidth = width,
+                MaxHeight = height,
                 Stretch = Stretch.Uniform,
+                HorizontalAlignment = HorizontalAlignment.Left,
+                VerticalAlignment = VerticalAlignment.Top,
                 RenderTransformOrigin = new Point(0.5, 0.5)
             };
             if (double.TryParse(rotationText, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation))
@@ -9852,6 +10402,76 @@ public partial class MainWindow : Window
             border.Child = new Rectangle { Fill = NewBrush("#4F8CFF", "#4F8CFF") };
         }
         return border;
+    }
+
+    private FrameworkElement CreateFittedPreviewBitmap(string imagePath, double width, double height)
+    {
+        try
+        {
+            return new System.Windows.Shapes.Rectangle
+            {
+                Width = width,
+                Height = height,
+                Fill = new ImageBrush(GetCachedPreviewImage(imagePath))
+                {
+                    Stretch = Stretch.Uniform,
+                    AlignmentX = AlignmentX.Center,
+                    AlignmentY = AlignmentY.Center
+                }
+            };
+        }
+        catch
+        {
+            return new System.Windows.Shapes.Rectangle
+            {
+                Width = width,
+                Height = height,
+                Fill = NewBrush("#4F8CFF", "#4F8CFF")
+            };
+        }
+    }
+
+    private FrameworkElement CreateThemeEngineGraphPreviewImage(string imagePath, Rect bounds)
+    {
+        try
+        {
+            var source = GetCachedPreviewImage(imagePath);
+            if (IsFullCanvasGraphPreview(source))
+            {
+                var host = new Grid
+                {
+                    Width = bounds.Width,
+                    Height = bounds.Height,
+                    Background = Brushes.Transparent,
+                    ClipToBounds = true
+                };
+                var image = new Image
+                {
+                    Source = source,
+                    Width = _previewCanvasWidth,
+                    Height = _previewCanvasHeight,
+                    Stretch = Stretch.Fill,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    Margin = new Thickness(-bounds.Left, -bounds.Top, 0, 0)
+                };
+                host.Children.Add(image);
+                return host;
+            }
+        }
+        catch
+        {
+        }
+
+        return CreatePreviewImage(imagePath, bounds.Width, bounds.Height, selected: false, rotationText: "");
+    }
+
+    private bool IsFullCanvasGraphPreview(BitmapSource source)
+    {
+        var canvasWidth = Math.Max(1, (int)Math.Round(_templateCanvasWidth));
+        var canvasHeight = Math.Max(1, (int)Math.Round(_templateCanvasHeight));
+        return Math.Abs(source.PixelWidth - canvasWidth) <= 1 &&
+               Math.Abs(source.PixelHeight - canvasHeight) <= 1;
     }
 
     private BitmapSource GetPreviewImageSource(string imagePath, string sourceRectText)
@@ -9926,8 +10546,11 @@ public partial class MainWindow : Window
             type.Contains("StatuBar", StringComparison.OrdinalIgnoreCase) ||
             type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase) ||
             type.Contains("GraphLine", StringComparison.OrdinalIgnoreCase);
-        var contentLeft = isRectangularGraph ? Math.Max(0, (outerWidth - logicalWidth) / 2) : 0;
-        var contentTop = isRectangularGraph ? Math.Max(0, (outerHeight - logicalHeight) / 2) : 0;
+        var isStatusLikeBar =
+            type.Contains("StatuBar", StringComparison.OrdinalIgnoreCase) ||
+            type.Contains("DynamicBar", StringComparison.OrdinalIgnoreCase);
+        var contentLeft = isRectangularGraph && !isStatusLikeBar ? Math.Max(0, (outerWidth - logicalWidth) / 2) : 0;
+        var contentTop = isRectangularGraph && !isStatusLikeBar ? Math.Max(0, (outerHeight - logicalHeight) / 2) : 0;
         if (isRectangularGraph)
         {
             width = logicalWidth;
@@ -9989,7 +10612,7 @@ public partial class MainWindow : Window
                 centerDiameter / 2.0,
                 thickness,
                 lineCap,
-                isSubsection || h2Style == "donut1" || string.Equals(layer.UseBlock, "True", StringComparison.OrdinalIgnoreCase));
+                isSubsection || string.Equals(layer.UseBlock, "True", StringComparison.OrdinalIgnoreCase));
 
             if (string.Equals(layer.RingBorder, "True", StringComparison.OrdinalIgnoreCase))
             {
@@ -10323,7 +10946,13 @@ public partial class MainWindow : Window
                 dataRate /= 100.0;
             }
 
-            return Math.Clamp(dataRate, 0.0, 1.0);
+            if (dataRate > 0.0)
+            {
+                return Math.Clamp(dataRate, 0.0, 1.0);
+            }
+
+            var sampleRatio = GetGraphDataRatio(layer);
+            return sampleRatio > 0.0 ? sampleRatio : 0.65;
         }
 
         return GetGraphDataRatio(layer);
@@ -10927,7 +11556,7 @@ public partial class MainWindow : Window
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
             bitmap.UriSource = new Uri(imgPath, UriKind.Absolute);
             bitmap.EndInit();
- bitmap.Freeze();
+            bitmap.Freeze();
             w = bitmap.PixelWidth;
             h = bitmap.PixelHeight;
             _imageBoundsCache[imgPath] = new Size(w, h);
@@ -11162,7 +11791,7 @@ public partial class MainWindow : Window
             case "RAMLOAD": return "42";
             case "RAM": return "8192";
             case "RAMVALID": return "8192";
-            case "RAMMODEL": return "G.Skill DDR5";
+            case "RAMMODEL": return "";
             case "RAMTOTAL": return "16384";
             case "RAM_GB": return "13.4";
             case "RAMVALID_GB": return "16.0";
@@ -11175,6 +11804,9 @@ public partial class MainWindow : Window
             case "GPUVOLTAGE": return "0.95";
             case "CPUFAN": return "1250";
             case "GPUFAN": return "1400";
+            case "CPUMODEL":
+            case "GPUMODEL":
+                return TryGetHardwareModelValue(key, out var modelName) ? modelName : "";
             case "CASEFAN": return "900";
             case "CASEFAN1": return "900";
             case "CASEFAN2": return "920";
@@ -11195,7 +11827,6 @@ public partial class MainWindow : Window
             case "UPSPEED": return "8.5";
             case "DOWNDSPEED": return "45.2";
             case "FPS_AVG": return "120";
-            case "GPUMODEL": return "GPU";
             case "TIME":
                 var currentTime = DateTime.Now;
                 if (fmt is "h:m" or "00:00" or "HH:mm") return currentTime.ToString("HH:mm");
@@ -11222,7 +11853,6 @@ public partial class MainWindow : Window
                 return dataSource;
         }
     }
-
 
     private static bool TryGetLiveSensorValue(string key, string selector, out string value)
     {
@@ -11427,6 +12057,7 @@ public partial class MainWindow : Window
 
             PutMemoryValues(fresh, readings);
             PutNetworkValues(fresh, readings);
+            PutHardwareModelValues(fresh, readings);
             PutRounded(fresh, "FPS_AVG", FindFpsAverageReading(readings));
             PutAlias(fresh, "DOWNSPEED", "DOWNDSPEED");
             PutAlias(fresh, "FPS", "FPS_AVG");
@@ -11525,6 +12156,143 @@ public partial class MainWindow : Window
         return reading.Sensor.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase) ||
                reading.Sensor.Contains("GeForce", StringComparison.OrdinalIgnoreCase) ||
                !reading.Sensor.Contains("AMD Radeon", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void PutHardwareModelValues(Dictionary<string, string> target, IEnumerable<SensorReading> readings)
+    {
+        var list = readings.ToList();
+        var cpuName = list
+            .Where(IsCpuSensor)
+            .Select(r => CleanHardwareModelName(r.Sensor, "CPU"))
+            .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+        var gpuName = list
+            .Where(IsDiscreteGpuSensor)
+            .Select(r => CleanHardwareModelName(r.Sensor, "GPU"))
+            .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name));
+
+        if (string.IsNullOrWhiteSpace(cpuName))
+        {
+            cpuName = ReadCpuModelFromRegistry();
+        }
+
+        if (string.IsNullOrWhiteSpace(gpuName))
+        {
+            gpuName = ReadGpuModelFromRegistry();
+        }
+
+        if (!string.IsNullOrWhiteSpace(cpuName))
+        {
+            target["CPUMODEL"] = cpuName;
+            _hardwareModelCache["CPUMODEL"] = cpuName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(gpuName))
+        {
+            target["GPUMODEL"] = gpuName;
+            _hardwareModelCache["GPUMODEL"] = gpuName;
+        }
+    }
+
+    private static bool TryGetHardwareModelValue(string key, out string value)
+    {
+        RefreshLiveSensorCache();
+        if (_liveSensorValueCache.TryGetValue(key, out value!) && !string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        if (_hardwareModelCache.TryGetValue(key, out value!) && !string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        value = key switch
+        {
+            "CPUMODEL" => ReadCpuModelFromRegistry(),
+            "GPUMODEL" => ReadGpuModelFromRegistry(),
+            _ => ""
+        };
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            _hardwareModelCache[key] = value;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static string CleanHardwareModelName(string value, string prefix)
+    {
+        var text = (value ?? "").Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return "";
+        }
+
+        text = Regex.Replace(text, @"^(CPU|GPU|dGPU)\s*\[#\d+\]\s*:\s*", "", RegexOptions.IgnoreCase).Trim();
+        text = Regex.Replace(text, $"^{Regex.Escape(prefix)}\\s*[:#-]*\\s*", "", RegexOptions.IgnoreCase).Trim();
+        return text;
+    }
+
+    private static string ReadCpuModelFromRegistry()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(@"HARDWARE\DESCRIPTION\System\CentralProcessor\0");
+            return (key?.GetValue("ProcessorNameString") as string)?.Trim() ?? "";
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static string ReadGpuModelFromRegistry()
+    {
+        try
+        {
+            const string displayClass = @"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}";
+            using var root = Registry.LocalMachine.OpenSubKey(displayClass);
+            if (root == null)
+            {
+                return "";
+            }
+
+            foreach (var subKeyName in root.GetSubKeyNames().OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+            {
+                using var subKey = root.OpenSubKey(subKeyName);
+                if (subKey == null)
+                {
+                    continue;
+                }
+
+                foreach (var valueName in new[] { "DriverDesc", "HardwareInformation.AdapterString", "Device Description" })
+                {
+                    var value = (subKey.GetValue(valueName) as string)?.Trim() ?? "";
+                    if (IsUsableGpuModelName(value))
+                    {
+                        return value;
+                    }
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return "";
+    }
+
+    private static bool IsUsableGpuModelName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        return !value.Contains("Microsoft Basic", StringComparison.OrdinalIgnoreCase) &&
+               !value.Contains("Remote", StringComparison.OrdinalIgnoreCase) &&
+               !value.Contains("Render Driver", StringComparison.OrdinalIgnoreCase);
     }
 
     private static SensorReading? FindFanReading(IEnumerable<SensorReading> readings, string target)
@@ -12409,7 +13177,6 @@ public partial class MainWindow : Window
         bitmap.CreateOptions = BitmapCreateOptions.PreservePixelFormat;
         bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
         bitmap.EndInit();
- bitmap.Freeze();
         bitmap.Freeze();
         _previewImageCache[imagePath] = bitmap;
         return bitmap;
@@ -13059,12 +13826,15 @@ public partial class MainWindow : Window
         UpdateDeleteTemplateButtonState();
         if (_isLoading || TemplateCombo.SelectedItem is not TemplateOption option || string.IsNullOrWhiteSpace(option.Path))
         {
+            AppLogger.Info(
+                $"Template selection ignored. loading={_isLoading}; selected={TemplateCombo.SelectedItem is TemplateOption}; path={(TemplateCombo.SelectedItem as TemplateOption)?.Path ?? ""}");
             return;
         }
 
         UseActiveCheck.IsChecked = false;
         TemplateIdBox.Text = option.Id;
         _currentTemplatePath = option.Path;
+        AppLogger.Info($"Template selection loading: device={GetSelectedDeviceModel()}; template={option.Id}; path={option.Path}");
         await LoadLayersAsync(true);
     }
 
@@ -13386,6 +14156,613 @@ public partial class MainWindow : Window
                 GetLanguageText("messages.orientationChangeFailed", "Orientation change failed"),
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
+        }
+    }
+
+    private async void TakePreviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentTemplatePath) || !File.Exists(_currentTemplatePath))
+        {
+            SetStatus(GetLanguageText("messages.loadThemeFirst", "Load a theme first."));
+            return;
+        }
+
+        var currentTemplateId = FirstNonEmpty(_currentTemplateId, Path.GetFileNameWithoutExtension(_currentTemplatePath));
+        var dialog = new SaveFileDialog
+        {
+            Title = GetLanguageText("preview.takePreview", "Take Preview"),
+            Filter = GetLanguageText("dialogs.previewPngFilter", "PNG image (*.png)|*.png|All files (*.*)|*.*"),
+            DefaultExt = ".png",
+            AddExtension = true,
+            OverwritePrompt = true,
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory),
+            FileName = $"{SanitizeFileName(currentTemplateId)}-preview.png"
+        };
+
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        try
+        {
+            SetBusy(true, GetLanguageText("status.takingPreview", "Taking preview..."));
+            var target = await ResolveTemplateTargetAsync();
+            if (LayerGrid.SelectedItem is LayerRow selectedLayer && _dirtyLayers.Contains(selectedLayer))
+            {
+                UpdateLayerFromInputs(selectedLayer);
+            }
+
+            if (_dirtyLayers.Count > 0 ||
+                _pendingLayerMoves.Count > 0 ||
+                _pendingLayerDuplicates.Count > 0 ||
+                _pendingLayerDeletes.Count > 0)
+            {
+                await ApplyDirtyLayersAsync(target.DeviceModel, target.TemplatePath);
+                var refreshed = await Task.Run(() => _supporter.LoadTemplatePathAsync(
+                    target.DeviceModel,
+                    target.TemplatePath));
+                ApplyTemplateResult(refreshed);
+            }
+
+            var templateId = FirstNonEmpty(_currentTemplateId, Path.GetFileNameWithoutExtension(target.TemplatePath));
+            var previewBytes = await RenderCurrentThemePreviewForExportAsync(
+                cleanEditorOverlay: true,
+                forceBackgroundVisible: true);
+            if (previewBytes == null || previewBytes.Length == 0)
+            {
+                throw new InvalidOperationException("The current theme preview could not be rendered.");
+            }
+
+            await File.WriteAllBytesAsync(dialog.FileName, previewBytes);
+
+            SetBusy(false, FormatLanguageText("status.previewSavedTo", "Preview saved: {0}", dialog.FileName));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Take preview failed.", ex);
+            SetBusy(false, GetLanguageText("status.previewSaveFailed", "Preview save failed."));
+            MessageBox.Show(
+                this,
+                ex.Message,
+                GetLanguageText("preview.takePreview", "Take Preview"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private async void UpdateThemeInfoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentTemplatePath) || !File.Exists(_currentTemplatePath))
+        {
+            SetStatus(GetLanguageText("messages.loadThemeFirst", "Load a theme first."));
+            return;
+        }
+
+        try
+        {
+            SetBusy(true, GetLanguageText("status.updatingThemeInfo", "Updating theme info..."));
+            var target = await ResolveTemplateTargetAsync();
+            if (LayerGrid.SelectedItem is LayerRow selectedLayer && _dirtyLayers.Contains(selectedLayer))
+            {
+                UpdateLayerFromInputs(selectedLayer);
+            }
+
+            if (_dirtyLayers.Count > 0 ||
+                _pendingLayerMoves.Count > 0 ||
+                _pendingLayerDuplicates.Count > 0 ||
+                _pendingLayerDeletes.Count > 0)
+            {
+                await ApplyDirtyLayersAsync(target.DeviceModel, target.TemplatePath);
+                var refreshed = await Task.Run(() => _supporter.LoadTemplatePathAsync(
+                    target.DeviceModel,
+                    target.TemplatePath));
+                ApplyTemplateResult(refreshed);
+            }
+
+            var templateId = FirstNonEmpty(_currentTemplateId, Path.GetFileNameWithoutExtension(target.TemplatePath));
+            var previewBytes = await RenderCurrentThemePreviewForExportAsync(
+                cleanEditorOverlay: true,
+                forceBackgroundVisible: true);
+            if (previewBytes == null || previewBytes.Length == 0)
+            {
+                throw new InvalidOperationException("The current theme preview could not be rendered.");
+            }
+
+            await SaveThemePreviewBytesAsync(
+                target.DeviceModel,
+                target.TemplatePath,
+                templateId,
+                previewBytes,
+                GetTemplatePreviewAliases(templateId),
+                embedInTemplate: true,
+                updateTemplateListThumbnail: true);
+
+            _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(target.TemplatePath);
+            SetBusy(false, GetLanguageText("status.themeInfoUpdated", "Theme info updated."));
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Update theme info failed.", ex);
+            SetBusy(false, GetLanguageText("status.themeInfoUpdateFailed", "Theme info update failed."));
+            MessageBox.Show(
+                this,
+                ex.Message,
+                GetLanguageText("top.updateThemeInfo", "Update Theme Info"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
+    private async void ThemeEnginePreviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(_currentTemplatePath) || !File.Exists(_currentTemplatePath))
+        {
+            SetStatus(GetLanguageText("messages.loadThemeFirst", "Load a theme first."));
+            return;
+        }
+
+        string tempTemplatePath = "";
+        string outputPath = "";
+        string renderBackgroundFramePath = "";
+        string editorBackgroundSnapshotPath = "";
+        string layerOnlyOutputPath = "";
+        string previewDataPath = "";
+        try
+        {
+            SetBusy(true, GetLanguageText("status.renderingThemeEnginePreview", "Rendering ThemeEngine preview..."));
+            var target = await ResolveTemplateTargetAsync();
+            if (LayerGrid.SelectedItem is LayerRow selectedLayer)
+            {
+                UpdateLayerFromInputs(selectedLayer);
+            }
+
+            tempTemplatePath = CreateTemporaryTemplateCopy(target.TemplatePath);
+            var previewLayers = Layers
+                .Where(layer => !layer.IsEditorMetadata)
+                .ToList();
+            if (previewLayers.Count > 0)
+            {
+                await _supporter.ApplyLayersAsync(target.DeviceModel, tempTemplatePath, previewLayers);
+            }
+
+            var canvas = GetTemplateCanvasPixels();
+            previewDataPath = CreateThemeEnginePreviewDataFile();
+            var animationLayer = previewLayers
+                .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
+            var resolvedBackground = FirstExistingPath(
+                ResolveCurrentEditorPreviewBackgroundPath(),
+                ResolveBackgroundPath(animationLayer?.MediaPath ?? "", animationLayer?.Media ?? ""),
+                ResolveBackgroundPath(_currentBackgroundPath, animationLayer?.Media ?? ""),
+                _currentBackgroundPath,
+                _generatedBackgroundPreviewFramePath);
+            AppLogger.Info(
+                $"ThemeEngine preview background: previewFrame={_generatedBackgroundPreviewFramePath}; current={_currentBackgroundPath}; " +
+                $"animationPath={animationLayer?.MediaPath}; animationMedia={animationLayer?.Media}; resolved={resolvedBackground}");
+            var renderBackgroundPath = resolvedBackground;
+            editorBackgroundSnapshotPath = await CreateThemeEngineEditorBackgroundSnapshotAsync();
+            if (!string.IsNullOrWhiteSpace(editorBackgroundSnapshotPath) && File.Exists(editorBackgroundSnapshotPath))
+            {
+                renderBackgroundPath = editorBackgroundSnapshotPath;
+            }
+            else
+            if (IsAnimatedBackgroundPath(resolvedBackground))
+            {
+                renderBackgroundFramePath = CreateBackgroundPreviewFrame(resolvedBackground);
+                if (!string.IsNullOrWhiteSpace(renderBackgroundFramePath) && File.Exists(renderBackgroundFramePath))
+                {
+                    renderBackgroundPath = renderBackgroundFramePath;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(resolvedBackground) && File.Exists(resolvedBackground))
+            {
+                var appliedBackground = await _supporter.SetBackgroundMediaAsync(
+                    target.DeviceModel,
+                    tempTemplatePath,
+                    resolvedBackground,
+                    canvas.Width,
+                    canvas.Height);
+                if (!string.IsNullOrWhiteSpace(appliedBackground) && File.Exists(appliedBackground))
+                {
+                    AppLogger.Info($"ThemeEngine preview applied background: {appliedBackground}");
+                }
+            }
+
+            outputPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "LianLiThemeEditor",
+                "ThemeEnginePreview",
+                $"{SanitizeFileName(FirstNonEmpty(_currentTemplateId, Path.GetFileNameWithoutExtension(target.TemplatePath)))}-{Guid.NewGuid():N}.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+            layerOnlyOutputPath = Path.Combine(
+                Path.GetDirectoryName(outputPath)!,
+                $"{Path.GetFileNameWithoutExtension(outputPath)}-layers.png");
+            var useCompositedBackground = !string.IsNullOrWhiteSpace(renderBackgroundPath) && File.Exists(renderBackgroundPath);
+            AppLogger.Info(
+                $"ThemeEngine preview render mode: compositedBackground={useCompositedBackground}; " +
+                $"background={renderBackgroundPath}; skipGraphAnimation={useCompositedBackground}; layers={layerOnlyOutputPath}; final={outputPath}");
+            var renderedPath = await _supporter.RenderThemeCanvasAsync(
+                target.DeviceModel,
+                tempTemplatePath,
+                layerOnlyOutputPath,
+                canvas.Width,
+                canvas.Height,
+                "",
+                noBackground: useCompositedBackground,
+                skipGraphAnimation: useCompositedBackground,
+                previewDataPath: previewDataPath);
+
+            if (string.IsNullOrWhiteSpace(renderedPath) || !File.Exists(renderedPath))
+            {
+                throw new InvalidOperationException("ThemeEngine preview could not be rendered.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(renderBackgroundPath) && File.Exists(renderBackgroundPath))
+            {
+                CompositeThemeEnginePreview(renderBackgroundPath, renderedPath, outputPath, canvas.Width, canvas.Height);
+                renderedPath = outputPath;
+            }
+
+            SetBusy(false, GetLanguageText("status.themeEnginePreviewRendered", "ThemeEngine preview rendered."));
+            ShowThemeEnginePreviewPopup(renderedPath);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("ThemeEngine preview render failed.", ex);
+            SetBusy(false, GetLanguageText("status.themeEnginePreviewFailed", "ThemeEngine preview failed."));
+            MessageBox.Show(
+                this,
+                ex.Message,
+                GetLanguageText("top.themeEnginePreview", "ThemeEngine Preview"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            TryDeleteFile(outputPath);
+        }
+        finally
+        {
+            TryDeleteFile(tempTemplatePath);
+            TryDeleteFile(renderBackgroundFramePath);
+            TryDeleteFile(editorBackgroundSnapshotPath);
+            TryDeleteFile(layerOnlyOutputPath);
+            TryDeleteFile(previewDataPath);
+        }
+    }
+
+    private async void RawThemeEnginePreviewButton_Click(object sender, RoutedEventArgs e)
+    {
+        string outputPath = "";
+        string tempTemplatePath = "";
+        string previewDataPath = "";
+        try
+        {
+            SetBusy(true, GetLanguageText("status.capturingLConnectPreview", "Rendering device preview..."));
+            var selectedLayer = LayerGrid.SelectedItem as LayerRow;
+            if (selectedLayer != null && _dirtyLayers.Contains(selectedLayer))
+            {
+                UpdateLayerFromInputs(selectedLayer);
+            }
+
+            var target = await ResolveTemplateTargetAsync();
+            var deviceModel = target.DeviceModel;
+            tempTemplatePath = CreateTemporaryTemplateCopy(target.TemplatePath);
+            var previewLayers = Layers
+                .Where(layer => !layer.IsEditorMetadata)
+                .ToList();
+            if (previewLayers.Count > 0)
+            {
+                await _supporter.ApplyLayersAsync(deviceModel, tempTemplatePath, previewLayers);
+            }
+
+            var canvas = GetTemplateCanvasPixels();
+            previewDataPath = CreateThemeEnginePreviewDataFile();
+            outputPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "LianLiThemeEditor",
+                "ThemeEnginePreview",
+                $"{SanitizeFileName(FirstNonEmpty(_currentTemplateId, deviceModel, "device-preview"))}-device-{Guid.NewGuid():N}.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+
+            var renderedPath = await _supporter.RenderThemeCanvasAsync(
+                deviceModel,
+                tempTemplatePath,
+                outputPath,
+                canvas.Width,
+                canvas.Height,
+                previewDataPath: previewDataPath);
+
+            if (string.IsNullOrWhiteSpace(renderedPath) || !File.Exists(renderedPath))
+            {
+                throw new InvalidOperationException("Device preview could not be rendered.");
+            }
+
+            SetBusy(false, GetLanguageText("status.lConnectPreviewCaptured", "Device preview rendered."));
+            ShowThemeEnginePreviewPopup(renderedPath);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error("Device preview render failed.", ex);
+            SetBusy(false, GetLanguageText("status.lConnectPreviewCaptureFailed", "Device preview failed."));
+            MessageBox.Show(
+                this,
+                ex.Message,
+                GetLanguageText("top.lConnectPreview", "L-Connect Preview"),
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            TryDeleteFile(outputPath);
+        }
+        finally
+        {
+            TryDeleteFile(tempTemplatePath);
+            TryDeleteFile(previewDataPath);
+        }
+    }
+
+    private static string CreateThemeEnginePreviewDataFile()
+    {
+        RefreshLiveSensorCache();
+        var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var source in DataSources)
+        {
+            var key = NormalizeDataSourceKey(source);
+            if (string.Equals(key, "STATICTEXT", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            values[key] = SampleValueFor(key);
+        }
+
+        for (var i = 1; i <= 8; i++)
+        {
+            var key = "CASEFAN" + i.ToString(CultureInfo.InvariantCulture);
+            values[key] = SampleValueFor(key);
+        }
+
+        values["CPUPOWER"] = values.TryGetValue("CPUPWR", out var cpuPower) ? cpuPower : SampleValueFor("CPUPWR");
+        values["GPUPOWER"] = values.TryGetValue("GPUPWR", out var gpuPower) ? gpuPower : SampleValueFor("GPUPWR");
+        values["DOWNSPEED"] = values.TryGetValue("DOWNDSPEED", out var downSpeed) ? downSpeed : SampleValueFor("DOWNDSPEED");
+        values["FPS"] = values.TryGetValue("FPS_AVG", out var fps) ? fps : SampleValueFor("FPS_AVG");
+
+        var path = Path.Combine(Path.GetTempPath(), $"themeengine-preview-data-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, JsonSerializer.Serialize(values), Encoding.UTF8);
+        return path;
+    }
+
+    private async Task<string> CreateThemeEngineEditorBackgroundSnapshotAsync()
+    {
+        var outputPath = Path.Combine(
+            Path.GetTempPath(),
+            $"themeengine-editor-background-{Guid.NewGuid():N}.png");
+        if (BackgroundMedia?.Visibility == Visibility.Visible &&
+            BackgroundMedia.Source is { IsFile: true } mediaUri)
+        {
+            var tag = BackgroundMedia.Tag as BackgroundPreviewMediaTag;
+            var mediaCandidates = new[]
+                {
+                    mediaUri.LocalPath,
+                    tag?.SourcePath ?? "",
+                    tag?.FallbackPath ?? "",
+                    _currentBackgroundPath
+                }
+                .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var mediaPath in mediaCandidates)
+            {
+                var frame = await CreateDeterministicBackgroundPreviewAsync(mediaPath);
+                if (!string.IsNullOrWhiteSpace(frame) && File.Exists(frame))
+                {
+                    AppLogger.Info($"ThemeEngine editor background frame from media: {mediaPath} -> {frame}");
+                    return frame;
+                }
+            }
+        }
+
+        var previousCanvasVisibility = PreviewCanvas.Visibility;
+        var previousTopOpacity = PreviewMaskTop.Opacity;
+        var previousBottomOpacity = PreviewMaskBottom.Opacity;
+        var previousLeftOpacity = PreviewMaskLeft.Opacity;
+        var previousRightOpacity = PreviewMaskRight.Opacity;
+        double previousMediaOpacity = 1;
+        if (BackgroundMedia != null)
+        {
+            previousMediaOpacity = BackgroundMedia.Opacity;
+        }
+        double previousImageOpacity = 1;
+        if (BackgroundImage != null)
+        {
+            previousImageOpacity = BackgroundImage.Opacity;
+        }
+        try
+        {
+            PreviewCanvas.Visibility = Visibility.Hidden;
+            PreviewMaskTop.Opacity = 0;
+            PreviewMaskBottom.Opacity = 0;
+            PreviewMaskLeft.Opacity = 0;
+            PreviewMaskRight.Opacity = 0;
+            if (BackgroundMedia != null)
+            {
+                BackgroundMedia.Opacity = 1;
+            }
+            if (BackgroundImage != null)
+            {
+                BackgroundImage.Opacity = 1;
+            }
+            PreviewSurface.UpdateLayout();
+
+            var canvas = GetTemplateCanvasPixels();
+            var brush = CreateClippedVisualBrush(PreviewSurface);
+            var drawingVisual = new DrawingVisual();
+            using (var context = drawingVisual.RenderOpen())
+            {
+                context.DrawRectangle(brush, null, new Rect(0, 0, canvas.Width, canvas.Height));
+            }
+
+            var bitmap = new RenderTargetBitmap(canvas.Width, canvas.Height, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(drawingVisual);
+
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(bitmap));
+            using var stream = File.Create(outputPath);
+            encoder.Save(stream);
+
+            return File.Exists(outputPath) && new FileInfo(outputPath).Length > 0
+                ? outputPath
+                : "";
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning($"ThemeEngine editor background snapshot failed: {ex.GetType().Name}: {ex.Message}");
+            TryDeleteFile(outputPath);
+            return "";
+        }
+        finally
+        {
+            PreviewCanvas.Visibility = previousCanvasVisibility;
+            PreviewMaskTop.Opacity = previousTopOpacity;
+            PreviewMaskBottom.Opacity = previousBottomOpacity;
+            PreviewMaskLeft.Opacity = previousLeftOpacity;
+            PreviewMaskRight.Opacity = previousRightOpacity;
+            if (BackgroundMedia != null)
+            {
+                BackgroundMedia.Opacity = previousMediaOpacity;
+            }
+            if (BackgroundImage != null)
+            {
+                BackgroundImage.Opacity = previousImageOpacity;
+            }
+        }
+    }
+
+    private static void CompositeThemeEnginePreview(
+        string backgroundPath,
+        string layerPath,
+        string outputPath,
+        int width,
+        int height)
+    {
+        var background = new BitmapImage();
+        background.BeginInit();
+        background.CacheOption = BitmapCacheOption.OnLoad;
+        background.UriSource = new Uri(backgroundPath, UriKind.Absolute);
+        background.EndInit();
+        background.Freeze();
+
+        var layers = new BitmapImage();
+        layers.BeginInit();
+        layers.CacheOption = BitmapCacheOption.OnLoad;
+        layers.UriSource = new Uri(layerPath, UriKind.Absolute);
+        layers.EndInit();
+        layers.Freeze();
+
+        var visual = new DrawingVisual();
+        using (var context = visual.RenderOpen())
+        {
+            context.DrawImage(background, new Rect(0, 0, width, height));
+            context.DrawImage(layers, new Rect(0, 0, width, height));
+        }
+
+        var output = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
+        output.Render(visual);
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(output));
+        using var stream = File.Create(outputPath);
+        encoder.Save(stream);
+    }
+
+    private static bool IsAnimatedBackgroundPath(string path)
+    {
+        var extension = Path.GetExtension(path).ToLowerInvariant();
+        return extension is ".mp4" or ".mov" or ".avi" or ".wmv" or ".h264" or ".gif";
+    }
+
+    private string ResolveCurrentEditorPreviewBackgroundPath()
+    {
+        if (BackgroundMedia?.Visibility == Visibility.Visible &&
+            BackgroundMedia.Source is { IsFile: true } mediaUri)
+        {
+            var tag = BackgroundMedia.Tag as BackgroundPreviewMediaTag;
+            return FirstExistingPath(
+                tag?.FallbackPath ?? "",
+                tag?.SourcePath ?? "",
+                mediaUri.LocalPath);
+        }
+
+        if (BackgroundImage?.Visibility == Visibility.Visible &&
+            BackgroundImage.Source is BitmapImage { UriSource: { IsFile: true } imageUri })
+        {
+            return FirstExistingPath(imageUri.LocalPath);
+        }
+
+        return "";
+    }
+
+    private static string CreateTemporaryTemplateCopy(string templatePath)
+    {
+        var directory = Path.GetDirectoryName(templatePath) ?? Path.GetTempPath();
+        var tempPath = Path.Combine(
+            directory,
+            $".themeeditor-preview-{Guid.NewGuid():N}.template");
+        File.Copy(templatePath, tempPath, overwrite: false);
+        return tempPath;
+    }
+
+    private void ShowThemeEnginePreviewPopup(string imagePath)
+    {
+        var bitmap = new BitmapImage();
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
+        bitmap.EndInit();
+        bitmap.Freeze();
+
+        var image = new Image
+        {
+            Source = bitmap,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            VerticalAlignment = VerticalAlignment.Stretch
+        };
+        var frame = new Border
+        {
+            Padding = new Thickness(14),
+            Background = ResolveBrushResource("BrBg", Brushes.Black),
+            Child = image
+        };
+        var window = new Window
+        {
+            Owner = this,
+            Title = GetLanguageText("top.themeEnginePreview", "ThemeEngine Preview"),
+            Width = Math.Min(SystemParameters.WorkArea.Width * 0.9, 1300),
+            Height = Math.Min(SystemParameters.WorkArea.Height * 0.85, 760),
+            MinWidth = 520,
+            MinHeight = 320,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = ResolveBrushResource("BrPanel", ResolveBrushResource("BrBg", Brushes.Black)),
+            Content = frame
+        };
+        window.KeyDown += (_, args) =>
+        {
+            if (args.Key == Key.Escape)
+            {
+                args.Handled = true;
+                window.Close();
+            }
+        };
+        window.Closed += (_, _) => TryDeleteFile(imagePath);
+        window.ShowDialog();
+    }
+
+    private Brush ResolveBrushResource(string key, Brush fallback)
+    {
+        try
+        {
+            return TryFindResource(key) is Brush brush ? brush : fallback;
+        }
+        catch
+        {
+            return fallback;
         }
     }
 
@@ -13879,6 +15256,15 @@ public partial class MainWindow : Window
         var universal = IsWideScreenDeviceSelected();
         var supportsOrientationSelection = SupportsOrientationSelectionSelected();
         UniversalOrientationPanel.Visibility = supportsOrientationSelection ? Visibility.Visible : Visibility.Collapsed;
+        OfflineModeButton.Visibility = supportsOrientationSelection ? Visibility.Visible : Visibility.Collapsed;
+        TakePreviewButton.Visibility = Visibility.Visible;
+        UpdateThemeInfoButton.Visibility = Visibility.Visible;
+        ThemeEnginePreviewButton.Visibility = DeveloperDiagnosticsCheck?.IsChecked == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        RawThemeEnginePreviewButton.Visibility = DeveloperDiagnosticsCheck?.IsChecked == true
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         ApplyOrientationButton.Visibility = supportsOrientationSelection ? Visibility.Visible : Visibility.Collapsed;
 
         if (universal)
@@ -14632,11 +16018,32 @@ public partial class MainWindow : Window
 
     private void ApplyDeveloperDiagnosticsVisibility()
     {
+        var showDeveloperDiagnostics = DeveloperDiagnosticsCheck?.IsChecked == true;
         if (DiagnosticsTab != null)
         {
-            DiagnosticsTab.Visibility = DeveloperDiagnosticsCheck?.IsChecked == true
+            DiagnosticsTab.Visibility = showDeveloperDiagnostics
                 ? Visibility.Visible
                 : Visibility.Collapsed;
+        }
+        if (ThemeEnginePreviewButton != null)
+        {
+            ThemeEnginePreviewButton.Visibility = showDeveloperDiagnostics
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        if (RawThemeEnginePreviewButton != null)
+        {
+            RawThemeEnginePreviewButton.Visibility = showDeveloperDiagnostics
+                ? Visibility.Visible
+                : Visibility.Collapsed;
+        }
+        if (BackupButton != null)
+        {
+            BackupButton.Visibility = Visibility.Collapsed;
+        }
+        if (RestoreBackupButton != null)
+        {
+            RestoreBackupButton.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -15416,7 +16823,6 @@ public partial class MainWindow : Window
             bitmap.DecodePixelWidth = decodeWidth;
             bitmap.UriSource = new Uri($"pack://application:,,,/{relativePath}", UriKind.Absolute);
             bitmap.EndInit();
- bitmap.Freeze();
             bitmap.Freeze();
             return bitmap;
         }
@@ -16039,58 +17445,14 @@ public partial class MainWindow : Window
                 forceBackgroundVisible: forceBackgroundVisible);
             if (previewBytes == null || previewBytes.Length == 0) return;
 
-            // 1. Save locally for L-Connect 3 UI to update instantly
-            var previewDir = Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "preview");
-            if (Directory.Exists(previewDir))
-            {
-                var previewIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    templateId
-                };
-                if (previewAliases != null)
-                {
-                    foreach (var alias in previewAliases.Where(value => !string.IsNullOrWhiteSpace(value)))
-                    {
-                        previewIds.Add(alias);
-                    }
-                }
-
-                foreach (var previewId in previewIds)
-                {
-                    var previewPath = Path.Combine(previewDir, $"template_{previewId}.png");
-                    await File.WriteAllBytesAsync(previewPath, previewBytes);
-                }
-            }
-
-            if (embedInTemplate)
-            {
-                // Save to temp and update inside the .template file using the
-                // supporter, which understands both current and legacy theme types.
-                var tempPath = Path.Combine(Path.GetTempPath(), $"theme_preview_{Guid.NewGuid():N}.png");
-                await File.WriteAllBytesAsync(tempPath, previewBytes);
-                try
-                {
-                    await _supporter.UpdateThemePreviewAsync(deviceModel, templatePath, tempPath);
-                    _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
-                }
-                finally
-                {
-                    if (File.Exists(tempPath))
-                    {
-                        try { File.Delete(tempPath); } catch { }
-                    }
-                }
-            }
-
-            var currentOption = TemplateOptions.FirstOrDefault(option =>
-                string.Equals(option.Path, templatePath, StringComparison.OrdinalIgnoreCase));
-            if (currentOption != null)
-            {
-                currentOption.Thumbnail = GetTemplateThumbnail(deviceModel, currentOption.Id);
-                currentOption.IsPortraitThumbnail = IsPortraitThumbnail(currentOption.Thumbnail);
-                SelectedTemplateImage.Source = currentOption.Thumbnail;
-                TemplateCombo.Items.Refresh();
-            }
+            await SaveThemePreviewBytesAsync(
+                deviceModel,
+                templatePath,
+                templateId,
+                previewBytes,
+                previewAliases,
+                embedInTemplate,
+                updateTemplateListThumbnail: true);
         }
         catch (Exception ex)
         {
@@ -16098,6 +17460,73 @@ public partial class MainWindow : Window
             throw new InvalidOperationException(
                 "The current theme preview could not be embedded into the template.",
                 ex);
+        }
+    }
+
+    private async Task SaveThemePreviewBytesAsync(
+        string deviceModel,
+        string templatePath,
+        string templateId,
+        byte[] previewBytes,
+        IEnumerable<string>? previewAliases = null,
+        bool embedInTemplate = true,
+        bool updateTemplateListThumbnail = true)
+    {
+        if (previewBytes.Length == 0)
+        {
+            return;
+        }
+
+        var previewDir = Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "preview");
+        if (Directory.Exists(previewDir))
+        {
+            var previewIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                templateId
+            };
+            if (previewAliases != null)
+            {
+                foreach (var alias in previewAliases.Where(value => !string.IsNullOrWhiteSpace(value)))
+                {
+                    previewIds.Add(alias);
+                }
+            }
+
+            foreach (var previewId in previewIds)
+            {
+                var previewPath = Path.Combine(previewDir, $"template_{previewId}.png");
+                await File.WriteAllBytesAsync(previewPath, previewBytes);
+            }
+        }
+
+        if (embedInTemplate)
+        {
+            var tempPath = Path.Combine(Path.GetTempPath(), $"theme_preview_{Guid.NewGuid():N}.png");
+            await File.WriteAllBytesAsync(tempPath, previewBytes);
+            try
+            {
+                await _supporter.UpdateThemePreviewAsync(deviceModel, templatePath, tempPath);
+                _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
+            }
+            finally
+            {
+                TryDeleteFile(tempPath);
+            }
+        }
+
+        if (!updateTemplateListThumbnail)
+        {
+            return;
+        }
+
+        var currentOption = TemplateOptions.FirstOrDefault(option =>
+            string.Equals(option.Path, templatePath, StringComparison.OrdinalIgnoreCase));
+        if (currentOption != null)
+        {
+            currentOption.Thumbnail = GetTemplateThumbnail(deviceModel, currentOption.Id);
+            currentOption.IsPortraitThumbnail = IsPortraitThumbnail(currentOption.Thumbnail);
+            SelectedTemplateImage.Source = currentOption.Thumbnail;
+            TemplateCombo.Items.Refresh();
         }
     }
 
@@ -17007,6 +18436,33 @@ public partial class MainWindow : Window
                 var mediaFiles = new List<(string Path, string EntryName)>();
                 mediaFiles.AddRange(importedImages.Values
                     .Select(name => (Path: Path.Combine(imageRoot, name), EntryName: name)));
+                if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) &&
+                    packageBackgroundBundle.Count > 0)
+                {
+                    var packagePrefersLandscape = !string.Equals(
+                        manifest.UniversalOrientation,
+                        "portrait",
+                        StringComparison.OrdinalIgnoreCase);
+                    var normalized = await NormalizeUniversal88ImportBackgroundAsync(
+                        destinationTemplate,
+                        importedId,
+                        packageBackgroundBundle,
+                        packagePrefersLandscape);
+                    if (!string.IsNullOrWhiteSpace(normalized.RuntimeH264Path) &&
+                        File.Exists(normalized.RuntimeH264Path))
+                    {
+                        importedBackgroundPath = normalized.PreviewMp4Path;
+                        packageBackgroundBundle = normalized.Bundle;
+                        mediaFiles.Add((normalized.RuntimeH264Path, Path.GetFileName(normalized.RuntimeH264Path)));
+                        mediaFiles.Add((normalized.RuntimeH264Path, $"template-background/{Path.GetFileName(normalized.RuntimeH264Path)}"));
+                        if (!string.IsNullOrWhiteSpace(normalized.PreviewMp4Path) &&
+                            File.Exists(normalized.PreviewMp4Path))
+                        {
+                            mediaFiles.Add((normalized.PreviewMp4Path, Path.GetFileName(normalized.PreviewMp4Path)));
+                            mediaFiles.Add((normalized.PreviewMp4Path, $"template-background/{Path.GetFileName(normalized.PreviewMp4Path)}"));
+                        }
+                    }
+                }
                 foreach (var packageBackgroundPath in packageBackgroundBundle.Where(File.Exists))
                 {
                     if (packageBackgroundZipEntries.TryGetValue(packageBackgroundPath, out var entryName) &&
@@ -17248,6 +18704,119 @@ public partial class MainWindow : Window
             UniversalOrientation = manifest.UniversalOrientation,
             LConnectVisible = lConnectImportVisible
         };
+    }
+
+    private async Task<(string RuntimeH264Path, string PreviewMp4Path, List<string> Bundle)> NormalizeUniversal88ImportBackgroundAsync(
+        string templatePath,
+        string templateId,
+        IReadOnlyList<string> packageBackgroundBundle,
+        bool preferLandscape)
+    {
+        if (string.IsNullOrWhiteSpace(templatePath) || !File.Exists(templatePath))
+        {
+            return ("", "", packageBackgroundBundle.ToList());
+        }
+
+        var mp4Source = packageBackgroundBundle.FirstOrDefault(path =>
+            !string.IsNullOrWhiteSpace(path) &&
+            File.Exists(path) &&
+            Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase));
+        var h264Source = packageBackgroundBundle.FirstOrDefault(path =>
+            !string.IsNullOrWhiteSpace(path) &&
+            File.Exists(path) &&
+            Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(mp4Source) && string.IsNullOrWhiteSpace(h264Source))
+        {
+            return ("", "", packageBackgroundBundle.ToList());
+        }
+
+        var stage = Path.Combine(Path.GetTempPath(), $"universal88_import_bg_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(stage);
+        var safeTemplateId = SanitizeFileName(templateId);
+        if (string.IsNullOrWhiteSpace(safeTemplateId))
+        {
+            safeTemplateId = "universal88-import";
+        }
+
+        var previewMp4Path = Path.Combine(stage, $"{safeTemplateId}.mp4");
+        var runtimeH264Path = Path.Combine(stage, $"{safeTemplateId}.h264");
+        if (!string.IsNullOrWhiteSpace(h264Source) && File.Exists(h264Source))
+        {
+            CopyFileWithRetry(h264Source, runtimeH264Path);
+
+            if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
+            {
+                CopyFileWithRetry(mp4Source, previewMp4Path);
+            }
+            else
+            {
+                previewMp4Path = await ConvertExportBackgroundAsync(
+                    UniversalScreenDeviceModel,
+                    runtimeH264Path,
+                    templateId,
+                    ".mp4",
+                    previewMp4Path,
+                    preferLandscape);
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(mp4Source) && File.Exists(mp4Source))
+        {
+            CopyFileWithRetry(mp4Source, previewMp4Path);
+            await EnsureWideRuntimeH264BackgroundAsync(
+                UniversalScreenDeviceModel,
+                mp4Source,
+                templateId,
+                runtimeH264Path,
+                preferLandscape);
+        }
+
+        if (!File.Exists(runtimeH264Path))
+        {
+            return ("", "", packageBackgroundBundle.ToList());
+        }
+
+        await PatchInstalledTemplateRuntimeBackgroundAsync(
+            UniversalScreenDeviceModel,
+            templatePath,
+            runtimeH264Path);
+        if (File.Exists(previewMp4Path))
+        {
+            var previewFramePath = await CreateDeterministicBackgroundPreviewAsync(previewMp4Path);
+            if (!string.IsNullOrWhiteSpace(previewFramePath) && File.Exists(previewFramePath))
+            {
+                try
+                {
+                    await _supporter.UpdateThemePreviewAsync(
+                        UniversalScreenDeviceModel,
+                        templatePath,
+                        previewFramePath);
+                    AppLogger.Info(
+                        $"Universal 8.8 import themePic regenerated from normalized background: " +
+                        $"{DescribeFileForLog(previewFramePath)}");
+                }
+                finally
+                {
+                    TryDeleteFile(previewFramePath);
+                }
+            }
+        }
+
+        var bundle = packageBackgroundBundle
+            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .Where(path => !Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
+                           !Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        bundle.Add(runtimeH264Path);
+        if (File.Exists(previewMp4Path))
+        {
+            bundle.Add(previewMp4Path);
+        }
+
+        AppLogger.Info(
+            $"Universal 8.8 import background normalized before L-Connect import: " +
+            $"orientation={(preferLandscape ? "landscape" : "portrait")}; " +
+            $"runtime={DescribeFileForLog(runtimeH264Path)}; companion={DescribeFileForLog(previewMp4Path)}");
+        return (runtimeH264Path, previewMp4Path, bundle);
     }
 
     private async Task PatchInstalledTemplateRuntimeBackgroundAsync(
@@ -18693,10 +20262,8 @@ public partial class MainWindow : Window
         var orientation = string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
             ? FirstNonEmpty(
                 NormalizeUniversalOrientation(manifest?.UniversalOrientation),
-                TryInferUniversalOrientationFromArchiveEntry(backgroundEntry),
-                InferUniversalOrientationFromPackageName(backgroundEntry?.Name ?? ""),
-                InferUniversalOrientationFromPackageName(templateEntry.Name),
-                InferUniversalOrientationFromPackageName(sourcePath))
+                TryInferUniversalOrientationFromTemplateEntry(templateEntry),
+                TryInferUniversalOrientationFromArchiveEntry(backgroundEntry))
             : "";
 
         return (deviceModel, templatePath, backgroundPath, orientation);
@@ -19809,6 +21376,7 @@ public partial class MainWindow : Window
             GalleryThemes.Clear();
             GalleryVisibleThemes.Clear();
             _galleryFilteredThemes.Clear();
+            _galleryPackageBytesCache.Clear();
             GalleryFilteredThemeCount = 0;
             GalleryCurrentPage = 1;
             lock (_galleryPreviewCacheLock)
@@ -20480,6 +22048,13 @@ public partial class MainWindow : Window
                 .ThenBy(entry => entry.FullName.Length)
                 .FirstOrDefault();
 
+            var templateOrientation = TryInferUniversalOrientationFromTemplateEntry(
+                archive.Entries.FirstOrDefault(entry => entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase)));
+            if (!string.IsNullOrWhiteSpace(templateOrientation))
+            {
+                return templateOrientation;
+            }
+
             var backgroundOrientation = TryInferUniversalOrientationFromArchiveEntry(backgroundEntry);
             if (!string.IsNullOrWhiteSpace(backgroundOrientation))
             {
@@ -20683,21 +22258,6 @@ public partial class MainWindow : Window
             return "";
         }
 
-        var name = Path.GetFileNameWithoutExtension(backgroundPath);
-        if (name.Contains("portrait", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("vertical", StringComparison.OrdinalIgnoreCase) ||
-            Regex.IsMatch(name, @"(?:^|[-_\s])vert(?:ical)?(?:$|[-_\s])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-        {
-            return "portrait";
-        }
-
-        if (name.Contains("landscape", StringComparison.OrdinalIgnoreCase) ||
-            name.Contains("horizontal", StringComparison.OrdinalIgnoreCase) ||
-            Regex.IsMatch(name, @"(?:^|[-_\s])hor(?:$|[-_\s])", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
-        {
-            return "landscape";
-        }
-
         var extension = Path.GetExtension(backgroundPath).ToLowerInvariant();
         var probePath = backgroundPath;
         if (extension == ".h264")
@@ -20722,7 +22282,81 @@ public partial class MainWindow : Window
             return "";
         }
 
+        if (extension == ".h264")
+        {
+            return "";
+        }
+
         return size.Width >= size.Height ? "landscape" : "portrait";
+    }
+
+    private static string TryInferUniversalOrientationFromTemplateEntry(ZipArchiveEntry? entry)
+    {
+        if (entry == null || !entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase))
+        {
+            return "";
+        }
+
+        try
+        {
+            return TryInferUniversalOrientationFromTemplateBytes(ReadZipEntryBytes(entry));
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private static string TryInferUniversalOrientationFromTemplateBytes(byte[] templateBytes)
+    {
+        if (templateBytes.Length == 0)
+        {
+            return "";
+        }
+
+        var previewBytes = ExtractLargestEmbeddedPng(templateBytes);
+        if (previewBytes.Length > 0)
+        {
+            var size = TryGetImagePixelSize(previewBytes);
+            if (size.Width > 0 && size.Height > 0 && Math.Abs(size.Width - size.Height) >= 4)
+            {
+                return size.Width >= size.Height ? "landscape" : "portrait";
+            }
+        }
+
+        return TryInferUniversalOrientationFromSerializedCanvasMarkers(templateBytes);
+    }
+
+    private static string TryInferUniversalOrientationFromSerializedCanvasMarkers(byte[] templateBytes)
+    {
+        var landscapeMarkers = CountIntPairMarkers(templateBytes, 1920, 480);
+        var portraitMarkers = CountIntPairMarkers(templateBytes, 480, 1920);
+        if (landscapeMarkers == portraitMarkers)
+        {
+            return "";
+        }
+
+        return landscapeMarkers > portraitMarkers ? "landscape" : "portrait";
+    }
+
+    private static int CountIntPairMarkers(byte[] data, int first, int second)
+    {
+        Span<byte> marker = stackalloc byte[8];
+        BitConverter.TryWriteBytes(marker[..4], first);
+        BitConverter.TryWriteBytes(marker[4..], second);
+
+        var count = 0;
+        var span = data.AsSpan();
+        for (var offset = 0; offset <= span.Length - marker.Length; offset++)
+        {
+            if (span.Slice(offset, marker.Length).SequenceEqual(marker))
+            {
+                count++;
+                offset += marker.Length - 1;
+            }
+        }
+
+        return count;
     }
 
     private static (int Width, int Height) TryGetImagePixelSizeFromFile(string path)
@@ -21936,7 +23570,7 @@ public partial class MainWindow : Window
             templatePath,
             backgroundPath,
             updatePreview,
-            applyBackgroundOverride: false);
+            applyBackgroundOverride: true);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(20));
         var completedTask = await Task.WhenAny(activationTask, timeoutTask);
         if (completedTask == activationTask)
@@ -22323,6 +23957,9 @@ public partial class MainWindow : Window
             CopyZipEntry(fontEntry, destinationArchive, $"fonts/{GetSafeFileName(fontEntry.Name)}", usedFontNames);
         }
 
+        var templateOrientation = string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
+            ? TryInferUniversalOrientationFromTemplateEntry(templateEntry)
+            : "";
         var backgroundOrientation = string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
             ? TryInferUniversalOrientationFromArchiveEntry(backgroundEntry)
             : "";
@@ -22334,12 +23971,9 @@ public partial class MainWindow : Window
             BackgroundFile = backgroundName,
             UniversalOrientation = string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
                 ? FirstNonEmpty(
+                    templateOrientation,
                     backgroundOrientation,
-                    InferUniversalOrientationFromPackageName(backgroundName),
-                    InferUniversalOrientationFromPackageName(templateEntry.Name),
-                    NormalizeUniversalOrientation(item.Orientation),
-                    InferUniversalOrientationFromPackageName(item.Id),
-                    InferUniversalOrientationFromPackageName(item.Name))
+                    NormalizeUniversalOrientation(item.Orientation))
                 : ""
         };
         var manifestEntry = destinationArchive.CreateEntry("manifest.json", CompressionLevel.Optimal);
@@ -22355,12 +23989,7 @@ public partial class MainWindow : Window
             return false;
         }
 
-        var orientation = FirstNonEmpty(
-            NormalizeUniversalOrientation(item.Orientation),
-            InferUniversalOrientationFromPackageName(manifest.BackgroundFile),
-            InferUniversalOrientationFromPackageName(manifest.TemplateFile),
-            InferUniversalOrientationFromPackageName(item.Id),
-            InferUniversalOrientationFromPackageName(item.Name));
+        var orientation = NormalizeUniversalOrientation(item.Orientation);
         if (string.IsNullOrWhiteSpace(orientation))
         {
             return false;
@@ -22726,7 +24355,9 @@ public partial class MainWindow : Window
         }
 
         var uri = new Uri(source);
-        using var request = new HttpRequestMessage(HttpMethod.Get, AddCacheBuster(uri));
+        var downloadUri = AddCacheBuster(uri);
+        AppLogger.Info($"Gallery package download started: {downloadUri.GetLeftPart(UriPartial.Path)} -> {destinationPath}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, downloadUri);
         request.Headers.CacheControl = new System.Net.Http.Headers.CacheControlHeaderValue
         {
             NoCache = true,
@@ -22751,6 +24382,7 @@ public partial class MainWindow : Window
         }
 
         reportProgress(90);
+        AppLogger.Info($"Gallery package download completed: {downloadUri.GetLeftPart(UriPartial.Path)} ({readTotal} bytes)");
     }
 
     private static Uri AddCacheBuster(Uri uri)
@@ -23615,11 +25247,11 @@ private static string CreateExportPackageBaseName(string templateId)
             }
             else
             {
-                var previewFrame = CreateBackgroundPreviewFrame(resolved);
-                if (!string.IsNullOrWhiteSpace(previewFrame))
+                var previewVideo = CreateBackgroundPreviewVideo(resolved);
+                if (!string.IsNullOrWhiteSpace(previewVideo) && File.Exists(previewVideo))
                 {
-                    _generatedBackgroundPreviewFramePath = previewFrame;
-                    resolved = previewFrame;
+                    _generatedBackgroundPreviewFramePath = previewVideo;
+                    resolved = previewVideo;
                 }
             }
         }
@@ -23627,17 +25259,6 @@ private static string CreateExportPackageBaseName(string templateId)
         var ext = Path.GetExtension(resolved).ToLowerInvariant();
         try
         {
-            if (!AnimateVideoPreviews && ext is (".mp4" or ".avi" or ".mov" or ".wmv" or ".h264"))
-            {
-                var previewFrame = CreateBackgroundPreviewFrame(resolved);
-                if (!string.IsNullOrWhiteSpace(previewFrame) && File.Exists(previewFrame))
-                {
-                    _generatedBackgroundPreviewFramePath = previewFrame;
-                    resolved = previewFrame;
-                    ext = Path.GetExtension(resolved).ToLowerInvariant();
-                }
-            }
-
             if (ext is ".mp4" or ".avi" or ".mov" or ".wmv" or ".h264")
             {
                 BackgroundMedia.Source = new Uri(resolved, UriKind.Absolute);
@@ -23652,6 +25273,8 @@ private static string CreateExportPackageBaseName(string templateId)
                 BackgroundMedia.Position = TimeSpan.Zero;
                 BackgroundMedia.Play();
                 BackgroundPreviewPaused = false;
+                _currentBackgroundPath = mediaFallbackSource;
+                _selectedBackgroundSourcePath = mediaFallbackSource;
                 UpdatePreviewPlaybackButton(true);
                 return;
             }
@@ -23952,9 +25575,18 @@ private static string CreateExportPackageBaseName(string templateId)
             
             var baseName = Path.GetFileNameWithoutExtension(backgroundName);
             var searchTargets = new List<string> { baseName };
+            var layerIndexedBaseName = Regex.Replace(
+                baseName,
+                @"_\d+$",
+                "",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!string.IsNullOrWhiteSpace(layerIndexedBaseName) && !searchTargets.Contains(layerIndexedBaseName, StringComparer.OrdinalIgnoreCase))
+            {
+                searchTargets.Add(layerIndexedBaseName);
+            }
             
             var stableBaseName = Regex.Replace(
-                baseName,
+                layerIndexedBaseName,
                 @"(?:_20\d{6}(?:_\d{6})?|-\d{14}-[0-9a-f]{8})$",
                 "",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -24194,7 +25826,8 @@ private static string CreateExportPackageBaseName(string templateId)
             ? candidateBaseName[baseName.Length..]
             : "";
         return suffix.StartsWith("_", StringComparison.Ordinal) ||
-               suffix.StartsWith("-", StringComparison.Ordinal);
+               suffix.StartsWith("-", StringComparison.Ordinal) ||
+               suffix.StartsWith(".", StringComparison.Ordinal);
     }
 
     private string CreateBackgroundPreviewFrame(string sourcePath)
@@ -24387,9 +26020,13 @@ private static string CreateExportPackageBaseName(string templateId)
         DarkThemeItem.Content = GetText(text, "footer.dark", "Dark");
         LightThemeItem.Content = GetText(text, "footer.light", "Light");
         UseActiveCheck.Content = GetText(text, "top.useActiveTemplate", "Use active template");
-        OfflineModeCheck.Content = GetText(text, "top.offlineMode", "Offline");
-        OfflineModeCheck.ToolTip = GetText(text, "tooltips.offlineMode", "Work on a local copy without sending changes to L-Connect");
-        ApplyOrientationButton.Content = GetText(text, "top.changeOrientation", "Change Orientation");
+        OfflineModeButton.ToolTip = GetText(text, "tooltips.offlineMode", "Work on a local copy without sending changes to L-Connect");
+        TakePreviewButton.ToolTip = GetText(text, "tooltips.takePreview", "Export the current clean preview as PNG");
+        UpdateThemeInfoButton.ToolTip = GetText(text, "tooltips.updateThemeInfo", "Update themePic and the template list preview");
+        ThemeEnginePreviewButton.Content = "";
+        ThemeEnginePreviewButton.ToolTip = GetText(text, "tooltips.themeEnginePreview", "Render the selected theme with ThemeEngine");
+        RawThemeEnginePreviewButton.Content = "";
+        RawThemeEnginePreviewButton.ToolTip = GetText(text, "tooltips.rawThemeEnginePreview", "Render the selected theme as a device preview");
         ApplyOrientationButton.ToolTip = GetText(text, "tooltips.changeOrientation", "Save as a new theme with the selected orientation");
         ActiveThemeButton.Content = GetText(text, "top.activeTheme", "Active Theme");
         NewThemeButton.Content = GetText(text, "top.newTheme", "New Theme");
@@ -24408,7 +26045,6 @@ private static string CreateExportPackageBaseName(string templateId)
         UndoHistoryButton.ToolTip = GetText(text, "tooltips.history", "Open edit history");
         BackupButton.ToolTip = GetText(text, "tooltips.backup", "Create a template backup");
         RestoreBackupButton.ToolTip = GetText(text, "tooltips.restore", "Restore the latest template backup");
-        ExportLConnectButtonText.Text = GetText(text, "top.exportTheme", "Export Theme");
         LayersHeaderText.Text = GetText(text, "sections.layers", "Layers");
         EditLayerHeaderText.Text = GetText(text, "sections.editLayer", "Edit Layer");
         AddLayerHeaderText.Text = GetText(text, "sections.addNewLayer", "Add New Layer");
@@ -24559,7 +26195,6 @@ private static string CreateExportPackageBaseName(string templateId)
         CopyDiagnosticPackageInfoButton.Content = GetText(text, "diagnostics.copyInfo", "Copy Diagnostic Info");
         CreateDiagnosticPackageButton.Content = GetText(text, "diagnostics.createPackage", "Create Diagnostic Package");
         AboutCreateDiagnosticPackageButton.Content = GetText(text, "diagnostics.createPackage", "Create Diagnostic Package");
-        EditorImportThemeButton.Content = GetText(text, "top.importTheme", "Import Theme");
         CheckUpdatesButton.Content = GetText(text, "about.checkUpdates", "Check for Updates");
         OpenGitHubButton.Content = GetText(text, "about.openGitHub", "Open GitHub");
         BugReportButton.Content = GetText(text, "about.bugReport", "Bug Report");
@@ -24633,6 +26268,10 @@ private static string CreateExportPackageBaseName(string templateId)
         BackgroundButton.Content = GetText(text, "preview.uploadBackground", "Upload Background (GIF / JPG / MP4)");
         RestartButtonText.Text = GetText(text, "top.restartLConnect", "Restart L-Connect");
         ApplyAllButtonText.Text = GetText(text, "common.applyAll", "Apply All");
+        ExportLConnectButton.ToolTip = GetText(text, "dialogs.exportLConnect", "Export for L-Connect");
+        EditorImportThemeButton.ToolTip = GetText(text, "dialogs.importTheme", "Import Lian Li theme");
+        ApplyOrientationButton.ToolTip = GetText(text, "tooltips.changeOrientation", "Save as a new theme with the selected orientation");
+        ApplyAllButton.ToolTip = GetText(text, "common.applyAll", "Apply All");
         ChangeImageButton.Content = GetText(text, "common.change", "Change...");
         DragHintText.Text = GetText(text, "preview.dragToReposition", "Drag to reposition");
         FitPreviewButton.Content = GetText(text, "preview.fit", "Fit");
@@ -25473,7 +27112,10 @@ private static string CreateExportPackageBaseName(string templateId)
                  })
         {
             var value = button.Content?.ToString() ?? "";
-            button.ToolTip = value;
+            if (button.Content is string && !string.IsNullOrWhiteSpace(value))
+            {
+                button.ToolTip = value;
+            }
             button.FontSize = value.Length switch
             {
                 > 24 => 9,
@@ -25603,6 +27245,8 @@ private static string CreateExportPackageBaseName(string templateId)
             ExportLConnectButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#D9D8F4EE"));
             ExportLConnectButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8B159A87"));
             ExportLConnectButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#075E54"));
+            UpdateThemeInfoButton.BorderBrush = Brushes.Transparent;
+            ThemeEnginePreviewButton.BorderBrush = Brushes.Transparent;
             RestartButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#E8F9DDE3"));
             RestartButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#9CC94D67"));
             RestartButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8B2039"));
@@ -25650,6 +27294,8 @@ private static string CreateExportPackageBaseName(string templateId)
         ExportLConnectButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#2020BFA8"));
         ExportLConnectButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#6620BFA8"));
         ExportLConnectButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5DE4D0"));
+        UpdateThemeInfoButton.BorderBrush = Brushes.Transparent;
+        ThemeEnginePreviewButton.BorderBrush = Brushes.Transparent;
         RestartButton.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#20D55263"));
         RestartButton.BorderBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#66D55263"));
         RestartButton.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FF8998"));
@@ -26160,7 +27806,6 @@ private static string CreateExportPackageBaseName(string templateId)
     }
 
     private static void SetComboTag(ComboBox combo, string value) => SetComboText(combo, value);
-
     private string GetLayerDisplayType(LayerRow layer)
     {
         if (string.Equals(layer.RenderMode, "D3", StringComparison.OrdinalIgnoreCase) &&
@@ -26545,8 +28190,9 @@ private static string CreateExportPackageBaseName(string templateId)
         var color = NormalizeColorText(colorBox.Text);
         colorBox.Text = color;
         assignColor(layer, color);
+        UpdateLayerFromInputs(layer);
         MarkLayerDirty(layer);
-        RequestPreviewDraw();
+        RefreshLayerPreviewAfterInput(layer);
     }
 
     // Change Image handler
@@ -27484,10 +29130,15 @@ private static string CreateExportPackageBaseName(string templateId)
         var touchedLayers = new HashSet<LayerRow>();
         foreach (var layer in selected)
         {
-            var x = TryParseInt(layer.X, out var parsedX) ? parsedX : 0;
-            var y = TryParseInt(layer.Y, out var parsedY) ? parsedY : 0;
-            layer.X = (x + dx).ToString(CultureInfo.InvariantCulture);
-            layer.Y = (y + dy).ToString(CultureInfo.InvariantCulture);
+            var startPos = GetPreviewDragPosition(layer);
+            var localDelta = string.Equals(layer.Type, "GraphClock", StringComparison.OrdinalIgnoreCase) &&
+                             !string.Equals(layer.ClockMoveOrigin, "True", StringComparison.OrdinalIgnoreCase)
+                ? RotateScreenDeltaToClockLocal(layer, dx, dy)
+                : new Point(dx, dy);
+            SetPreviewDragPosition(
+                layer,
+                (int)Math.Round(startPos.X + localDelta.X),
+                (int)Math.Round(startPos.Y + localDelta.Y));
             MarkLayerDirty(layer);
             touchedLayers.Add(layer);
 
@@ -27497,6 +29148,11 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             XBox.Text = current.X;
             YBox.Text = current.Y;
+            if (string.Equals(current.Type, "GraphClock", StringComparison.OrdinalIgnoreCase))
+            {
+                ClockCenterXBox.Text = current.ClockCenterX;
+                ClockCenterYBox.Text = current.ClockCenterY;
+            }
         }
 
         foreach (var layer in touchedLayers)
@@ -27755,6 +29411,7 @@ private static string CreateExportPackageBaseName(string templateId)
         }
 
         if (_lConnectDevicePathsCache.TryGetValue(cacheKey, out var cached) &&
+            cached.Paths.Count > 0 &&
             (DateTime.UtcNow - cached.Time).TotalSeconds < 15)
         {
             return cached.Paths.ToList();
@@ -27805,9 +29462,13 @@ private static string CreateExportPackageBaseName(string templateId)
 
         try
         {
-            var logDir = Path.Combine(LConnectPaths.ProgramDataRoot, "logs");
-            if (Directory.Exists(logDir))
+            foreach (var logDir in EnumerateLConnectControllerLogDirectories())
             {
+                if (!Directory.Exists(logDir))
+                {
+                    continue;
+                }
+
                 var files = Directory.EnumerateFiles(logDir, "*.log")
                     .Select(f => new FileInfo(f))
                     .OrderByDescending(f => f.LastWriteTime)
@@ -27871,6 +29532,15 @@ private static string CreateExportPackageBaseName(string templateId)
 
         _lConnectDevicePathsCache[cacheKey] = (DateTime.UtcNow, orderedPaths);
         return orderedPaths;
+    }
+
+    private static IEnumerable<string> EnumerateLConnectControllerLogDirectories()
+    {
+        yield return Path.Combine(LConnectPaths.ProgramDataRoot, "logs");
+        yield return Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LianLiThemeEditor",
+            "Logs");
     }
 
     private static string NormalizeControllerPathForCompare(string path) =>
@@ -31720,7 +33390,11 @@ private static string CreateExportPackageBaseName(string templateId)
         ActiveThemeButton.IsEnabled = !isBusy;
         NewThemeButton.IsEnabled = !isBusy;
         LoadButton.IsEnabled = !isBusy;
-        OfflineModeCheck.IsEnabled = !isBusy;
+        OfflineModeButton.IsEnabled = !isBusy;
+        TakePreviewButton.IsEnabled = !isBusy;
+        UpdateThemeInfoButton.IsEnabled = !isBusy;
+        ThemeEnginePreviewButton.IsEnabled = !isBusy && DeveloperDiagnosticsCheck?.IsChecked == true;
+        RawThemeEnginePreviewButton.IsEnabled = !isBusy && DeveloperDiagnosticsCheck?.IsChecked == true;
         ApplyOrientationButton.IsEnabled = !isBusy && SupportsOrientationSelectionSelected();
         SaveButton.IsEnabled = !isBusy && directApplySupported;
         BackupButton.IsEnabled = !isBusy;
@@ -32047,19 +33721,6 @@ private static string CreateExportPackageBaseName(string templateId)
                 : "Drag to move gauge hand";
         }
         MarkLayerDirty(layer);
-        if (string.Equals(layer.Type, "GraphSensor", StringComparison.OrdinalIgnoreCase))
-        {
-            _ = RefreshSensorPreviewAsync(layer);
-        }
-        else if (IsThemeEngineGraphPreviewLayer(layer) && !IsOledCurveDeviceSelected())
-        {
-            _ = RefreshGraphPreviewAsync(layer);
-        }
-
-        if (!_isDraggingPreview && !_isResizingPreview)
-        {
-                    }
-
         if (string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase))
         {
             ApplyBackgroundPreviewTransform();
@@ -32067,8 +33728,28 @@ private static string CreateExportPackageBaseName(string templateId)
             return;
         }
 
+        RefreshLayerPreviewAfterInput(layer);
+    }
+
+    private void RefreshLayerPreviewAfterInput(LayerRow layer)
+    {
+        if (string.Equals(layer.Type, "GraphSensor", StringComparison.OrdinalIgnoreCase))
+        {
+            UpdateLayerPreviewVisual(layer);
+            _ = RefreshSensorPreviewAsync(layer);
+            return;
+        }
+
+        if (IsThemeEngineGraphPreviewLayer(layer) && !IsOledCurveDeviceSelected())
+        {
+            layer.MediaPath = "";
+            UpdateLayerPreviewVisual(layer);
+            _ = RefreshGraphPreviewAsync(layer);
+            return;
+        }
+
         UpdateLayerPreviewVisual(layer);
-            }
+    }
 
     private async Task RefreshSensorPreviewAsync(LayerRow layer)
     {
@@ -32082,26 +33763,7 @@ private static string CreateExportPackageBaseName(string templateId)
         try
         {
             await Task.Delay(70, token);
-            var root = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "LianLiThemeEditor",
-                "SensorLivePreview");
-            Directory.CreateDirectory(root);
-            var key = string.Join("-",
-                _currentTemplateId,
-                layer.Index,
-                layer.SensorStyle,
-                layer.SensorType,
-                layer.SensorColor1,
-                layer.SensorColor2,
-                layer.SensorBgColor,
-                layer.SensorMainFontColor,
-                layer.SensorTopFontColor,
-                layer.SensorBottomFontColor,
-                layer.SensorFontFamily,
-                layer.Text);
-            var output = Path.Combine(root, SanitizeFileName(key) + ".png");
-            var rendered = await _supporter.RenderSensorPreviewAsync(layer, output, token);
+            var rendered = await RenderSensorPreviewImageAsync(layer, token);
             if (token.IsCancellationRequested ||
                 version != _sensorPreviewRenderVersion ||
                 !ReferenceEquals(LayerGrid.SelectedItem, layer) ||
@@ -32110,6 +33772,7 @@ private static string CreateExportPackageBaseName(string templateId)
                 return;
             }
 
+            InvalidatePreviewImage(rendered);
             layer.MediaPath = rendered;
             UpdateLayerPreviewVisual(layer);
         }
@@ -32120,6 +33783,30 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             RequestPreviewDraw();
         }
+    }
+
+    private async Task<string> RenderSensorPreviewImageAsync(LayerRow layer, CancellationToken token)
+    {
+        var root = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LianLiThemeEditor",
+            "SensorLivePreview");
+        Directory.CreateDirectory(root);
+        var key = string.Join("-",
+            _currentTemplateId,
+            layer.Index,
+            layer.SensorStyle,
+            layer.SensorType,
+            layer.SensorColor1,
+            layer.SensorColor2,
+            layer.SensorBgColor,
+            layer.SensorMainFontColor,
+            layer.SensorTopFontColor,
+            layer.SensorBottomFontColor,
+            layer.SensorFontFamily,
+            layer.Text);
+        var output = Path.Combine(root, SanitizeFileName(key) + ".png");
+        return await _supporter.RenderSensorPreviewAsync(layer, output, token);
     }
 
     private async Task RefreshGraphPreviewAsync(LayerRow layer)
@@ -32140,62 +33827,7 @@ private static string CreateExportPackageBaseName(string templateId)
         try
         {
             await Task.Delay(70, token);
-            var root = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "LianLiThemeEditor",
-                "GraphLivePreview");
-            Directory.CreateDirectory(root);
-            var key = string.Join("-",
-                _currentTemplateId,
-                layer.Index,
-                layer.Type,
-                layer.GraphStyle,
-                layer.DataSource,
-                layer.Width,
-                layer.Height,
-                layer.Radius,
-                layer.Diameter,
-                layer.Thickness,
-                layer.FrontColor,
-                layer.BackColor,
-                layer.LineColor,
-                layer.FillColor,
-                layer.BorderColor,
-                layer.GradientColor,
-                layer.UseGradient,
-                layer.Direction,
-                layer.LineWidth,
-                layer.ColumnWidth,
-                layer.BorderWidth,
-                layer.InnerCircleRadius,
-                layer.SplitBlockWidth,
-                layer.SplitBlankWidth,
-                layer.UseSubsection,
-                layer.FillBack,
-                layer.Revert,
-                layer.FrontAlpha,
-                layer.BackAlpha,
-                layer.TransparentBackground,
-                layer.MinValue,
-                layer.MaxValue,
-                layer.InvertDirection,
-                layer.StartPercentage,
-                layer.TotalAngle,
-                layer.UseBlock,
-                layer.RingBorder,
-                layer.Round,
-                layer.TypeName,
-                layer.SubTypeName);
-            var output = Path.Combine(root, SanitizeFileName(key) + ".png");
-            var supporterLayer = GetSupporterPreviewLayer(layer);
-            var rendered = await _supporter.RenderGraphPreviewAsync(
-                GetSelectedDeviceModel(),
-                _currentTemplatePath,
-                supporterLayer,
-                output,
-                Math.Max(1, (int)Math.Round(_templateCanvasWidth)),
-                Math.Max(1, (int)Math.Round(_templateCanvasHeight)),
-                token);
+            var rendered = await RenderGraphPreviewImageAsync(layer, token);
             if (token.IsCancellationRequested ||
                 version != _graphPreviewRenderVersion ||
                 !ReferenceEquals(LayerGrid.SelectedItem, layer) ||
@@ -32207,13 +33839,13 @@ private static string CreateExportPackageBaseName(string templateId)
             if (IsRenderedPreviewBlank(rendered))
             {
                 layer.MediaPath = "";
-                _imageBoundsCache.Remove(rendered);
+                InvalidatePreviewImage(rendered);
                 RequestPreviewDraw();
                 return;
             }
 
             layer.MediaPath = rendered;
-            _imageBoundsCache.Remove(rendered);
+            InvalidatePreviewImage(rendered);
             UpdateLayerPreviewVisual(layer);
         }
         catch (OperationCanceledException)
@@ -32223,6 +33855,84 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             RequestPreviewDraw();
         }
+    }
+
+    private async Task<string> RenderGraphPreviewImageAsync(LayerRow layer, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(_currentTemplatePath) || !File.Exists(_currentTemplatePath))
+        {
+            return "";
+        }
+
+        var root = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LianLiThemeEditor",
+            "GraphLivePreview");
+        Directory.CreateDirectory(root);
+        var key = string.Join("-",
+            "graph-preview-v2",
+            _currentTemplateId,
+            layer.Index,
+            layer.Type,
+            layer.GraphStyle,
+            layer.DataSource,
+            layer.Width,
+            layer.Height,
+            layer.Radius,
+            layer.Diameter,
+            layer.Thickness,
+            layer.FrontColor,
+            layer.BackColor,
+            layer.LineColor,
+            layer.FillColor,
+            layer.BorderColor,
+            layer.GradientColor,
+            layer.UseGradient,
+            layer.Direction,
+            layer.LineWidth,
+            layer.ColumnWidth,
+            layer.BorderWidth,
+            layer.InnerCircleRadius,
+            layer.SplitBlockWidth,
+            layer.SplitBlankWidth,
+            layer.UseSubsection,
+            layer.FillBack,
+            layer.Revert,
+            layer.FrontAlpha,
+            layer.BackAlpha,
+            layer.TransparentBackground,
+            layer.MinValue,
+            layer.MaxValue,
+            layer.InvertDirection,
+            layer.StartPercentage,
+            layer.TotalAngle,
+            layer.UseBlock,
+            layer.RingBorder,
+            layer.Round,
+            layer.TypeName,
+            layer.SubTypeName);
+        var output = Path.Combine(root, SanitizeFileName(key) + ".png");
+        TryDeleteFile(output);
+        var supporterLayer = GetSupporterPreviewLayer(layer);
+        return await _supporter.RenderGraphPreviewAsync(
+            GetSelectedDeviceModel(),
+            _currentTemplatePath,
+            supporterLayer,
+            output,
+            Math.Max(1, (int)Math.Round(_templateCanvasWidth)),
+            Math.Max(1, (int)Math.Round(_templateCanvasHeight)),
+            token);
+    }
+
+    private void InvalidatePreviewImage(string imagePath)
+    {
+        if (string.IsNullOrWhiteSpace(imagePath))
+        {
+            return;
+        }
+
+        _previewImageCache.Remove(imagePath);
+        _imageBoundsCache.Remove(imagePath);
     }
 
     private static bool IsThemeEngineGraphPreviewLayer(LayerRow layer)
@@ -33625,10 +35335,8 @@ private static string CreateExportPackageBaseName(string templateId)
                     {
                         var orientation = FirstNonEmpty(
                             NormalizeUniversalOrientation(manifest.UniversalOrientation),
-                            InferUniversalOrientationFromPackageName(backgroundEntry.Name),
-                            InferUniversalOrientationFromPackageName(templateEntry?.Name ?? ""),
-                            InferUniversalOrientationFromPackageName(packagePath),
-                            InferUniversalOrientationFromPackageName(defaultName));
+                            TryInferUniversalOrientationFromTemplateEntry(templateEntry),
+                            TryInferUniversalOrientationFromArchiveEntry(backgroundEntry));
                         var preferLandscape = !string.Equals(orientation, "portrait", StringComparison.OrdinalIgnoreCase);
                         var safeBase = normalizedTemplateId;
                         if (string.IsNullOrWhiteSpace(safeBase))

@@ -368,6 +368,7 @@ public sealed class SupporterBridge : ISupporterBridge
             "-SensorBottomFontColor", string.IsNullOrWhiteSpace(layer.SensorBottomFontColor) ? (string.IsNullOrWhiteSpace(layer.SensorMainFontColor) ? "#FFFFFF" : layer.SensorMainFontColor) : layer.SensorBottomFontColor,
             "-SensorFont", string.IsNullOrWhiteSpace(layer.SensorFontFamily) ? "Noto Sans TC" : layer.SensorFontFamily,
             "-SensorValue", string.IsNullOrWhiteSpace(layer.Text) ? "52" : layer.Text,
+            "-SensorZoom", string.IsNullOrWhiteSpace(layer.SensorZoomRate) ? (string.IsNullOrWhiteSpace(layer.ZoomRate) ? "0.5" : layer.ZoomRate) : layer.SensorZoomRate,
             "-Output", outputPath
         };
         var rendered = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
@@ -443,6 +444,40 @@ public sealed class SupporterBridge : ISupporterBridge
         AddIfPresent(args, "-LayerTypeName", layer.TypeName);
         AddIfPresent(args, "-LayerSubTypeName", layer.SubTypeName);
 
+        var rendered = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+        return string.IsNullOrWhiteSpace(rendered) ? outputPath : rendered.Trim();
+    }
+
+    public async Task<string> RenderThemeCanvasAsync(
+        string deviceModel,
+        string templatePath,
+        string outputPath,
+        int canvasWidth,
+        int canvasHeight,
+        string backgroundPath = "",
+        bool noBackground = false,
+        bool skipGraphAnimation = false,
+        string previewDataPath = "",
+        CancellationToken cancellationToken = default)
+    {
+        var args = BaseTemplateArgs(deviceModel, templatePath);
+        args.AddRange(new[]
+        {
+            "-RenderThemeCanvas",
+            "-CanvasWidth", Math.Max(1, canvasWidth).ToString(CultureInfo.InvariantCulture),
+            "-CanvasHeight", Math.Max(1, canvasHeight).ToString(CultureInfo.InvariantCulture),
+            "-Output", outputPath
+        });
+        AddIfPresent(args, "-BackgroundPath", backgroundPath);
+        AddIfPresent(args, "-PreviewDataPath", previewDataPath);
+        if (noBackground)
+        {
+            args.Add("-NoBackground");
+        }
+        if (skipGraphAnimation)
+        {
+            args.Add("-SkipGraphAnimation");
+        }
         var rendered = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
         return string.IsNullOrWhiteSpace(rendered) ? outputPath : rendered.Trim();
     }
@@ -703,6 +738,19 @@ public sealed class SupporterBridge : ISupporterBridge
     {
         var args = BaseTemplateArgs(deviceModel, templatePath);
         args.AddRange(new[] { "-RemoveLayerIndex", layerIndex, "-ForceRemoveBaseLayer", "-NoBackup" });
+        await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task RemoveLayersAsync(string deviceModel, string templatePath, IEnumerable<string> layerIndexes, CancellationToken cancellationToken = default)
+    {
+        var indexes = layerIndexes
+            .Where(index => !string.IsNullOrWhiteSpace(index))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (indexes.Count == 0) return;
+
+        var args = BaseTemplateArgs(deviceModel, templatePath);
+        args.AddRange(new[] { "-RemoveLayerIndexes", string.Join("|", indexes), "-ForceRemoveBaseLayer", "-NoBackup" });
         await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
     }
 
