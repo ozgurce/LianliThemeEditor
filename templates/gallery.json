@@ -1089,7 +1089,8 @@
                        "description":  "",
                        "deviceModel":  "hydroshift-ii-lcd-s",
                        "deviceName":  "HydroShift II LCD-S",
-                       "packageUrl":  "packages/019-time-lcd-s-76fc6b11.zip"
+                       "packageUrl":  "packages/019-time-lcd-s-76fc6b11.zip",
+                       "previewUrl":  "previews/019-time-lcd-s-76fc6b11.png"
                    },
                    {
                        "id":  "neon-board-44d1876c",
@@ -1098,7 +1099,8 @@
                        "description":  "",
                        "deviceModel":  "hydroshift-ii-lcd-s",
                        "deviceName":  "HydroShift II LCD-S",
-                       "packageUrl":  "packages/neon-board-44d1876c.zip"
+                       "packageUrl":  "packages/neon-board-44d1876c.zip",
+                       "previewUrl":  "previews/neon-board-44d1876c.png"
                    },
                    {
                        "id":  "kuromi-96bc246c",
@@ -1107,7 +1109,8 @@
                        "description":  "",
                        "deviceModel":  "universal-screen-8.8-inch",
                        "deviceName":  "8.8\" Universal Screen",
-                       "packageUrl":  "packages/kuromi-96bc246c.zip"
+                       "packageUrl":  "packages/kuromi-96bc246c.zip",
+                       "previewUrl":  "previews/kuromi-96bc246c.png"
                    }
                ]
 }
