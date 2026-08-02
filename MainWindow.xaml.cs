@@ -18584,11 +18584,12 @@ public partial class MainWindow : Window
             try
             {
                 var family = ReadFontFamilyName(path);
+                var fileBaseName = Path.GetFileNameWithoutExtension(path);
                 if (string.IsNullOrWhiteSpace(family) ||
-                    string.Equals(family, Path.GetFileNameWithoutExtension(path), StringComparison.OrdinalIgnoreCase))
+                    string.Equals(family, fileBaseName, StringComparison.OrdinalIgnoreCase))
                 {
-                    family = InferPackagedFontFamilyName(path);
-                    AppLogger.Warning($"Packaged font family could not be read; using file name fallback: {entry.FullName}; family={family}");
+                    family = InferPackagedFontInstallName(path);
+                    AppLogger.Warning($"Packaged font family could not be read; using file name fallback: {entry.FullName}; installName={family}");
                 }
 
                 var fontChanged = InstallFontSystemWideFromFile(path, family);
@@ -18623,6 +18624,24 @@ public partial class MainWindow : Window
         }
 
         return processed;
+    }
+
+    private static string InferPackagedFontInstallName(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "Packaged Font";
+        }
+
+        var dotIndex = name.IndexOf('.');
+        if (dotIndex > 0)
+        {
+            name = name[..dotIndex];
+        }
+
+        name = Regex.Replace(name, @"[_\-]+", " ").Trim();
+        return string.IsNullOrWhiteSpace(name) ? "Packaged Font" : name;
     }
 
     private static string InferPackagedFontFamilyName(string path)
