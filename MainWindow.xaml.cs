@@ -18561,7 +18561,12 @@ public partial class MainWindow : Window
                 !string.IsNullOrWhiteSpace(entry.Name) && IsFontFileName(entry.Name)).ToList();
         if (fontEntries.Count == 0) return false;
 
-        var fontRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LianLiThemeEditor", "Fonts");
+        var fontRoot = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "LianLiThemeEditor",
+            "Fonts",
+            "Packaged",
+            Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(fontRoot);
         foreach (var entry in fontEntries)
         {
