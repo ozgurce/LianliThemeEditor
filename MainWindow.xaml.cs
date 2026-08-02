@@ -2913,6 +2913,7 @@ public partial class MainWindow : Window
                 tempLayers.Add(layer);
             }
             Layers.AddRange(tempLayers);
+            InitializeModularChildLocalTransforms();
             PopulateCurrentLayerFonts();
             PopulateD3AddTextOptions();
             ApplyGroupingMetadata(groupingMetadata);
@@ -3620,6 +3621,89 @@ public partial class MainWindow : Window
         LayerGrid.Items.Refresh();
     }
 
+    private void InitializeModularChildLocalTransforms()
+    {
+        var groups = Layers
+            .Where(layer => string.Equals(layer.Type, "ModularTheme", StringComparison.OrdinalIgnoreCase))
+            .ToDictionary(layer => layer.Index, StringComparer.OrdinalIgnoreCase);
+        foreach (var layer in Layers)
+        {
+            if (!TryParseNestedLayerIndex(layer.Index, out var themeIndex, out _) ||
+                !groups.TryGetValue($"theme:{themeIndex.ToString(CultureInfo.InvariantCulture)}", out var group))
+            {
+                continue;
+            }
+
+            var groupX = ParseInvariantOrDefault(group.X, 0);
+            var groupY = ParseInvariantOrDefault(group.Y, 0);
+            var groupZoom = ParseInvariantOrDefault(group.ZoomRate, 1);
+            if (groupZoom <= 0.0001) groupZoom = 1;
+            layer.ParentThemeIndex = group.Index;
+            layer.ParentLocalX = (ParseInvariantOrDefault(layer.X, groupX) - groupX) / groupZoom;
+            layer.ParentLocalY = (ParseInvariantOrDefault(layer.Y, groupY) - groupY) / groupZoom;
+            layer.ParentLocalWidth = ParseInvariantOrDefault(layer.Width, 0) / groupZoom;
+            layer.ParentLocalHeight = ParseInvariantOrDefault(layer.Height, 0) / groupZoom;
+            layer.ParentLocalSize = ParseInvariantOrDefault(layer.Size, 0) / groupZoom;
+            layer.ParentLocalDiameter = ParseInvariantOrDefault(layer.Diameter, 0) / groupZoom;
+            layer.ParentLocalThickness = ParseInvariantOrDefault(layer.Thickness, 0) / groupZoom;
+            layer.ParentLocalZoomRate = ParseInvariantOrDefault(layer.ZoomRate, 0);
+        }
+    }
+
+    private static bool TryParseNestedLayerIndex(string? index, out int themeIndex, out int childIndex)
+    {
+        themeIndex = -1;
+        childIndex = -1;
+        var parts = (index ?? "").Split(':');
+        if (parts.Length < 3 ||
+            !parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) ||
+            !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out themeIndex))
+        {
+            return false;
+        }
+
+        return int.TryParse(parts[^1], NumberStyles.Integer, CultureInfo.InvariantCulture, out childIndex);
+    }
+
+    private static double ParseInvariantOrDefault(string? value, double fallback) =>
+        double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+            ? parsed
+            : fallback;
+
+    private void ApplyModularGroupTransformToChildren(LayerRow group)
+    {
+        if (!string.Equals(group.Type, "ModularTheme", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var groupX = ParseInvariantOrDefault(group.X, 0);
+        var groupY = ParseInvariantOrDefault(group.Y, 0);
+        var groupZoom = ParseInvariantOrDefault(group.ZoomRate, 1);
+        if (groupZoom <= 0.0001) groupZoom = 1;
+        foreach (var child in Layers.Where(layer =>
+                     string.Equals(layer.ParentThemeIndex, group.Index, StringComparison.OrdinalIgnoreCase)))
+        {
+            child.X = FormatTemplateDouble(groupX + child.ParentLocalX * groupZoom);
+            child.Y = FormatTemplateDouble(groupY + child.ParentLocalY * groupZoom);
+            if (child.ParentLocalWidth > 0) child.Width = FormatTemplateDouble(child.ParentLocalWidth * groupZoom);
+            if (child.ParentLocalHeight > 0) child.Height = FormatTemplateDouble(child.ParentLocalHeight * groupZoom);
+            if (child.ParentLocalSize > 0) child.Size = FormatTemplateDouble(child.ParentLocalSize * groupZoom);
+            if (child.ParentLocalDiameter > 0) child.Diameter = FormatTemplateDouble(child.ParentLocalDiameter * groupZoom);
+            if (child.ParentLocalThickness > 0) child.Thickness = FormatTemplateDouble(child.ParentLocalThickness * groupZoom);
+            if (child.ParentLocalZoomRate > 0 &&
+                (string.Equals(child.Type, "GraphImage", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(child.Type, "GraphClock", StringComparison.OrdinalIgnoreCase)))
+            {
+                child.ZoomRate = FormatZoom(child.ParentLocalZoomRate * groupZoom);
+            }
+
+            UpdateLayerPreviewVisual(child);
+        }
+
+        LayerGrid.Items.Refresh();
+    }
+
     private List<LayerRow> GetSelectedLayers(bool includeLocked = true, bool includeAnimation = true)
     {
         return LayerGrid.SelectedItems
@@ -3635,6 +3719,11 @@ public partial class MainWindow : Window
         if (!Layers.Contains(layer))
         {
             return;
+        }
+
+        if (string.Equals(layer.Type, "ModularTheme", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyModularGroupTransformToChildren(layer);
         }
 
         layer.IsDirty = true;
@@ -3768,6 +3857,7 @@ public partial class MainWindow : Window
         bool isSensor = type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
         bool isAnimation = type.Equals("GraphAnimation", StringComparison.OrdinalIgnoreCase);
         bool isClock = type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase);
+        bool isModular = type.Equals("ModularTheme", StringComparison.OrdinalIgnoreCase);
         DuplicateButton.IsEnabled = !isAnimation;
         bool isImage = type.Contains("Image", StringComparison.OrdinalIgnoreCase) || isAnimation || isClock;
         bool isStaticText = isText && string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase);
@@ -3887,8 +3977,8 @@ public partial class MainWindow : Window
         {
             PopulateDataSourceCombo(DataCombo, layer.DataSource, GetLayerDataSourceHelpKind(layer));
         }
-        DataLabel.Visibility = isDataText || isGraph || isClock ? Visibility.Visible : Visibility.Collapsed;
-        DataCombo.Visibility = isDataText || isGraph || isClock ? Visibility.Visible : Visibility.Collapsed;
+        DataLabel.Visibility = isDataText || isGraph || isClock || isModular ? Visibility.Visible : Visibility.Collapsed;
+        DataCombo.Visibility = isDataText || isGraph || isClock || isModular ? Visibility.Visible : Visibility.Collapsed;
         StatusBarDataHelpButton.Visibility = GetLayerDataSourceHelpKind(layer) != DataSourceHelpKind.None ? Visibility.Visible : Visibility.Collapsed;
         DataPropertiesCard.Visibility =
             DataCombo.Visibility == Visibility.Visible ||
@@ -3907,7 +3997,7 @@ public partial class MainWindow : Window
 
         GraphStyleLabel.Visibility = Visibility.Collapsed;
         GraphStyleCombo.Visibility = Visibility.Collapsed;
-        var showZoomRateEditor = isSensor || (isImage && !isAnimation);
+        var showZoomRateEditor = isSensor || isModular || (isImage && !isAnimation);
         ZoomRateLabel.Visibility = showZoomRateEditor ? Visibility.Visible : Visibility.Collapsed;
         ZoomPanel.Visibility = showZoomRateEditor ? Visibility.Visible : Visibility.Collapsed;
         if (isSensor)
@@ -4091,6 +4181,45 @@ public partial class MainWindow : Window
                 GraphFlagsPanel.Visibility == Visibility.Visible
                     ? Visibility.Visible
                     : Visibility.Collapsed;
+        }
+        else if (isModular)
+        {
+            GraphEditPanel.Visibility = Visibility.Visible;
+            ImageEditPanel.Visibility = Visibility.Collapsed;
+            EditSeparator.Visibility = Visibility.Visible;
+
+            WidthLabel.Content = GetLanguageText("labels.width", "WIDTH");
+            HeightLabel.Content = GetLanguageText("labels.height", "HEIGHT");
+            WidthLabel.Visibility = WidthPanel.Visibility = WidthSlider.Visibility = Visibility.Visible;
+            HeightLabel.Visibility = HeightPanel.Visibility = HeightSlider.Visibility = Visibility.Visible;
+            RadiusLabel.Visibility = RadiusPanel.Visibility = RadiusSlider.Visibility = Visibility.Collapsed;
+            DiameterLabel.Visibility = DiameterPanel.Visibility = DiameterSlider.Visibility = Visibility.Collapsed;
+            ThicknessLabel.Visibility = ThicknessPanel.Visibility = ThicknessSlider.Visibility = Visibility.Collapsed;
+            WidthBox.Text = layer.Width;
+            HeightBox.Text = layer.Height;
+            ZoomBox.Text = string.IsNullOrWhiteSpace(layer.ZoomRate) ? "1" : layer.ZoomRate;
+
+            FrontColorLabel.Visibility = FrontColorBox.Visibility = FrontColorPickButton.Visibility = Visibility.Collapsed;
+            BackColorLabel.Visibility = BackColorBox.Visibility = BackColorPickButton.Visibility = Visibility.Collapsed;
+            SensorRingEndLabel.Visibility = SensorRingEndPanel.Visibility = Visibility.Collapsed;
+            GradientColorLabel.Visibility = GraphGradientColorPanel.Visibility = Visibility.Collapsed;
+            UseGradientCheck.Visibility = Visibility.Collapsed;
+            GraphGradientDirectionLabel.Visibility = GraphGradientDirectionCombo.Visibility = Visibility.Collapsed;
+            GradientOptionsCard.Visibility = Visibility.Collapsed;
+            GraphDirectionLabel.Visibility = GraphDirectionCombo.Visibility = Visibility.Collapsed;
+            GraphLineWidthLabel.Visibility = GraphLineWidthBox.Visibility = Visibility.Collapsed;
+            GraphColumnWidthLabel.Visibility = GraphColumnWidthBox.Visibility = Visibility.Collapsed;
+            GraphBorderWidthLabel.Visibility = GraphBorderWidthBox.Visibility = Visibility.Collapsed;
+            GraphInnerCircleRadiusLabel.Visibility = GraphInnerCircleRadiusBox.Visibility = Visibility.Collapsed;
+            GraphSplitLabel.Visibility = GraphSplitPanel.Visibility = Visibility.Collapsed;
+            GraphSplitBlockWidthBox.Visibility = GraphSplitBlankWidthBox.Visibility = Visibility.Collapsed;
+            GraphTypeNameLabel.Visibility = GraphTypeNameBox.Visibility = Visibility.Collapsed;
+            GraphSubTypeNameLabel.Visibility = GraphSubTypeNameBox.Visibility = Visibility.Collapsed;
+            GraphUseSubsectionCheck.Visibility = Visibility.Collapsed;
+            GraphFillBackCheck.Visibility = Visibility.Collapsed;
+            GraphRevertCheck.Visibility = Visibility.Collapsed;
+            GraphFlagsPanel.Visibility = Visibility.Collapsed;
+            GraphAdvancedExpander.Visibility = Visibility.Collapsed;
         }
         else if (isImage)
         {
@@ -4356,7 +4485,7 @@ public partial class MainWindow : Window
     private async Task RemoveSelectedLayersAsync()
     {
         await ForceSyncPendingStructuralChangesAsync(moves: true, deletes: false, duplicates: true);
-        var selected = LayerGrid.SelectedItems.OfType<LayerRow>().ToList();
+        var selected = ExpandModularDeleteSelection(LayerGrid.SelectedItems.OfType<LayerRow>()).ToList();
         if (selected.Count == 0) return;
 
         var confirmMsg = selected.Count == 1
@@ -4384,12 +4513,23 @@ public partial class MainWindow : Window
                 .Select(l => new
                 {
                     Layer = l,
-                    Index = int.TryParse(l.Index, out var idx) ? idx : -1,
+                    Index = Layers.IndexOf(l),
                     SourceIndex = GetOriginalSourceIndexForLayer(l)
                 })
-                .Where(x => x.Index >= 0)
-                .OrderByDescending(x => x.Index)
+                .Where(x => x.Index >= 0 && !string.IsNullOrWhiteSpace(x.SourceIndex))
+                .OrderByDescending(x => GetLayerDeleteSortKey(x.SourceIndex))
                 .ToList();
+            if (sortedSelected.Count == 0)
+            {
+                SetBusy(false, GetLanguageText("status.removeFailed", "Remove failed."));
+                MessageBox.Show(
+                    this,
+                    GetLanguageText("messages.noRemovableLayerSelected", "No removable layer was selected."),
+                    GetLanguageText("messages.removeFailed", "Remove failed"),
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
             var deleteOperationId = Guid.NewGuid().ToString("N")[..8];
             AppLogger.Info(
                 $"[LayerDelete:{deleteOperationId}] queued uiSelection=[{string.Join(" | ", sortedSelected.Select(item => DescribeLayerForDeleteLog(item.Layer, item.SourceIndex)))}]");
@@ -4415,7 +4555,10 @@ public partial class MainWindow : Window
 
                 _dirtyLayers.Remove(item.Layer);
                 Layers.Remove(item.Layer);
-                RemoveShadowLinkForDeletedIndex(item.Index);
+                if (int.TryParse(item.Layer.Index, NumberStyles.Integer, CultureInfo.InvariantCulture, out var deletedRootIndex))
+                {
+                    RemoveShadowLinkForDeletedIndex(deletedRootIndex);
+                }
             }
 
             RefreshLayerIndexes();
@@ -4730,6 +4873,26 @@ public partial class MainWindow : Window
         {
             SetBusy(false, GetLanguageText("status.addFailed", "Add failed."));
             MessageBox.Show(this, ex.Message, GetLanguageText("messages.addGraphFailed", "Add graph failed"), MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private IEnumerable<LayerRow> ExpandModularDeleteSelection(IEnumerable<LayerRow> selectedLayers)
+    {
+        var result = new List<LayerRow>();
+        var seen = new HashSet<LayerRow>();
+        foreach (var layer in selectedLayers)
+        {
+            AddLayer(layer);
+        }
+
+        return result;
+
+        void AddLayer(LayerRow layer)
+        {
+            if (seen.Add(layer))
+            {
+                result.Add(layer);
+            }
         }
     }
 
@@ -5428,6 +5591,16 @@ public partial class MainWindow : Window
 
     private string GetOriginalSourceIndexForLayer(LayerRow layer)
     {
+        if (IsThemeLayerIndex(layer.Index))
+        {
+            return layer.Index;
+        }
+
+        if (IsThemeLayerIndex(layer.SourceLayerIndex))
+        {
+            return layer.SourceLayerIndex;
+        }
+
         if (!string.IsNullOrWhiteSpace(layer.EditorLayerId) &&
             _sourceIndexByEditorLayerId.TryGetValue(layer.EditorLayerId, out var sourceIndex) &&
             !string.IsNullOrWhiteSpace(sourceIndex))
@@ -5460,11 +5633,50 @@ public partial class MainWindow : Window
                 layer.EditorLayerId = CreateEditorLayerId(layer.Index, layer.Type, Layers.IndexOf(layer));
             }
 
+            if (IsThemeLayerIndex(layer.Index) || IsThemeLayerIndex(layer.SourceLayerIndex))
+            {
+                layer.SourceLayerIndex = IsThemeLayerIndex(layer.SourceLayerIndex)
+                    ? layer.SourceLayerIndex
+                    : layer.Index;
+                _sourceIndexByEditorLayerId[layer.EditorLayerId] = layer.SourceLayerIndex;
+                continue;
+            }
+
             var persistedIndex = sourceIndex.ToString(CultureInfo.InvariantCulture);
             layer.SourceLayerIndex = persistedIndex;
             _sourceIndexByEditorLayerId[layer.EditorLayerId] = persistedIndex;
             sourceIndex++;
         }
+    }
+
+    private static bool IsThemeLayerIndex(string? index) =>
+        !string.IsNullOrWhiteSpace(index) &&
+        index.StartsWith("theme:", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsThemeRootLayerIndex(string? index)
+    {
+        var parts = (index ?? "").Split(':');
+        return parts.Length == 2 &&
+               parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+               int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+    }
+
+    private static bool IsNestedLayerCoveredByThemeDelete(string? index, ISet<string> themeDeleteIndexes)
+    {
+        if (string.IsNullOrWhiteSpace(index) || IsThemeRootLayerIndex(index))
+        {
+            return false;
+        }
+
+        var parts = index.Split(':');
+        if (parts.Length < 3 ||
+            !parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) ||
+            !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex))
+        {
+            return false;
+        }
+
+        return themeDeleteIndexes.Contains($"theme:{themeIndex}");
     }
 
     private async Task ApplyLayersToResolvedTemplateTargetsAsync(
@@ -5626,12 +5838,18 @@ public partial class MainWindow : Window
             return Array.Empty<string>();
         }
 
-        var indexes = _pendingLayerDeletes
+        var sourceIndexes = _pendingLayerDeletes
             .Select(item => _pendingDeleteSourceIndexesByEditorId.TryGetValue(item.EditorLayerId, out var sourceIndex)
                 ? sourceIndex
                 : item.OriginalSourceIndex)
             .Where(index => !string.IsNullOrWhiteSpace(index))
             .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var themeDeleteIndexes = sourceIndexes
+            .Where(IsThemeRootLayerIndex)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var indexes = sourceIndexes
+            .Where(index => !IsNestedLayerCoveredByThemeDelete(index, themeDeleteIndexes))
             .OrderByDescending(GetLayerDeleteSortKey)
             .ToList();
         LogPendingLayerDeleteApplySnapshot(deviceModel, templatePath, indexes);
@@ -5780,6 +5998,13 @@ public partial class MainWindow : Window
                 group => group.Key,
                 group => group.Select(item => item.ChildIndex).OrderBy(index => index).ToList());
 
+        var deletedThemeIndexes = deletedIndexes
+            .Select(TryParseThemeLayerIndex)
+            .Where(index => index.HasValue)
+            .Select(index => index!.Value)
+            .OrderBy(index => index)
+            .ToList();
+
         foreach (var layer in Layers)
         {
             if (layer.IsEditorMetadata || IsOledCurveSyntheticBackgroundLayer(layer))
@@ -5811,16 +6036,40 @@ public partial class MainWindow : Window
                     _sourceIndexByEditorLayerId[layer.EditorLayerId] = layer.SourceLayerIndex;
                 }
             }
+
+            var theme = TryParseThemeLayerIndex(sourceIndex);
+            if (theme.HasValue)
+            {
+                var shift = deletedThemeIndexes.Count(deletedIndex => deletedIndex < theme.Value);
+                if (shift > 0)
+                {
+                    layer.SourceLayerIndex = $"theme:{theme.Value - shift}";
+                    _sourceIndexByEditorLayerId[layer.EditorLayerId] = layer.SourceLayerIndex;
+                }
+            }
         }
+    }
+
+    private static int? TryParseThemeLayerIndex(string? index)
+    {
+        var parts = (index ?? "").Split(':');
+        if (parts.Length == 2 &&
+            parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex))
+        {
+            return themeIndex;
+        }
+
+        return null;
     }
 
     private static (int ThemeIndex, int ChildIndex)? TryParseNestedLayerIndex(string? index)
     {
         var parts = (index ?? "").Split(':');
-        if (parts.Length == 3 &&
+        if (parts.Length >= 3 &&
             parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
             int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
-            int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
+            int.TryParse(parts[^1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
         {
             return (themeIndex, childIndex);
         }
@@ -5836,12 +6085,19 @@ public partial class MainWindow : Window
         }
 
         var parts = (index ?? "").Split(':');
+        if (parts.Length == 2 &&
+            parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+            int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeOnlyIndex))
+        {
+            return (1L << 48) | (uint)themeOnlyIndex;
+        }
+
         if (parts.Length == 3 &&
             parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
             int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
             int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
         {
-            return (1L << 48) | ((long)(uint)themeIndex << 24) | (uint)childIndex;
+            return ((long)1 << 47) | ((long)(uint)themeIndex << 24) | (uint)childIndex;
         }
 
         return 0;
@@ -6779,6 +7035,7 @@ public partial class MainWindow : Window
             bool isSensor = type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
             bool isImage = type.Contains("Image", StringComparison.OrdinalIgnoreCase) ||
                            type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase);
+            bool isModular = type.Equals("ModularTheme", StringComparison.OrdinalIgnoreCase);
             bool isArcGraph = type.Contains("GraphArchBar", StringComparison.OrdinalIgnoreCase);
 
             if (isSensor)
@@ -6811,6 +7068,21 @@ public partial class MainWindow : Window
             {
                 var newZoom = Math.Clamp(Math.Round(_resizeStartZoom + dx * 0.005, 3), 0.01, 10.0);
                 _dragLayer.ZoomRate = FormatZoom(newZoom);
+                ZoomBox.Text = _dragLayer.ZoomRate;
+            }
+            else if (isModular)
+            {
+                var newWidth = Math.Max(10.0, _resizeStartWidth + dx);
+                var newHeight = Math.Max(10.0, _resizeStartHeight + dy);
+                var widthZoom = _resizeStartWidth > 0 ? newWidth / _resizeStartWidth : 1.0;
+                var heightZoom = _resizeStartHeight > 0 ? newHeight / _resizeStartHeight : widthZoom;
+                var newZoom = Math.Clamp(Math.Round(_resizeStartZoom * Math.Min(widthZoom, heightZoom), 3), 0.01, 10.0);
+                _dragLayer.ZoomRate = FormatZoom(newZoom);
+                var scale = _resizeStartZoom > 0 ? newZoom / _resizeStartZoom : newZoom;
+                _dragLayer.Width = FormatTemplateDouble(_resizeStartWidth * scale);
+                _dragLayer.Height = FormatTemplateDouble(_resizeStartHeight * scale);
+                WidthBox.Text = _dragLayer.Width;
+                HeightBox.Text = _dragLayer.Height;
                 ZoomBox.Text = _dragLayer.ZoomRate;
             }
             else
@@ -7053,6 +7325,24 @@ public partial class MainWindow : Window
     private FrameworkElement CreateLayerPreviewVisual(LayerRow layer, Rect bounds, bool selected)
     {
         var type = layer.Type ?? "";
+        if (type.Equals("ModularTheme", StringComparison.OrdinalIgnoreCase))
+        {
+            var imagePath = ResolveLayerMediaPath(layer);
+            if (!string.IsNullOrWhiteSpace(imagePath))
+            {
+                return CreatePreviewLayerHitTarget(bounds, CreatePreviewImage(imagePath, bounds.Width, bounds.Height, selected, layer.Rotate, layer.Rect));
+            }
+
+            return CreatePreviewLayerHitTarget(bounds, new Border
+            {
+                Width = Math.Max(1.0, bounds.Width),
+                Height = Math.Max(1.0, bounds.Height),
+                Background = Brushes.Transparent,
+                BorderBrush = selected ? NewBrush("#38BDF8", "#38BDF8") : Brushes.Transparent,
+                BorderThickness = selected ? new Thickness(1) : new Thickness(0)
+            });
+        }
+
         if (type.Contains("Image", StringComparison.OrdinalIgnoreCase))
         {
             var imagePath = ResolveLayerMediaPath(layer);
@@ -10379,18 +10669,20 @@ public partial class MainWindow : Window
         };
         try
         {
-            var image = new Image
-            {
-                Source = GetPreviewImageSource(imagePath, sourceRectText),
-                Width = width,
-                Height = height,
-                MaxWidth = width,
-                MaxHeight = height,
-                Stretch = Stretch.Uniform,
-                HorizontalAlignment = HorizontalAlignment.Left,
-                VerticalAlignment = VerticalAlignment.Top,
-                RenderTransformOrigin = new Point(0.5, 0.5)
-            };
+            var image = IsGifFile(imagePath) && string.IsNullOrWhiteSpace(sourceRectText)
+                ? CreateAnimatedGifPreviewImage(imagePath, width, height)
+                : new Image
+                {
+                    Source = GetPreviewImageSource(imagePath, sourceRectText),
+                    Width = width,
+                    Height = height,
+                    MaxWidth = width,
+                    MaxHeight = height,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Left,
+                    VerticalAlignment = VerticalAlignment.Top,
+                    RenderTransformOrigin = new Point(0.5, 0.5)
+                };
             if (double.TryParse(rotationText, NumberStyles.Float, CultureInfo.InvariantCulture, out var rotation))
             {
                 image.RenderTransform = new RotateTransform(rotation);
@@ -10402,6 +10694,81 @@ public partial class MainWindow : Window
             border.Child = new Rectangle { Fill = NewBrush("#4F8CFF", "#4F8CFF") };
         }
         return border;
+    }
+
+    private static bool IsGifFile(string imagePath) =>
+        string.Equals(Path.GetExtension(imagePath), ".gif", StringComparison.OrdinalIgnoreCase);
+
+    private static Image CreateAnimatedGifPreviewImage(string imagePath, double width, double height)
+    {
+        var decoder = new GifBitmapDecoder(
+            new Uri(imagePath, UriKind.Absolute),
+            BitmapCreateOptions.PreservePixelFormat,
+            BitmapCacheOption.OnLoad);
+        var frames = decoder.Frames
+            .Select(frame =>
+            {
+                if (frame.CanFreeze) frame.Freeze();
+                return (BitmapSource)frame;
+            })
+            .ToArray();
+        var delays = decoder.Frames.Select(GetGifFrameDelay).ToArray();
+        var image = new Image
+        {
+            Source = frames.Length > 0 ? frames[0] : null,
+            Width = width,
+            Height = height,
+            MaxWidth = width,
+            MaxHeight = height,
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            RenderTransformOrigin = new Point(0.5, 0.5)
+        };
+        if (frames.Length <= 1)
+        {
+            return image;
+        }
+
+        var frameIndex = 0;
+        var timer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = delays[0]
+        };
+        timer.Tick += (_, _) =>
+        {
+            frameIndex = (frameIndex + 1) % frames.Length;
+            image.Source = frames[frameIndex];
+            timer.Interval = delays[frameIndex];
+        };
+        image.Unloaded += (_, _) => timer.Stop();
+        image.Loaded += (_, _) =>
+        {
+            if (!timer.IsEnabled)
+            {
+                timer.Start();
+            }
+        };
+        return image;
+    }
+
+    private static TimeSpan GetGifFrameDelay(BitmapFrame frame)
+    {
+        const int defaultDelayCentiseconds = 10;
+        try
+        {
+            if (frame.Metadata is BitmapMetadata metadata &&
+                metadata.GetQuery("/grctlext/Delay") is ushort delay &&
+                delay > 1)
+            {
+                return TimeSpan.FromMilliseconds(delay * 10);
+            }
+        }
+        catch
+        {
+        }
+
+        return TimeSpan.FromMilliseconds(defaultDelayCentiseconds * 10);
     }
 
     private FrameworkElement CreateFittedPreviewBitmap(string imagePath, double width, double height)
@@ -11436,6 +11803,12 @@ public partial class MainWindow : Window
         {
             var zoom = GetSensorZoomRate(layer);
             return new Rect(left, top, ToPreview(400.0 * zoom), ToPreview(400.0 * zoom));
+        }
+        else if (type.Equals("ModularTheme", StringComparison.OrdinalIgnoreCase))
+        {
+            var width = TryParseInvariant(layer.Width, out var layerWidth) && layerWidth > 0 ? layerWidth : 80.0;
+            var height = TryParseInvariant(layer.Height, out var layerHeight) && layerHeight > 0 ? layerHeight : 80.0;
+            return new Rect(left, top, ToPreview(width), ToPreview(height));
         }
         else if (type.Contains("Image", StringComparison.OrdinalIgnoreCase) ||
                  type.Contains("Animation", StringComparison.OrdinalIgnoreCase))
@@ -13937,7 +14310,7 @@ public partial class MainWindow : Window
         IReadOnlyList<GraphStyleOption> graphStyles;
         try
         {
-            graphStyles = await _supporter.ListGraphStylesAsync();
+            graphStyles = await _supporter.ListGraphStylesAsync(GetSelectedDeviceModel(), _currentTemplatePath);
             graphStyles = graphStyles
                 .Where(style => IsWideScreenDeviceSelected()
                     ? !style.Code.StartsWith("MOD::H2_", StringComparison.OrdinalIgnoreCase)
@@ -17057,7 +17430,8 @@ public partial class MainWindow : Window
         string? backgroundPathOverride = null,
         string? backgroundEntryNameOverride = null,
         string? previewPathOverride = null,
-        string? universalOrientationOverride = null)
+        string? universalOrientationOverride = null,
+        bool includeGalleryFonts = false)
     {
         var layers = sourceLayers?.ToList() ?? Layers.ToList();
         var actualTemplateId = string.IsNullOrWhiteSpace(exportTemplateId)
@@ -17106,6 +17480,16 @@ public partial class MainWindow : Window
             .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
+        var fontPaths = includeGalleryFonts
+            ? layers
+                .SelectMany(GetLayerFontCandidates)
+                .Select(ResolveCanonicalFontName)
+                .Where(name => !string.IsNullOrWhiteSpace(name) && IsCustomEditorFont(name))
+                .Select(ResolveFontSourcePath)
+                .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+            : new List<string>();
 
         return new ThemeExportSnapshot
         {
@@ -17121,7 +17505,8 @@ public partial class MainWindow : Window
                     NormalizeUniversalOrientation(universalOrientationOverride),
                     GetUniversalOrientationForExport(deviceModel, exportBackground))
                 : "",
-            ImagePaths = imagePaths
+            ImagePaths = imagePaths,
+            FontPaths = fontPaths
         };
     }
 
@@ -17672,6 +18057,17 @@ public partial class MainWindow : Window
             manifest.ImageFiles.Add(entryName);
         }
 
+        var addedFonts = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var fontPath in snapshot.FontPaths)
+        {
+            if (string.IsNullOrWhiteSpace(fontPath) || !File.Exists(fontPath)) continue;
+            var fileName = Path.GetFileName(fontPath);
+            if (!IsFontFileName(fileName) || !addedFonts.Add(fileName)) continue;
+            var entryName = $"fonts/{fileName}";
+            archive.CreateEntryFromFile(fontPath, entryName, CompressionLevel.Optimal);
+            manifest.FontFiles.Add(entryName);
+        }
+
         var backgroundPath = snapshot.BackgroundPath;
         var normalizedJpegBackground = "";
         try
@@ -18150,13 +18546,20 @@ public partial class MainWindow : Window
         return name;
     }
 
-    private static void InstallPackagedFonts(ZipArchive archive)
+    private static bool InstallPackagedFonts(ZipArchive archive, ThemePackageManifest manifest)
     {
-        var fontEntries = archive.Entries.Where(entry =>
-            !string.IsNullOrWhiteSpace(entry.Name) &&
-            (Path.GetExtension(entry.Name).Equals(".ttf", StringComparison.OrdinalIgnoreCase) ||
-             Path.GetExtension(entry.Name).Equals(".otf", StringComparison.OrdinalIgnoreCase))).ToList();
-        if (fontEntries.Count == 0) return;
+        var manifestFontEntries = manifest.FontFiles
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(entryName => TryGetPackageEntry(archive, entryName))
+            .Where(entry => entry != null)
+            .Cast<ZipArchiveEntry>()
+            .Where(entry => IsFontFileName(entry.Name))
+            .ToList();
+        var fontEntries = manifestFontEntries.Count > 0
+            ? manifestFontEntries
+            : archive.Entries.Where(entry =>
+                !string.IsNullOrWhiteSpace(entry.Name) && IsFontFileName(entry.Name)).ToList();
+        if (fontEntries.Count == 0) return false;
 
         var fontRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LianLiThemeEditor", "Fonts");
         Directory.CreateDirectory(fontRoot);
@@ -18168,17 +18571,87 @@ public partial class MainWindow : Window
         }
 
         InitializeCustomFonts();
+        var processed = false;
+        var changed = false;
         foreach (var entry in fontEntries)
         {
             var path = Path.Combine(fontRoot, GetSafeFileName(entry.Name));
             try
             {
-                var glyph = new GlyphTypeface(new Uri(path, UriKind.Absolute));
-                var family = glyph.Win32FamilyNames.Values.FirstOrDefault();
-                if (!string.IsNullOrWhiteSpace(family)) EnsureLConnectFontInstalled(family);
+                var family = ReadFontFamilyName(path);
+                if (string.IsNullOrWhiteSpace(family) ||
+                    string.Equals(family, Path.GetFileNameWithoutExtension(path), StringComparison.OrdinalIgnoreCase))
+                {
+                    family = InferPackagedFontFamilyName(path);
+                    AppLogger.Warning($"Packaged font family could not be read; using file name fallback: {entry.FullName}; family={family}");
+                }
+
+                var fontChanged = InstallFontSystemWideFromFile(path, family);
+                changed |= fontChanged;
+                processed = true;
+                AppLogger.Info($"Packaged font processed: {entry.FullName}; family={family}; changed={fontChanged}");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                AppLogger.Error($"Packaged font install failed: {entry.FullName}", ex);
+            }
         }
+
+        if (!processed)
+        {
+            AppLogger.Warning($"Theme package contained {fontEntries.Count} font file(s), but none could be installed.");
+        }
+        else if (changed)
+        {
+            InitializeCustomFonts();
+            foreach (var entry in fontEntries)
+            {
+                var path = Path.Combine(fontRoot, GetSafeFileName(entry.Name));
+                try
+                {
+                    AddFontResourceEx(path, 0, IntPtr.Zero);
+                }
+                catch
+                {
+                }
+            }
+        }
+
+        return processed;
+    }
+
+    private static string InferPackagedFontFamilyName(string path)
+    {
+        var name = Path.GetFileNameWithoutExtension(path).Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return "PackagedFont";
+        }
+
+        var dotIndex = name.IndexOf('.');
+        if (dotIndex > 0)
+        {
+            name = name[..dotIndex];
+        }
+
+        foreach (var separator in new[] { '_', '-' })
+        {
+            var index = name.IndexOf(separator);
+            if (index > 0)
+            {
+                name = name[..index];
+                break;
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(name) ? Path.GetFileNameWithoutExtension(path) : name;
+    }
+
+    private static bool IsFontFileName(string fileName)
+    {
+        var extension = Path.GetExtension(fileName);
+        return extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) ||
+               extension.Equals(".otf", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<TemplateOption> ImportThemePackageAsync(
@@ -18204,7 +18677,7 @@ public partial class MainWindow : Window
             throw new InvalidDataException($"Unsupported theme package version: {manifest.FormatVersion}");
         }
 
-        InstallPackagedFonts(archive);
+        var installedPackagedFonts = InstallPackagedFonts(archive, manifest);
 
         var deviceModel = manifest.DeviceModel;
         if (deviceModel is not ("hydroshift-ii-lcd-s" or "hydroshift-ii-lcd-c" or UniversalScreenDeviceModel or Vm92DeviceModel or OledCurveDeviceModel))
@@ -18702,7 +19175,8 @@ public partial class MainWindow : Window
             Path = installedTemplatePath,
             BackgroundPath = importedBackgroundPath,
             UniversalOrientation = manifest.UniversalOrientation,
-            LConnectVisible = lConnectImportVisible
+            LConnectVisible = lConnectImportVisible,
+            InstalledPackagedFonts = installedPackagedFonts
         };
     }
 
@@ -21418,7 +21892,6 @@ public partial class MainWindow : Window
 
             ApplyGalleryFilter(resetPage: true);
             _ = LoadVisibleGalleryPreviewsAsync();
-            _ = LoadCommunityGalleryThemesAndMergeAsync();
             _ = LoadGalleryStatsAndRefreshAsync();
             _ = EnrichGalleryThemeOrientationsAndRefreshAsync(themes);
         }
@@ -22838,15 +23311,43 @@ public partial class MainWindow : Window
         try
         {
             var statsItems = await _galleryStatsService.LoadStatsAsync(apiBaseUrl, GetOrCreateGalleryVoterKey());
-            var byId = GalleryThemes.ToDictionary(theme => theme.Id, StringComparer.OrdinalIgnoreCase);
-            foreach (var stats in statsItems)
+            var statsById = statsItems
+                .GroupBy(stats => stats.Id, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            var statsByToken = statsItems
+                .Select(stats => new { Stats = stats, Token = ExtractGalleryThemeStableToken(stats.Id) })
+                .Where(item => !string.IsNullOrWhiteSpace(item.Token))
+                .GroupBy(item => item.Token, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .Select(item => item.Stats)
+                        .OrderByDescending(stats => stats.Downloads)
+                        .ThenByDescending(stats => stats.VoteCount)
+                        .First(),
+                    StringComparer.OrdinalIgnoreCase);
+            foreach (var theme in GalleryThemes)
             {
-                if (!byId.TryGetValue(stats.Id, out var theme))
+                var token = GetGalleryThemeStableToken(theme);
+                var candidates = new List<GalleryThemeStats>();
+                if (statsById.TryGetValue(theme.Id, out var exactStats))
                 {
-                    continue;
+                    candidates.Add(exactStats);
+                }
+                if (!string.IsNullOrWhiteSpace(token) &&
+                    statsByToken.TryGetValue(token, out var tokenStats))
+                {
+                    candidates.Add(tokenStats);
                 }
 
-                ApplyGalleryStats(theme, stats);
+                var bestStats = candidates
+                    .OrderByDescending(stats => stats.Downloads)
+                    .ThenByDescending(stats => stats.VoteCount)
+                    .FirstOrDefault();
+                if (bestStats != null)
+                {
+                    ApplyGalleryStats(theme, bestStats);
+                }
             }
         }
         catch
@@ -23528,6 +24029,10 @@ public partial class MainWindow : Window
             item.IsInstalled = true;
             await NotifyGalleryDownloadAsync(item);
             SetBusy(false, BuildGalleryInstallStatus(item, imported, applyRequested, applyAccepted, applyStillRunning));
+            if (imported.InstalledPackagedFonts)
+            {
+                ShowGalleryPackagedFontRestartDialog();
+            }
             return true;
         }
         catch (Exception ex)
@@ -23554,6 +24059,41 @@ public partial class MainWindow : Window
         Applied,
         NotConfirmed,
         StillRunning
+    }
+
+    private void ShowGalleryPackagedFontRestartDialog()
+    {
+        var panel = new StackPanel { Margin = new Thickness(20) };
+        panel.Children.Add(new TextBlock
+        {
+            Text = GetLanguageText(
+                "gallery.fontInstallRestartRequired",
+                "This theme installed an extra font. Restart the L-Connect service once so the font can appear on your device screen."),
+            TextWrapping = TextWrapping.Wrap,
+            FontSize = 14,
+            LineHeight = 20,
+            MaxWidth = 520
+        });
+
+        var ok = new Button
+        {
+            Content = GetLanguageText("common.ok", "OK"),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            MinWidth = 90,
+            Height = 34,
+            Margin = new Thickness(0, 18, 0, 0),
+            Padding = new Thickness(16, 0, 16, 0),
+            Style = (Style)FindResource("BtnPrimary"),
+            IsDefault = true
+        };
+        panel.Children.Add(ok);
+
+        var dialog = CreateThemedDialog(
+            GetLanguageText("gallery.fontInstallRestartTitle", "Restart L-Connect service"),
+            panel,
+            560);
+        ok.Click += (_, _) => dialog.DialogResult = true;
+        dialog.ShowDialog();
     }
 
     private async Task<GalleryActivationResult> TryActivateInstalledGalleryThemeAsync(
@@ -23730,6 +24270,7 @@ public partial class MainWindow : Window
                     manifestChanged = true;
                 }
                 manifestChanged |= ApplyGalleryPackageOrientation(existingManifest, item);
+                manifestChanged |= EnsureManifestFontFiles(archive, existingManifest);
                 if (!string.IsNullOrWhiteSpace(existingManifest.BackgroundFile) &&
                     TryGetPackageEntry(archive, existingManifest.BackgroundFile) != null)
                 {
@@ -23952,9 +24493,12 @@ public partial class MainWindow : Window
             }
         }
         var usedFontNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var fontEntryNames = new List<string>();
         foreach (var fontEntry in entries.Where(entry => Path.GetExtension(entry.Name).Equals(".ttf", StringComparison.OrdinalIgnoreCase) || Path.GetExtension(entry.Name).Equals(".otf", StringComparison.OrdinalIgnoreCase)))
         {
-            CopyZipEntry(fontEntry, destinationArchive, $"fonts/{GetSafeFileName(fontEntry.Name)}", usedFontNames);
+            var fontEntryName = GetSafeFileName(fontEntry.Name);
+            CopyZipEntry(fontEntry, destinationArchive, fontEntryName, usedFontNames);
+            fontEntryNames.Add(fontEntryName);
         }
 
         var templateOrientation = string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
@@ -23969,6 +24513,7 @@ public partial class MainWindow : Window
             TemplateId = templateId,
             TemplateFile = templateName,
             BackgroundFile = backgroundName,
+            FontFiles = fontEntryNames,
             UniversalOrientation = string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase)
                 ? FirstNonEmpty(
                     templateOrientation,
@@ -23979,6 +24524,30 @@ public partial class MainWindow : Window
         var manifestEntry = destinationArchive.CreateEntry("manifest.json", CompressionLevel.Optimal);
         using var writer = new StreamWriter(manifestEntry.Open(), System.Text.Encoding.UTF8);
         writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static bool EnsureManifestFontFiles(ZipArchive archive, ThemePackageManifest manifest)
+    {
+        var existing = manifest.FontFiles
+            .Where(entryName => !string.IsNullOrWhiteSpace(entryName) && TryGetPackageEntry(archive, entryName) != null)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var discovered = archive.Entries
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Name) && IsFontFileName(entry.Name))
+            .Select(entry => entry.FullName.Replace('\\', '/'))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var merged = existing
+            .Concat(discovered)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (merged.SequenceEqual(manifest.FontFiles, StringComparer.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        manifest.FontFiles = merged;
+        return true;
     }
 
     private static bool ApplyGalleryPackageOrientation(ThemePackageManifest manifest, GalleryThemeItem item)
@@ -24126,7 +24695,8 @@ public partial class MainWindow : Window
                 BackgroundEntryName = snapshot.BackgroundEntryName,
                 PreviewPath = tempPreviewPath,
                 UniversalOrientation = snapshot.UniversalOrientation,
-                ImagePaths = snapshot.ImagePaths
+                ImagePaths = snapshot.ImagePaths,
+                FontPaths = snapshot.FontPaths
             };
             try
             {
@@ -27819,6 +28389,7 @@ private static string CreateExportPackageBaseName(string templateId)
         return (layer.Type ?? "") switch
         {
             "GraphAnimation" => GetLanguageText("add.typeAnimation", "Animation"),
+            "ModularTheme" => "Modular",
             "GraphImage" => GetLanguageText("add.typeImage", "Image"),
             "GraphLine" => GetLanguageText("add.typeChart", "Chart"),
             "GraphArchBar" => GetLanguageText("add.typeCurvedBar", "Curved Bar"),
@@ -28842,9 +29413,6 @@ private static string CreateExportPackageBaseName(string templateId)
         PopulateEditorFromSelection();
         RequestPreviewDraw();
     }
-
-
-
 
     private void UpdateFormatComboItems(string dataSource, ComboBox combo, TextBox? box)
     {
@@ -33218,6 +33786,7 @@ private static string CreateExportPackageBaseName(string templateId)
                       type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
         var isSensor = type.Equals("GraphSensor", StringComparison.OrdinalIgnoreCase);
         var isClock = type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase);
+        var isModular = type.Equals("ModularTheme", StringComparison.OrdinalIgnoreCase);
 
         if (isClock)
         {
@@ -33343,6 +33912,46 @@ private static string CreateExportPackageBaseName(string templateId)
             if (layer.CanWrite("useBlock")) layer.UseBlock = UseBlockCheck.IsChecked == true ? "True" : "False";
             if (layer.CanWrite("HasRingBorder")) layer.RingBorder = RingBorderCheck.IsChecked == true ? "True" : "False";
             if (layer.CanWrite("round")) layer.Round = RoundCheck.IsChecked == true ? "True" : "False";
+        }
+
+        if (isModular && GraphEditPanel.Visibility == Visibility.Visible)
+        {
+            layer.DataSource = ResolveCaseFanDataSource(GetComboText(DataCombo), CaseFanCombo);
+            RefreshLayerDataSourceDisplay(layer);
+            var previousWidth = ParseInvariantOrDefault(layer.Width, 0);
+            var previousHeight = ParseInvariantOrDefault(layer.Height, 0);
+            var previousZoom = ParseInvariantOrDefault(layer.ZoomRate, 1);
+            if (previousZoom <= 0.0001) previousZoom = 1;
+            if (layer.CanWrite("width")) layer.Width = WidthBox.Text;
+            if (layer.CanWrite("height")) layer.Height = HeightBox.Text;
+            var newWidth = ParseInvariantOrDefault(layer.Width, previousWidth);
+            var newHeight = ParseInvariantOrDefault(layer.Height, previousHeight);
+            var baseWidth = previousWidth > 0 ? previousWidth / previousZoom : 0;
+            var baseHeight = previousHeight > 0 ? previousHeight / previousZoom : 0;
+            double? requestedZoom = null;
+            var widthChanged = baseWidth > 0 && Math.Abs(newWidth - previousWidth) > 0.0001;
+            var heightChanged = baseHeight > 0 && Math.Abs(newHeight - previousHeight) > 0.0001;
+            if (widthChanged)
+            {
+                requestedZoom = Math.Max(0.01, newWidth / baseWidth);
+            }
+            if (heightChanged)
+            {
+                var heightZoom = Math.Max(0.01, newHeight / baseHeight);
+                requestedZoom = requestedZoom.HasValue && widthChanged
+                    ? Math.Min(requestedZoom.Value, heightZoom)
+                    : heightZoom;
+            }
+            layer.ZoomRate = requestedZoom.HasValue
+                ? FormatZoom(Math.Clamp(requestedZoom.Value, 0.01, 10.0))
+                : TryParseZoom(ZoomBox.Text, out var zoom)
+                    ? FormatZoom(Math.Clamp(zoom, 0.01, 10.0))
+                    : string.IsNullOrWhiteSpace(layer.ZoomRate) ? "1" : layer.ZoomRate;
+            var resolvedZoom = ParseInvariantOrDefault(layer.ZoomRate, previousZoom);
+            if (resolvedZoom <= 0.0001) resolvedZoom = previousZoom;
+            if (baseWidth > 0) layer.Width = FormatTemplateDouble(baseWidth * resolvedZoom);
+            if (baseHeight > 0) layer.Height = FormatTemplateDouble(baseHeight * resolvedZoom);
+            ApplyModularGroupTransformToChildren(layer);
         }
 
         if (ImageEditPanel.Visibility == Visibility.Visible)
@@ -34909,7 +35518,9 @@ private static string CreateExportPackageBaseName(string templateId)
         try
         {
             SetBusy(true, GetLanguageText("gallery.preparing", "Preparing theme package..."));
-            var snapshot = CreateThemeExportSnapshot(GetSelectedDeviceModel());
+            var snapshot = CreateThemeExportSnapshot(
+                GetSelectedDeviceModel(),
+                includeGalleryFonts: true);
             await ExportThemePackageAsync(packagePath, snapshot);
             await File.WriteAllBytesAsync(
                 previewPath,
@@ -35251,11 +35862,6 @@ private static string CreateExportPackageBaseName(string templateId)
         string defaultName,
         string deviceModel)
     {
-        if (ShouldPreserveOriginalGallerySubmissionPackage(packagePath))
-        {
-            return packagePath;
-        }
-
         var outputPath = Path.Combine(
             Path.GetTempPath(),
             $"gallery-submit-normalized-{Guid.NewGuid():N}{Path.GetExtension(packagePath)}");
@@ -35268,6 +35874,7 @@ private static string CreateExportPackageBaseName(string templateId)
             using var archive = ZipFile.Open(outputPath, ZipArchiveMode.Update);
             var manifest = GetGalleryPackageManifest(archive) ?? new ThemePackageManifest();
             NormalizeThemePackageManifest(manifest, deviceModel, defaultName);
+            EnsureManifestFontFiles(archive, manifest);
             if (string.IsNullOrWhiteSpace(manifest.DeviceModel))
             {
                 manifest.DeviceModel = NormalizeGalleryDeviceModel(deviceModel);
@@ -35411,30 +36018,6 @@ private static string CreateExportPackageBaseName(string templateId)
             catch
             {
             }
-        }
-    }
-
-    private static bool ShouldPreserveOriginalGallerySubmissionPackage(string packagePath)
-    {
-        try
-        {
-            if (string.IsNullOrWhiteSpace(packagePath) || !File.Exists(packagePath))
-            {
-                return false;
-            }
-
-            using var archive = ZipFile.OpenRead(packagePath);
-            if (archive.GetEntry("manifest.json") != null)
-            {
-                return false;
-            }
-
-            return archive.Entries.Any(entry => entry.Name.EndsWith(".template", StringComparison.OrdinalIgnoreCase)) &&
-                   archive.Entries.Any(entry => entry.Name.EndsWith(".h264", StringComparison.OrdinalIgnoreCase));
-        }
-        catch
-        {
-            return false;
         }
     }
 

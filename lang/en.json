@@ -352,6 +352,8 @@
     "fourPlusStars": "4+ stars",
     "threePlusStars": "3+ stars",
     "twoPlusStars": "2+ stars",
+    "fontInstallRestartTitle": "Restart L-Connect service",
+    "fontInstallRestartRequired": "This theme installed an extra font. Restart the L-Connect service once so the font can appear on your device screen.",
     "noThemesReturned": "No themes were returned by the GitHub gallery."
   },
   "about": {
@@ -385,7 +387,7 @@
     "selfUpdatePrompt": "Latest release: {0}\nCurrent version: {1}\n\nWould you like to download and install the update now?\n- Click Yes to automatically update.\n- Click No to open the release page in your browser.\n- Click Cancel to skip.",
     "startupPrompt": "A new version ({0}) of Lian Li LCD Template Editor is available.\nWould you like to download and install it now?",
     "downloadingTitle": "Downloading Update",
-    "downloadingProgress": "Downloading version {0}... {1:0}%",
+    "downloadingProgress": "Downloading version {0}... {1}%",
     "downloadFailed": "Failed to download update: {0}",
     "availableSummary": "Version {0} is available. Your installed version is {1}.",
     "availableBody": "You can download and install the update now, or open the release page to review it first.",

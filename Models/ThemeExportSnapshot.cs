@@ -11,4 +11,5 @@ public sealed class ThemeExportSnapshot
     public string PreviewPath { get; init; } = "";
     public string UniversalOrientation { get; init; } = "";
     public List<string> ImagePaths { get; init; } = new();
+    public List<string> FontPaths { get; init; } = new();
 }

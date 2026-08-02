@@ -20,6 +20,7 @@ public sealed class TemplateOption
     public string ApplyText { get; set; } = "Apply";
     public string DeleteText { get; set; } = "Delete";
     public bool LConnectVisible { get; set; } = true;
+    public bool InstalledPackagedFonts { get; set; }
     public System.Windows.Media.ImageSource? Thumbnail { get; set; }
     public bool IsPortraitThumbnail { get; set; }
     public bool IsSquareThumbnail { get; set; }

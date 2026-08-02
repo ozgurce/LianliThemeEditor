@@ -112,6 +112,21 @@ public sealed class ThemePackageValidationService : IThemePackageValidationServi
                 }
             }
 
+            if (root.TryGetProperty("FontFiles", out var fonts) && fonts.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var font in fonts.EnumerateArray().Select(item => item.GetString() ?? ""))
+                {
+                    var extension = Path.GetExtension(font);
+                    if (IsUnsafePath(font) ||
+                        GetPackageEntry(archive, font) == null ||
+                        (!extension.Equals(".ttf", StringComparison.OrdinalIgnoreCase) &&
+                         !extension.Equals(".otf", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        result.Issues.Add(Error($"Referenced font is missing or unsupported: {font}"));
+                    }
+                }
+            }
+
             if (installedTemplateIds?.Contains(id, StringComparer.OrdinalIgnoreCase) == true)
             {
                 result.Issues.Add(Warning("A theme with the same identity is already installed and will be updated."));

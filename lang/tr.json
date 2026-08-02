@@ -352,6 +352,8 @@
     "fourPlusStars": "4+ yıldız",
     "threePlusStars": "3+ yıldız",
     "twoPlusStars": "2+ yıldız",
+    "fontInstallRestartTitle": "L-Connect servisini yeniden ba\u015flat",
+    "fontInstallRestartRequired": "Bu tema ekstra bir font kurdu. Fontun cihaz ekran\u0131nda g\u00f6r\u00fcnmesi i\u00e7in L-Connect servisini bir kez yeniden ba\u015flat\u0131n.",
     "noThemesReturned": "GitHub galerisinden tema dönmedi."
   },
   "about": {
@@ -385,7 +387,7 @@
     "selfUpdatePrompt": "Yeni sürüm: {0}\nMevcut sürüm: {1}\n\nGüncellemeyi şimdi indirip kurmak ister misiniz?\n- Otomatik güncellemek için Evet'e tıklayın.\n- Sürüm sayfasını tarayıcıda açmak için Hayır'a tıklayın.\n- Atlamak için İptal'e tıklayın.",
     "startupPrompt": "Lian Li LCD Template Editor uygulamasının yeni bir sürümü ({0}) mevcut.\nŞimdi indirip kurmak ister misiniz?",
     "downloadingTitle": "Güncelleme İndiriliyor",
-    "downloadingProgress": "Sürüm {0} indiriliyor... %{1:0}",
+    "downloadingProgress": "Sürüm {0} indiriliyor... %{1}",
     "downloadFailed": "Güncelleme indirilemedi: {0}",
     "availableSummary": "{0} sürümü hazır. Kurulu sürümünüz {1}.",
     "availableBody": "Güncellemeyi şimdi indirip kurabilir veya önce sürüm sayfasını açıp inceleyebilirsiniz.",

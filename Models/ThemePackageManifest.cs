@@ -11,6 +11,7 @@ public sealed class ThemePackageManifest
     public string PreviewFile { get; set; } = "";
     public string UniversalOrientation { get; set; } = "";
     public List<string> ImageFiles { get; set; } = new();
+    public List<string> FontFiles { get; set; } = new();
     public DateTime ExportedAtUtc { get; set; } = DateTime.UtcNow;
 
     // Backward-compatible legacy package fields.
