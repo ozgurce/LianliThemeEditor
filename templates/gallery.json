@@ -1,4 +1,4 @@
-{
+﻿{
     "themes":  [
                    {
                        "id":  "purple-gold-panel-88",
@@ -1081,6 +1081,33 @@
                        "deviceName":  "8.8\" Universal Screen",
                        "previewUrl":  "previews/casual-black-with-fps-7caaefdc.png",
                        "packageUrl":  "packages/casual-black-with-fps-7caaefdc.zip"
+                   },
+                   {
+                       "id":  "019-time-lcd-s-76fc6b11",
+                       "name":  "019 + time (LCD-S)",
+                       "author":  "hatiko",
+                       "description":  "",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "HydroShift II LCD-S",
+                       "packageUrl":  "packages/019-time-lcd-s-76fc6b11.zip"
+                   },
+                   {
+                       "id":  "neon-board-44d1876c",
+                       "name":  "Neon Board",
+                       "author":  "Ozgur",
+                       "description":  "",
+                       "deviceModel":  "hydroshift-ii-lcd-s",
+                       "deviceName":  "HydroShift II LCD-S",
+                       "packageUrl":  "packages/neon-board-44d1876c.zip"
+                   },
+                   {
+                       "id":  "kuromi-96bc246c",
+                       "name":  "Kuromi",
+                       "author":  "Ozgur",
+                       "description":  "",
+                       "deviceModel":  "universal-screen-8.8-inch",
+                       "deviceName":  "8.8\" Universal Screen",
+                       "packageUrl":  "packages/kuromi-96bc246c.zip"
                    }
                ]
 }
