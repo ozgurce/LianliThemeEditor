@@ -1,5 +1,19 @@
 # Changelog
 
+## V 2.8.5
+
+- Added gallery theme package support for bundled fonts through manifest `FontFiles`, including validation for `.ttf` and `.otf` entries.
+- Updated Gallery installs to install bundled theme fonts system-wide before applying the theme, with a themed restart notice when packaged fonts are present.
+- Fixed packaged font installation for font files whose family name cannot be read by WPF by falling back to a clean install name derived from the font file.
+- Fixed repeated Gallery installs failing when extracted packaged font files were locked by staging each import in a unique local font folder.
+- Fixed multi-face font families such as GeForce so each packaged face is installed separately, for example `GeForce Bold` and `GeForce Light`, instead of one face overwriting the other.
+- Kept normal theme export compatible with L-Connect by not adding font files to standard export ZIPs.
+- Added Gallery submission normalization so submitted packages are converted to manifest-based Theme Editor packages and include referenced extra fonts only for Gallery publishing.
+- Converted the existing Gallery packages to the manifest package standard and added available missing font files to the themes that reference them.
+- Moved community/pending Gallery themes into the GitHub Gallery source, restored their previews, and kept Gallery package loading on GitHub as the single published source.
+- Updated Gallery stats matching so migrated themes can keep their existing download and rating counts when their GitHub id and previous worker id share the same stable token.
+- Updated the Theme Review approval flow so approved submissions are published to GitHub and then removed from Cloudflare storage, preventing Worker-hosted ZIPs from becoming a second public Gallery source.
+
 ## V 2.8.1
 
 - Fixed 8.8" Universal Screen ring graph previews that could appear oversized in the editor preview on first load.
