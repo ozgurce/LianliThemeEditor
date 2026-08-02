@@ -14010,6 +14010,35 @@ public partial class MainWindow : Window
         return changed;
     }
 
+    private static bool DeleteMachineFontRegistryValue(string registryName, string expectedTargetFileName)
+    {
+        var changed = false;
+        foreach (var view in GetRegistryViews())
+        {
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                using var fontsKey = baseKey.OpenSubKey(
+                    @"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
+                    writable: true);
+                var currentValue = fontsKey?.GetValue(registryName)?.ToString();
+                if (!string.Equals(currentValue, expectedTargetFileName, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                fontsKey!.DeleteValue(registryName, throwOnMissingValue: false);
+                changed = true;
+                AppLogger.Info($"Removed stale packaged font registry value: {registryName}; target={expectedTargetFileName}");
+            }
+            catch
+            {
+            }
+        }
+
+        return changed;
+    }
+
     private static IEnumerable<(string Name, string Value)> EnumerateFontRegistryEntries()
     {
         foreach (var view in GetRegistryViews())
@@ -18576,6 +18605,7 @@ public partial class MainWindow : Window
         }
 
         InitializeCustomFonts();
+        var installNamesByPath = ResolvePackagedFontInstallNames(fontEntries, fontRoot);
         var processed = false;
         var changed = false;
         foreach (var entry in fontEntries)
@@ -18583,10 +18613,10 @@ public partial class MainWindow : Window
             var path = Path.Combine(fontRoot, GetSafeFileName(entry.Name));
             try
             {
-                var family = ReadFontFamilyName(path);
-                var fileBaseName = Path.GetFileNameWithoutExtension(path);
-                if (string.IsNullOrWhiteSpace(family) ||
-                    string.Equals(family, fileBaseName, StringComparison.OrdinalIgnoreCase))
+                var family = installNamesByPath.TryGetValue(path, out var installName)
+                    ? installName
+                    : ReadFontFamilyName(path);
+                if (string.IsNullOrWhiteSpace(family))
                 {
                     family = InferPackagedFontInstallName(path);
                     AppLogger.Warning($"Packaged font family could not be read; using file name fallback: {entry.FullName}; installName={family}");
@@ -18602,6 +18632,7 @@ public partial class MainWindow : Window
                 AppLogger.Error($"Packaged font install failed: {entry.FullName}", ex);
             }
         }
+        changed |= RemoveConflictingPackagedFamilyRegistryValues(fontEntries, fontRoot, installNamesByPath);
 
         if (!processed)
         {
@@ -18624,6 +18655,95 @@ public partial class MainWindow : Window
         }
 
         return processed;
+    }
+
+    private static Dictionary<string, string> ResolvePackagedFontInstallNames(
+        IReadOnlyList<ZipArchiveEntry> fontEntries,
+        string fontRoot)
+    {
+        var items = fontEntries
+            .Select(entry =>
+            {
+                var path = Path.Combine(fontRoot, GetSafeFileName(entry.Name));
+                var family = ReadFontFamilyName(path);
+                var fileBaseName = Path.GetFileNameWithoutExtension(path);
+                var fileInstallName = InferPackagedFontInstallName(path);
+                return new
+                {
+                    Path = path,
+                    Family = string.IsNullOrWhiteSpace(family) ? fileInstallName : family,
+                    FileBaseName = fileBaseName,
+                    FileInstallName = fileInstallName
+                };
+            })
+            .ToList();
+
+        var duplicateFamilies = items
+            .GroupBy(item => NormalizeFontLookupKey(item.Family), StringComparer.OrdinalIgnoreCase)
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key) && group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return items.ToDictionary(
+            item => item.Path,
+            item =>
+            {
+                var fileLooksStyled =
+                    !string.Equals(item.FileBaseName, item.Family, StringComparison.OrdinalIgnoreCase) &&
+                    item.FileBaseName.StartsWith(item.Family, StringComparison.OrdinalIgnoreCase);
+                return duplicateFamilies.Contains(NormalizeFontLookupKey(item.Family)) || fileLooksStyled
+                    ? item.FileInstallName
+                    : item.Family;
+            },
+            StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static bool RemoveConflictingPackagedFamilyRegistryValues(
+        IReadOnlyList<ZipArchiveEntry> fontEntries,
+        string fontRoot,
+        IReadOnlyDictionary<string, string> installNamesByPath)
+    {
+        var staleRegistryValues = fontEntries
+            .Select(entry =>
+            {
+                var path = Path.Combine(fontRoot, GetSafeFileName(entry.Name));
+                var family = ReadFontFamilyName(path);
+                if (string.IsNullOrWhiteSpace(family))
+                {
+                    family = InferPackagedFontInstallName(path);
+                }
+
+                var installName = installNamesByPath.TryGetValue(path, out var resolvedInstallName)
+                    ? resolvedInstallName
+                    : family;
+                var fontType = Path.GetExtension(path).Equals(".otf", StringComparison.OrdinalIgnoreCase)
+                    ? "OpenType"
+                    : "TrueType";
+
+                return new
+                {
+                    Path = path,
+                    Family = family,
+                    InstallName = installName,
+                    RegistryName = $"{family} ({fontType})",
+                    TargetFileName = Path.GetFileName(path)
+                };
+            })
+            .GroupBy(item => NormalizeFontLookupKey(item.Family), StringComparer.OrdinalIgnoreCase)
+            .Where(group => !string.IsNullOrWhiteSpace(group.Key) && group.Count() > 1)
+            .SelectMany(group => group
+                .Where(item => !string.Equals(item.Family, item.InstallName, StringComparison.OrdinalIgnoreCase))
+                .Select(item => (item.RegistryName, item.TargetFileName)))
+            .Distinct()
+            .ToList();
+
+        var changed = false;
+        foreach (var (registryName, targetFileName) in staleRegistryValues)
+        {
+            changed |= DeleteMachineFontRegistryValue(registryName, targetFileName);
+        }
+
+        return changed;
     }
 
     private static string InferPackagedFontInstallName(string path)
