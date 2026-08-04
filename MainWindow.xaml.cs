@@ -24475,7 +24475,22 @@ public partial class MainWindow : Window
         string destinationPath,
         Action<double> reportProgress)
     {
-        await DownloadGalleryPackageAsync(source, destinationPath, reportProgress);
+        await DownloadGalleryPackageAsync(AppendGalleryCacheBust(source), destinationPath, reportProgress);
+    }
+
+    private static string AppendGalleryCacheBust(string source)
+    {
+        if (string.IsNullOrWhiteSpace(source) ||
+            !Uri.TryCreate(source, UriKind.Absolute, out var uri) ||
+            !(uri.Host.Equals("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase) ||
+              uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) ||
+              uri.Host.EndsWith(".githubusercontent.com", StringComparison.OrdinalIgnoreCase)))
+        {
+            return source;
+        }
+
+        var separator = string.IsNullOrWhiteSpace(uri.Query) ? "?" : "&";
+        return source + separator + "cacheBust=" + Guid.NewGuid().ToString("N");
     }
 
     private async Task<string> EnsureThemeEditorPackageAsync(
