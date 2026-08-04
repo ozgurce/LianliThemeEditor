@@ -24662,7 +24662,7 @@ public partial class MainWindow : Window
             templatePath,
             backgroundPath,
             updatePreview,
-            applyBackgroundOverride: true,
+            applyBackgroundOverride: false,
             universalOrientationOverride: universalOrientation);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(20));
         var completedTask = await Task.WhenAny(activationTask, timeoutTask);
