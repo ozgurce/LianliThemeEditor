@@ -19,6 +19,8 @@ public sealed class LayerRow : INotifyPropertyChanged
 
     public string Index { get; set; } = "";
     [JsonIgnore]
+    public string EditorLayerId { get; set; } = "";
+    [JsonIgnore]
     public string SourceLayerIndex { get; set; } = "";
     [JsonIgnore]
     public string SourceTemplatePath { get; set; } = "";
@@ -26,6 +28,24 @@ public sealed class LayerRow : INotifyPropertyChanged
     public string SourceTemplateId { get; set; } = "";
     [JsonIgnore]
     public double SourceOffsetX { get; set; }
+    [JsonIgnore]
+    public string ParentThemeIndex { get; set; } = "";
+    [JsonIgnore]
+    public double ParentLocalX { get; set; }
+    [JsonIgnore]
+    public double ParentLocalY { get; set; }
+    [JsonIgnore]
+    public double ParentLocalWidth { get; set; }
+    [JsonIgnore]
+    public double ParentLocalHeight { get; set; }
+    [JsonIgnore]
+    public double ParentLocalSize { get; set; }
+    [JsonIgnore]
+    public double ParentLocalDiameter { get; set; }
+    [JsonIgnore]
+    public double ParentLocalThickness { get; set; }
+    [JsonIgnore]
+    public double ParentLocalZoomRate { get; set; }
     public string Type { get; set; } = "";
     public string DataSource { get; set; } = "";
     public string DataSourceDisplay { get; set; } = "";

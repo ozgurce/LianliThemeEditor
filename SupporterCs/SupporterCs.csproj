@@ -24,6 +24,8 @@
 
   <ItemGroup>
     <Reference Include="System.Drawing" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Web.Extensions" />
   </ItemGroup>

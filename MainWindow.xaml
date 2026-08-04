@@ -1443,14 +1443,20 @@
                             <Border x:Name="Root" Background="{TemplateBinding Background}"
                                     BorderBrush="{TemplateBinding BorderBrush}"
                                     BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                    CornerRadius="5" Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
                                 <Border.Effect>
                                     <DropShadowEffect BlurRadius="6" ShadowDepth="3" Opacity="0.4" Color="Black"/>
                                 </Border.Effect>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <Grid x:Name="ToolbarIconHost" Width="18" Height="18" Margin="0,0,7,0" VerticalAlignment="Center">
-                                        <Viewbox x:Name="ToolbarIcon" Width="15" Height="15" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Viewbox x:Name="ToolbarIcon" Width="16" Height="16" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Path Data="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}"
+                                              Width="24"
+                                              Height="24"
+                                              Stretch="Uniform"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
                                               Stroke="{TemplateBinding Foreground}"
                                               StrokeThickness="1.6"
                                               StrokeStartLineCap="Round"
@@ -1469,13 +1475,17 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="Content" Value="">
                                 <Setter TargetName="ToolbarIconHost" Property="Margin" Value="0"/>
-                                <Setter TargetName="ToolbarIcon" Property="Width" Value="18"/>
-                                <Setter TargetName="ToolbarIcon" Property="Height" Value="18"/>
+                                <Setter TargetName="ToolbarIconHost" Property="Width" Value="21"/>
+                                <Setter TargetName="ToolbarIconHost" Property="Height" Value="21"/>
+                                <Setter TargetName="ToolbarIcon" Property="Width" Value="21"/>
+                                <Setter TargetName="ToolbarIcon" Property="Height" Value="21"/>
                             </Trigger>
                             <Trigger Property="Content" Value="{x:Null}">
                                 <Setter TargetName="ToolbarIconHost" Property="Margin" Value="0"/>
-                                <Setter TargetName="ToolbarIcon" Property="Width" Value="18"/>
-                                <Setter TargetName="ToolbarIcon" Property="Height" Value="18"/>
+                                <Setter TargetName="ToolbarIconHost" Property="Width" Value="21"/>
+                                <Setter TargetName="ToolbarIconHost" Property="Height" Value="21"/>
+                                <Setter TargetName="ToolbarIcon" Property="Width" Value="21"/>
+                                <Setter TargetName="ToolbarIcon" Property="Height" Value="21"/>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Trigger.EnterActions>
@@ -1528,6 +1538,104 @@
                                 <Setter TargetName="Root" Property="Opacity" Value="0.4"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ToolbarImageButton" TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+            <Setter Property="Width" Value="38"/>
+            <Setter Property="Height" Value="38"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrTextPrimary}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="InteractionRoot">
+                            <Grid.RenderTransform>
+                                <TranslateTransform Y="0"/>
+                            </Grid.RenderTransform>
+                            <Border x:Name="Root"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="5"
+                                    Padding="{TemplateBinding Padding}"
+                                    SnapsToDevicePixels="True">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="6" ShadowDepth="3" Opacity="0.4" Color="Black"/>
+                                </Border.Effect>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <Border x:Name="HoverGlow" Background="#16FFFFFF"
+                                    BorderThickness="0"
+                                    CornerRadius="5" Opacity="0" IsHitTestVisible="False"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="HoverGlow" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.15">
+                                                <DoubleAnimation.EasingFunction>
+                                                    <CubicEase EasingMode="EaseOut"/>
+                                                </DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="InteractionRoot" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                             To="-1" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="HoverGlow" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.15"/>
+                                            <DoubleAnimation Storyboard.TargetName="InteractionRoot" Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
+                                                             To="0" Duration="0:0:0.12"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource BrAccentActive}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="InteractionRoot" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="{x:Type ToolTip}">
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="HasDropShadow" Value="True"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrTextPrimary}"/>
+            <Setter Property="Background" Value="{DynamicResource BrSurface2}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrBorderSoft}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,7"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToolTip}">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="14" ShadowDepth="4" Direction="270" Opacity="0.45" Color="#001225"/>
+                            </Border.Effect>
+                            <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}"
+                                              TextElement.FontSize="{TemplateBinding FontSize}"
+                                              TextElement.FontWeight="{TemplateBinding FontWeight}"/>
+                        </Border>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -2290,6 +2398,60 @@
                             Tag="M12,5 L16,9 L12,13 M16,9 H8 A5,5 0 1 0 12,17"
                             Style="{DynamicResource ToolbarIconButton}" Margin="0,0,6,0"
                             Click="RedoButton_Click" ToolTip="Restore template change (Ctrl+Y)"/>
+                    <Border Width="38"
+                            Height="38"
+                            Margin="0,0,6,0"
+                            CornerRadius="5"
+                            Background="#D6B64C"
+                            Padding="1"
+                            Visibility="{Binding Visibility, ElementName=UpdateThemeInfoButton}">
+                        <Button x:Name="UpdateThemeInfoButton" Width="36" Height="36"
+                                Style="{DynamicResource ToolbarImageButton}"
+                                Visibility="Collapsed"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                Click="UpdateThemeInfoButton_Click"
+                                ToolTip="Update themePic and the template list preview">
+                            <Rectangle Width="24" Height="24"
+                                       Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                                <Rectangle.OpacityMask>
+                                    <ImageBrush ImageSource="pack://application:,,,/Assets/Icons/update-theme-info.png" Stretch="Uniform"/>
+                                </Rectangle.OpacityMask>
+                            </Rectangle>
+                        </Button>
+                    </Border>
+                    <Border Width="38"
+                            Height="38"
+                            Margin="0,0,6,0"
+                            CornerRadius="5"
+                            Background="#D6B64C"
+                            Padding="1"
+                            Visibility="{Binding Visibility, ElementName=ThemeEnginePreviewButton}">
+                        <Button x:Name="ThemeEnginePreviewButton" Content="" Width="36" Height="36"
+                                Tag="M4,5 H20 V17 H4 Z M6,7 H18 V15 H6 Z"
+                                Style="{DynamicResource ToolbarIconButton}"
+                                Visibility="Collapsed"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                Click="ThemeEnginePreviewButton_Click"
+                                ToolTip="Render the selected theme with ThemeEngine"/>
+                    </Border>
+                    <Border Width="38"
+                            Height="38"
+                            Margin="0,0,6,0"
+                            CornerRadius="5"
+                            Background="#D6B64C"
+                            Padding="1"
+                            Visibility="{Binding Visibility, ElementName=RawThemeEnginePreviewButton}">
+                        <Button x:Name="RawThemeEnginePreviewButton" Content="" Width="36" Height="36"
+                                Tag="M5,6 H19 V16 H5 Z M7,8 H17 V14 H7 Z M9,18 H15 M11,16 V18 H13 V16"
+                                Style="{DynamicResource ToolbarIconButton}"
+                                Visibility="Collapsed"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
+                                Click="RawThemeEnginePreviewButton_Click"
+                                ToolTip="Render the selected theme as a device preview"/>
+                    </Border>
                 </StackPanel>
 
                 <!-- Vertical divider 2 -->
@@ -2304,52 +2466,87 @@
                           Visibility="Collapsed"
                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
                 <StackPanel Grid.Column="10" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0">
-                    <CheckBox x:Name="OfflineModeCheck" Content="Offline"
-                              ToolTip="Work on a local copy without sending changes to L-Connect"
-                              Checked="OfflineModeCheck_Changed" Unchecked="OfflineModeCheck_Changed"
-                              VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <Button x:Name="ApplyOrientationButton" Content="Change Orientation"
-                            Tag="M4,3 H10 V15 H4 Z M6,5 V13 M10,7 C13,7 15,9 16,12 M16,12 L14,10 M16,12 L18,10 M10,15 H18 V19 H10 Z M12,17 H16"
-                            Style="{DynamicResource ToolbarIconButton}"
+                    <Button x:Name="OfflineModeButton" Width="38"
+                            Style="{DynamicResource ToolbarImageButton}"
                             Visibility="Collapsed"
+                            Margin="0,0,6,0"
+                            Click="OfflineModeButton_Click"
+                            ToolTip="Work on a local copy without sending changes to L-Connect">
+                        <Rectangle Width="24" Height="24"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                            <Rectangle.OpacityMask>
+                                <ImageBrush ImageSource="pack://application:,,,/Assets/Icons/offline-white.png" Stretch="Uniform"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </Button>
+                    <Button x:Name="TakePreviewButton" Width="38"
+                            Style="{DynamicResource ToolbarImageButton}"
+                            Visibility="Collapsed"
+                            Margin="0,0,6,0"
+                            Click="TakePreviewButton_Click"
+                            ToolTip="Export the current clean preview as PNG">
+                        <Rectangle Width="24" Height="24"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                            <Rectangle.OpacityMask>
+                                <ImageBrush ImageSource="pack://application:,,,/Assets/Icons/screenshot-white.png" Stretch="Uniform"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </Button>
+                    <Button x:Name="ApplyOrientationButton" Width="38"
+                            Style="{DynamicResource ToolbarImageButton}"
+                            Visibility="Collapsed"
+                            Margin="0,0,6,0"
                             Click="ApplyOrientationButton_Click"
-                            ToolTip="Save as a new theme with the selected orientation"/>
+                            ToolTip="Save as a new theme with the selected orientation">
+                        <Rectangle Width="24" Height="24"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                            <Rectangle.OpacityMask>
+                                <ImageBrush ImageSource="pack://application:,,,/Assets/Icons/rotate-orientation-white.png" Stretch="Uniform"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </Button>
                 </StackPanel>
 
                 <!-- RIGHT ACTION BUTTONS -->
                 <StackPanel Grid.Column="11" Orientation="Horizontal" VerticalAlignment="Center">
                     
-                    <Button x:Name="BackupButton" Content="" Width="38" ToolTip="Create a template backup"
+                    <Button x:Name="BackupButton" Content="" Width="38" ToolTip="Create a template backup" Visibility="Collapsed"
                             Tag="M3,7 H17 V18 H3 Z M5,4 H15 L17,7 H3 Z M10,9 V15 M7,12 L10,15 L13,12"
                             Style="{DynamicResource ToolbarIconButton}" Margin="0,0,6,0"
                             Click="BackupButton_Click"/>
-                    <Button x:Name="RestoreBackupButton" Content="" Width="38" ToolTip="Restore backup"
+                    <Button x:Name="RestoreBackupButton" Content="" Width="38" ToolTip="Restore backup" Visibility="Collapsed"
                             Tag="M3,7 H17 V18 H3 Z M5,4 H15 L17,7 H3 Z M10,16 V10 M7,13 L10,10 L13,13"
                             Style="{DynamicResource ToolbarIconButton}" Margin="0,0,8,0"
                             Click="RestoreBackupButton_Click"/>
-                    <Button x:Name="ExportLConnectButton"
-                            Tag="M10,2 L10,13 M6,9 L10,13 L14,9 M3,16 L3,19 L17,19 L17,16"
-                            Style="{DynamicResource ToolbarIconButton}"
+                    <Button x:Name="ExportLConnectButton" Width="38"
+                            Style="{DynamicResource ToolbarImageButton}"
                             Margin="0,0,8,0" Background="#2020BFA8"
                             BorderBrush="#6620BFA8" BorderThickness="1" Foreground="#009E8F"
                             Click="ExportLConnectButton_Click">
+                        <Rectangle Width="24" Height="24"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                            <Rectangle.OpacityMask>
+                                <ImageBrush ImageSource="pack://application:,,,/Assets/Icons/export-theme.png" Stretch="Uniform"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
                         <Button.Effect>
                             <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270" Opacity="0.45" Color="#001225"/>
                         </Button.Effect>
-                        <Button.Content>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="ExportLConnectButtonText" Text="Export Theme" VerticalAlignment="Center" FontSize="11.5" FontWeight="SemiBold" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                            </StackPanel>
-                        </Button.Content>
                     </Button>
 
                     
                     <Button x:Name="EditorImportThemeButton"
-                            Content="Import Theme"
-                            Tag="M4,18 L4,15 C4,13 6,12 8,12 H12 C14,12 16,13 16,15 V18 M10,3 L10,13 M6,7 L10,3 L14,7"
-                            Style="{DynamicResource ToolbarIconButton}"
+                            Width="38"
+                            Style="{DynamicResource ToolbarImageButton}"
                             Margin="0,0,8,0"
-                            Click="ImportThemeButton_Click"/>
+                            Click="ImportThemeButton_Click">
+                        <Rectangle Width="24" Height="24"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}">
+                            <Rectangle.OpacityMask>
+                                <ImageBrush ImageSource="pack://application:,,,/Assets/Icons/import-theme.png" Stretch="Uniform"/>
+                            </Rectangle.OpacityMask>
+                        </Rectangle>
+                    </Button>
 
 
                     
@@ -3007,7 +3204,7 @@
                                 </Expander.Header>
                                 <Border Background="Transparent" BorderThickness="0" Padding="14" Margin="0">
                                     <StackPanel>
-                                        <TextBox x:Name="TextBox" Margin="0,0,0,8" MinHeight="30" AcceptsReturn="False" TextWrapping="NoWrap"/>
+                                        <TextBox x:Name="TextBox" Margin="0,0,0,8" MinHeight="72" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
                                         <StackPanel x:Name="D3EditTextPresetPanel" Margin="0,0,0,8" Visibility="Collapsed">
                                             <Label Content="D3 PRESET" Margin="0,0,0,6"/>
                                             <ComboBox x:Name="D3EditTextPresetCombo" SelectionChanged="D3EditTextPresetCombo_SelectionChanged"/>
@@ -3410,7 +3607,7 @@
                                 <WrapPanel>
                                     <StackPanel x:Name="AddTextPanel" Width="430" Margin="0,0,24,10">
                                         <Label x:Name="AddTextLabel" Content="TEXT" Margin="0,0,0,6"/>
-                                        <ComboBox x:Name="AddTextBox" IsEditable="True" IsTextSearchEnabled="True"/>
+                                        <TextBox x:Name="AddTextBox" MinHeight="72" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"/>
                                     </StackPanel>
                                     <StackPanel x:Name="D3AddTextPresetPanel" Width="280" Margin="0,0,24,10" Visibility="Collapsed">
                                         <Label Content="D3 PRESET" Margin="0,0,0,6"/>
