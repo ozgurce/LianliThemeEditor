@@ -1,4 +1,4 @@
-{
+﻿{
   "themes": [
     {
       "id": "purple-gold-panel-88",
@@ -1179,6 +1179,7 @@
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "portrait",
       "previewUrl": "previews/pinball-89639205.png",
       "packageUrl": "packages/pinball-89639205.zip"
     },
@@ -1274,3 +1275,4 @@
     }
   ]
 }
+
