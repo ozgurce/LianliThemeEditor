@@ -1241,6 +1241,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/smb-vert-653b6919.png",
       "packageUrl": "packages/smb-vert-653b6919.zip"
+    },
+    {
+      "id": "asus-rog-rgb-horizontal-7620afeb",
+      "name": "Asus Rog RGB Horizontal",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/asus-rog-rgb-horizontal-7620afeb.png",
+      "packageUrl": "packages/asus-rog-rgb-horizontal-7620afeb.zip"
     }
   ]
 }
