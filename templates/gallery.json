@@ -1141,6 +1141,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/multi-colour-sensorpanelv2-a718f07c.png",
       "packageUrl": "packages/multi-colour-sensorpanelv2-a718f07c.zip"
+    },
+    {
+      "id": "asus-blue-62e0be0c",
+      "name": "Asus Blue",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/asus-blue-62e0be0c.png",
+      "packageUrl": "packages/asus-blue-62e0be0c.zip"
     }
   ]
 }
