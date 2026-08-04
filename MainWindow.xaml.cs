@@ -20012,15 +20012,23 @@ public partial class MainWindow : Window
         var outputFullPath = Path.GetFullPath(outputPath);
         var sourceFullPath = Path.GetFullPath(sourcePath);
 
-        if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
-            sourceSize.Width == expected.Width &&
-            sourceSize.Height == expected.Height &&
-            HasFullRangeH264Metadata(sourcePath))
+        if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
         {
             if (!string.Equals(sourceFullPath, outputFullPath, StringComparison.OrdinalIgnoreCase))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(outputFullPath) ?? "");
                 CopyFileWithRetry(sourcePath, outputFullPath);
+            }
+
+            if (sourceSize.Width > 0 &&
+                sourceSize.Height > 0 &&
+                (sourceSize.Width != expected.Width ||
+                 sourceSize.Height != expected.Height))
+            {
+                AppLogger.Info(
+                    $"Wide runtime H264 background kept without re-encoding despite nonstandard dimensions: " +
+                    $"{DescribeFileForLog(outputPath)}; " +
+                    $"size={sourceSize.Width}x{sourceSize.Height}; nominal={expected.Width}x{expected.Height}");
             }
 
             return outputPath;
@@ -37562,12 +37570,7 @@ private static string CreateExportPackageBaseName(string templateId)
                     IsUniversalLandscape());
             }
 
-            var animationLayer = loaded.Layers
-                .Where(layer => !layer.IsEditorMetadata)
-                .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
-            var embeddedBackground = ResolveBackgroundPath(
-                FirstNonEmpty(animationLayer?.MediaPath ?? "", loaded.BackgroundPath),
-                FirstNonEmpty(animationLayer?.Media ?? "", loaded.Background));
+            var embeddedBackground = ResolveOriginalTemplateBackgroundPath(deviceModel, loaded);
             if (string.IsNullOrWhiteSpace(embeddedBackground) || !File.Exists(embeddedBackground))
             {
                 AppLogger.Warning(
@@ -37578,6 +37581,48 @@ private static string CreateExportPackageBaseName(string templateId)
 
             if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
             {
+                var orientation = FirstNonEmpty(
+                    NormalizeUniversalOrientation((UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
+                    TryInferUniversalOrientationFromBackgroundPath(embeddedBackground),
+                    InferUniversalOrientationFromTemplateMediaReferences(templatePath, deviceModel),
+                    "landscape");
+                if (IsGalleryImageExtension(Path.GetExtension(embeddedBackground)))
+                {
+                    var prepared = await PrepareExportBackgroundAsync(
+                        deviceModel,
+                        embeddedBackground,
+                        templateId,
+                        orientation);
+                    try
+                    {
+                        var installed = await InstallPreparedTemplateBackgroundAsync(
+                            deviceModel,
+                            templateId,
+                            prepared,
+                            orientation);
+                        if (!string.IsNullOrWhiteSpace(installed.RuntimePath) &&
+                            File.Exists(installed.RuntimePath))
+                        {
+                            embeddedBackground = installed.RuntimePath;
+                        }
+                    }
+                    finally
+                    {
+                        foreach (var temporaryPath in prepared.TemporaryPaths)
+                        {
+                            TryDeleteFile(temporaryPath);
+                        }
+                    }
+                }
+
+                var canvas = GetDeviceCanvasPixels(deviceModel, orientation);
+                await _supporter.SetBackgroundRefsAsync(
+                    deviceModel,
+                    templatePath,
+                    embeddedBackground,
+                    canvas.Width,
+                    canvas.Height,
+                    string.Equals(orientation, "landscape", StringComparison.OrdinalIgnoreCase));
                 await EnsureUniversal88DeviceBackgroundSiblingAsync(embeddedBackground);
             }
 
@@ -37601,6 +37646,61 @@ private static string CreateExportPackageBaseName(string templateId)
             AppLogger.Warning(
                 $"Embedded background restore after revert failed: template={templateId}; " +
                 $"{ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private string ResolveOriginalTemplateBackgroundPath(string deviceModel, TemplateLoadResult loaded)
+    {
+        var animationLayer = loaded.Layers
+            .Where(layer => !layer.IsEditorMetadata)
+            .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
+        var animationBackground = ResolveBackgroundPath(
+            FirstNonEmpty(animationLayer?.MediaPath ?? "", loaded.BackgroundPath),
+            FirstNonEmpty(animationLayer?.Media ?? "", loaded.Background));
+        if (!string.IsNullOrWhiteSpace(animationBackground) && File.Exists(animationBackground))
+        {
+            return animationBackground;
+        }
+
+        var canvas = GetDeviceCanvasPixels(deviceModel, FirstNonEmpty(
+            NormalizeUniversalOrientation((UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
+            TryInferUniversalOrientationFromBackgroundPath(loaded.BackgroundPath),
+            "landscape"));
+        var canvasAspect = canvas.Height <= 0 ? 1.0 : canvas.Width / (double)canvas.Height;
+
+        return loaded.Layers
+            .Where(layer => !layer.IsEditorMetadata)
+            .Where(layer => string.Equals(layer.Type, "GraphImage", StringComparison.OrdinalIgnoreCase))
+            .Select(layer => ResolveLayerMediaPath(layer))
+            .Where(path => !string.IsNullOrWhiteSpace(path) &&
+                           File.Exists(path) &&
+                           IsGalleryImageExtension(Path.GetExtension(path)))
+            .Select(path => new { Path = path, Size = TryGetImagePixelSizeFromPath(path) })
+            .Where(item => item.Size.Width > 0 && item.Size.Height > 0)
+            .Select(item => new
+            {
+                item.Path,
+                item.Size,
+                AspectDelta = Math.Abs(item.Size.Width / (double)item.Size.Height - canvasAspect),
+                Area = item.Size.Width * item.Size.Height
+            })
+            .Where(item => item.AspectDelta <= 0.25)
+            .OrderBy(item => item.AspectDelta)
+            .ThenByDescending(item => item.Area)
+            .Select(item => item.Path)
+            .FirstOrDefault() ?? "";
+    }
+
+    private static (int Width, int Height) TryGetImagePixelSizeFromPath(string path)
+    {
+        try
+        {
+            using var bitmap = new System.Drawing.Bitmap(path);
+            return (bitmap.Width, bitmap.Height);
+        }
+        catch
+        {
+            return (0, 0);
         }
     }
 
