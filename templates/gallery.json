@@ -1221,6 +1221,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/assassins-credd-origins-9c396d0b.png",
       "packageUrl": "packages/assassins-credd-origins-9c396d0b.zip"
+    },
+    {
+      "id": "multi-colour-sensorpanellc-bb08b459",
+      "name": "Multi colour sensorpanelLC",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/multi-colour-sensorpanellc-bb08b459.png",
+      "packageUrl": "packages/multi-colour-sensorpanellc-bb08b459.zip"
     }
   ]
 }
