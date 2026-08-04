@@ -19389,11 +19389,25 @@ public partial class MainWindow : Window
                     importedId,
                     packageBackgroundBundle,
                     packagePrefersLandscape);
+                var referencedVideoBackground = await EnsureTemplateReferencedWideBackgroundFilesAsync(
+                    deviceModel,
+                    installedTemplatePath,
+                    importedId,
+                    packageBackgroundBundle,
+                    packagePrefersLandscape);
                 if (!string.IsNullOrWhiteSpace(lConnectVideoBackground) && File.Exists(lConnectVideoBackground))
                 {
                     importedBackgroundPath = lConnectVideoBackground;
                     AppLogger.Info(
                         $"L-Connect imported timestamp background replaced for {lConnectId}: " +
+                        $"{DescribeFileForLog(importedBackgroundPath)}");
+                }
+                else if (!string.IsNullOrWhiteSpace(referencedVideoBackground) &&
+                         File.Exists(referencedVideoBackground))
+                {
+                    importedBackgroundPath = referencedVideoBackground;
+                    AppLogger.Info(
+                        $"L-Connect imported template referenced background repaired for {lConnectId}: " +
                         $"{DescribeFileForLog(importedBackgroundPath)}");
                 }
             }
@@ -20208,6 +20222,129 @@ public partial class MainWindow : Window
             TryDeleteFile(temporaryH264Path);
             TryDeleteFile(temporaryMp4Path);
         }
+    }
+
+    private async Task<string> EnsureTemplateReferencedWideBackgroundFilesAsync(
+        string deviceModel,
+        string templatePath,
+        string templateId,
+        IEnumerable<string> packageBackgroundBundle,
+        bool preferLandscape)
+    {
+        if (!IsWideScreenDeviceModel(deviceModel) ||
+            string.IsNullOrWhiteSpace(templatePath) ||
+            !File.Exists(templatePath))
+        {
+            return "";
+        }
+
+        string templateText;
+        try
+        {
+            templateText = System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(templatePath));
+        }
+        catch
+        {
+            return "";
+        }
+
+        var bundle = packageBackgroundBundle
+            .Where(path => !string.IsNullOrWhiteSpace(path) && File.Exists(path))
+            .ToList();
+        var h264Source = bundle.FirstOrDefault(path =>
+            Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase));
+        var mp4Source = bundle.FirstOrDefault(path =>
+            Path.GetExtension(path).Equals(".mp4", StringComparison.OrdinalIgnoreCase));
+        var templateDir = Path.GetDirectoryName(templatePath) ?? "";
+        var videoDir = Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "video");
+        var uploadedDir = Path.Combine(LConnectPaths.ProgramDataRoot, "uploaded", deviceModel, "template-background");
+        Directory.CreateDirectory(videoDir);
+
+        var repairedPath = "";
+        var referencedH264Paths = Regex.Matches(
+                templateText,
+                @"[A-Za-z]:[A-Za-z0-9 _.,:;\\/()\-]+?\.h264|[A-Za-z0-9 _.,:;\\/()\-]+?\.h264",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+            .Select(match => match.Value.Replace('/', '\\').Trim())
+            .Select(value => Path.IsPathRooted(value)
+                ? value
+                : Path.Combine(videoDir, Path.GetFileName(value)))
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        foreach (var h264Path in referencedH264Paths)
+        {
+            if (File.Exists(h264Path) && new FileInfo(h264Path).Length > 0)
+            {
+                repairedPath = h264Path;
+                var mp4Sibling = Path.ChangeExtension(h264Path, ".mp4");
+                if (!File.Exists(mp4Sibling) || new FileInfo(mp4Sibling).Length == 0)
+                {
+                    TryCreateUniversal88PreviewBackgroundSibling(h264Path, mp4Sibling, preferLandscape);
+                }
+
+                continue;
+            }
+
+            var siblingMp4 = Path.ChangeExtension(h264Path, ".mp4");
+            var fileName = Path.GetFileName(h264Path);
+            var uploadedH264 = Path.Combine(uploadedDir, fileName);
+            var uploadedMp4 = Path.Combine(uploadedDir, Path.GetFileNameWithoutExtension(fileName) + ".mp4");
+            var templateSiblingH264 = Path.Combine(templateDir, fileName);
+            var sourceH264 = FirstExistingPath(h264Source ?? "", uploadedH264, templateSiblingH264);
+            var sourceMp4 = FirstExistingPath(mp4Source ?? "", siblingMp4, uploadedMp4);
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(sourceH264) && File.Exists(sourceH264))
+                {
+                    await EnsureWideRuntimeH264BackgroundAsync(
+                        deviceModel,
+                        sourceH264,
+                        templateId,
+                        h264Path,
+                        preferLandscape);
+                }
+                else if (!string.IsNullOrWhiteSpace(sourceMp4) && File.Exists(sourceMp4))
+                {
+                    await EnsureWideRuntimeH264BackgroundAsync(
+                        deviceModel,
+                        sourceMp4,
+                        templateId,
+                        h264Path,
+                        preferLandscape);
+                }
+
+                if (File.Exists(h264Path) && new FileInfo(h264Path).Length > 0)
+                {
+                    repairedPath = h264Path;
+                    if (!File.Exists(siblingMp4) || new FileInfo(siblingMp4).Length == 0)
+                    {
+                        if (!string.IsNullOrWhiteSpace(sourceMp4) && File.Exists(sourceMp4))
+                        {
+                            CopyFileWithRetry(sourceMp4, siblingMp4);
+                        }
+                        else
+                        {
+                            TryCreateUniversal88PreviewBackgroundSibling(h264Path, siblingMp4, preferLandscape);
+                        }
+                    }
+
+                    AppLogger.Info(
+                        $"Template referenced H264 background repaired: template={Path.GetFileName(templatePath)}; " +
+                        $"background={DescribeFileForLog(h264Path)}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Warning(
+                    $"Template referenced H264 background repair failed: template={Path.GetFileName(templatePath)}; " +
+                    $"background={Path.GetFileName(h264Path)}; error={ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        return repairedPath;
     }
 
     private static bool IsUploadedTemplateBackground(string backgroundPath, string deviceModel)
@@ -37368,6 +37505,16 @@ private static string CreateExportPackageBaseName(string templateId)
         try
         {
             var loaded = await _supporter.LoadTemplatePathAsync(deviceModel, templatePath);
+            if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+            {
+                await EnsureTemplateReferencedWideBackgroundFilesAsync(
+                    deviceModel,
+                    templatePath,
+                    templateId,
+                    Array.Empty<string>(),
+                    IsUniversalLandscape());
+            }
+
             var animationLayer = loaded.Layers
                 .Where(layer => !layer.IsEditorMetadata)
                 .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
