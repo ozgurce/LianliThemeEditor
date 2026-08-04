@@ -18276,7 +18276,7 @@ public partial class MainWindow : Window
 
         var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
         using var writer = new StreamWriter(manifestEntry.Open(), System.Text.Encoding.UTF8);
-        writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        writer.Write(SerializeThemePackageManifest(manifest));
     }
 
     private static void ExportLConnectPackage(string packagePath, ThemeExportSnapshot snapshot)
@@ -22327,13 +22327,13 @@ public partial class MainWindow : Window
         try
         {
             string json;
-            if (!forceRefresh && _galleryManifestService.TryLoadCachedManifestJson(out var cachedJson))
-            {
-                json = cachedJson;
-            }
-            else
+            try
             {
                 json = await _galleryManifestService.LoadRemoteManifestJsonAsync();
+            }
+            catch when (!forceRefresh && _galleryManifestService.TryLoadCachedManifestJson(out var cachedJson))
+            {
+                json = cachedJson;
             }
             var officialThemes = _galleryManifestService.LoadThemesFromJson(json, GalleryRawBaseUrl, isRemote: true);
             IReadOnlyList<GalleryThemeItem> themes = officialThemes.ToList();
@@ -22839,7 +22839,8 @@ public partial class MainWindow : Window
             .Where(theme =>
                 string.IsNullOrWhiteSpace(theme.Orientation) &&
                 IsWideScreenDeviceModel(theme.DeviceModel) &&
-                !string.IsNullOrWhiteSpace(theme.PreviewUrl))
+                (!string.IsNullOrWhiteSpace(theme.PreviewUrl) ||
+                 !string.IsNullOrWhiteSpace(theme.PackageUrl)))
             .ToList();
         if (targets.Count == 0)
         {
@@ -24534,6 +24535,7 @@ public partial class MainWindow : Window
                     imported.Path,
                     imported.BackgroundPath,
                     item,
+                    imported.UniversalOrientation,
                     updatePreview: false);
                 applyAccepted = activationResult == GalleryActivationResult.Applied;
                 applyStillRunning = activationResult == GalleryActivationResult.StillRunning;
@@ -24643,6 +24645,7 @@ public partial class MainWindow : Window
         string templatePath,
         string backgroundPath,
         GalleryThemeItem item,
+        string universalOrientation,
         bool updatePreview = true)
     {
         var activationTask = ActivateInstalledThemeAsync(
@@ -24651,7 +24654,8 @@ public partial class MainWindow : Window
             templatePath,
             backgroundPath,
             updatePreview,
-            applyBackgroundOverride: true);
+            applyBackgroundOverride: true,
+            universalOrientationOverride: universalOrientation);
         var timeoutTask = Task.Delay(TimeSpan.FromSeconds(20));
         var completedTask = await Task.WhenAny(activationTask, timeoutTask);
         if (completedTask == activationTask)
@@ -24883,7 +24887,7 @@ public partial class MainWindow : Window
             archive.GetEntry("manifest.json")?.Delete();
             var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
             await using var writer = new StreamWriter(manifestEntry.Open(), System.Text.Encoding.UTF8);
-            await writer.WriteAsync(JsonSerializer.Serialize(existingManifest, new JsonSerializerOptions { WriteIndented = true }));
+            await writer.WriteAsync(SerializeThemePackageManifest(existingManifest));
             AppLogger.Info($"Gallery package background repaired: {existingManifest.BackgroundFile}");
             return packagePath;
         }
@@ -25079,7 +25083,7 @@ public partial class MainWindow : Window
         };
         var manifestEntry = destinationArchive.CreateEntry("manifest.json", CompressionLevel.Optimal);
         using var writer = new StreamWriter(manifestEntry.Open(), System.Text.Encoding.UTF8);
-        writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        writer.Write(SerializeThemePackageManifest(manifest));
     }
 
     private static bool EnsureManifestFontFiles(ZipArchive archive, ThemePackageManifest manifest)
@@ -25468,7 +25472,13 @@ public partial class MainWindow : Window
         using var stream = templateEntry.Open();
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
-        var templateText = System.Text.Encoding.UTF8.GetString(memory.ToArray());
+        var templateBytes = memory.ToArray();
+        if (ExtractLargestEmbeddedPng(templateBytes).Length > 0)
+        {
+            return false;
+        }
+
+        var templateText = System.Text.Encoding.UTF8.GetString(templateBytes);
         return templateText.Contains("GraphAnimation", StringComparison.OrdinalIgnoreCase) &&
                Regex.IsMatch(templateText, @"\.(mp4|h264|gif)", RegexOptions.IgnoreCase);
     }
@@ -30749,7 +30759,8 @@ private static string CreateExportPackageBaseName(string templateId)
         string templatePath,
         string backgroundPath,
         bool updatePreview = true,
-        bool applyBackgroundOverride = false)
+        bool applyBackgroundOverride = false,
+        string universalOrientationOverride = "")
     {
         if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
         {
@@ -30758,7 +30769,8 @@ private static string CreateExportPackageBaseName(string templateId)
                 templatePath,
                 backgroundPath,
                 updatePreview: updatePreview,
-                applyBackgroundOverride: applyBackgroundOverride);
+                applyBackgroundOverride: applyBackgroundOverride,
+                universalOrientationOverride: universalOrientationOverride);
         }
 
         if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
@@ -31107,7 +31119,8 @@ private static string CreateExportPackageBaseName(string templateId)
         string templatePath,
         string backgroundPath,
         bool updatePreview = true,
-        bool applyBackgroundOverride = false)
+        bool applyBackgroundOverride = false,
+        string universalOrientationOverride = "")
     {
         backgroundPath = EnsureUniversal88PreviewBackgroundPath(UniversalScreenDeviceModel, backgroundPath);
         var previousLogId = _universal88ApplyLogId;
@@ -31116,7 +31129,10 @@ private static string CreateExportPackageBaseName(string templateId)
         var stopwatch = Stopwatch.StartNew();
         // Read WPF state once on the UI thread. The profile work below runs on a
         // worker thread and must not touch UniversalOrientationCombo directly.
-        var preferLandscape = IsUniversalLandscape();
+        var requestedOrientation = NormalizeUniversalOrientation(universalOrientationOverride);
+        var preferLandscape = string.IsNullOrWhiteSpace(requestedOrientation)
+            ? IsUniversalLandscape()
+            : string.Equals(requestedOrientation, "landscape", StringComparison.OrdinalIgnoreCase);
         var candidates = ThemeInstallationService
             .BuildActivationCandidates(templateId, templatePath, backgroundPath)
             .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -36652,11 +36668,15 @@ private static string CreateExportPackageBaseName(string templateId)
                     manifest.BackgroundFile = backgroundEntry.FullName.Replace('\\', '/');
                 }
             }
+            else if (TemplateRequiresExternalBackground(templateEntry))
+            {
+                throw new InvalidDataException("The gallery package references background media, but the media file is missing.");
+            }
 
             archive.GetEntry("manifest.json")?.Delete();
             var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
             using var writer = new StreamWriter(manifestEntry.Open(), System.Text.Encoding.UTF8);
-            writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+            writer.Write(SerializeThemePackageManifest(manifest));
             return outputPath;
         }
         catch
@@ -36781,23 +36801,28 @@ private static string CreateExportPackageBaseName(string templateId)
 
         var generatedPreviewPath = "";
         var embeddedPreviewPackagePath = "";
+        var normalizedPackagePath = "";
         try
         {
+            normalizedPackagePath = await NormalizeThemePackageForGallerySubmissionAsync(
+                packagePath,
+                nameBox.Text.Trim(),
+                deviceModel);
             if (string.IsNullOrWhiteSpace(previewPath) || !File.Exists(previewPath))
             {
                 generatedPreviewPath = await TryExtractSubmissionPreviewAsync(
-                    packagePath,
+                    normalizedPackagePath,
                     NormalizeGalleryDeviceModel(deviceModel));
                 previewPath = generatedPreviewPath;
             }
 
             if (!string.IsNullOrWhiteSpace(previewPath) && File.Exists(previewPath))
             {
-                embeddedPreviewPackagePath = await TryCreatePackageWithEmbeddedPreviewAsync(packagePath, previewPath);
+                embeddedPreviewPackagePath = await TryCreatePackageWithEmbeddedPreviewAsync(normalizedPackagePath, previewPath);
             }
 
             var uploadPackagePath = string.IsNullOrWhiteSpace(embeddedPreviewPackagePath)
-                ? packagePath
+                ? normalizedPackagePath
                 : embeddedPreviewPackagePath;
 
             SetBusy(true, GetLanguageText("gallery.uploading", "Uploading theme..."));
@@ -36820,6 +36845,10 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             TryDeleteFile(generatedPreviewPath);
             TryDeleteFile(embeddedPreviewPackagePath);
+            if (!string.Equals(normalizedPackagePath, packagePath, StringComparison.OrdinalIgnoreCase))
+            {
+                TryDeleteFile(normalizedPackagePath);
+            }
         }
     }
 
@@ -36913,7 +36942,7 @@ private static string CreateExportPackageBaseName(string templateId)
             archive.GetEntry("manifest.json")?.Delete();
             var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
             using var writer = new StreamWriter(manifestEntry.Open(), System.Text.Encoding.UTF8);
-            writer.Write(JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+            writer.Write(SerializeThemePackageManifest(manifest));
 
             return outputPath;
         }
@@ -37082,6 +37111,24 @@ private static string CreateExportPackageBaseName(string templateId)
         stream.CopyTo(memory);
         return memory.ToArray();
     }
+
+    private static string SerializeThemePackageManifest(ThemePackageManifest manifest) =>
+        JsonSerializer.Serialize(
+            new
+            {
+                manifest.FormatVersion,
+                manifest.App,
+                manifest.DeviceModel,
+                manifest.TemplateId,
+                manifest.TemplateFile,
+                manifest.BackgroundFile,
+                manifest.PreviewFile,
+                manifest.UniversalOrientation,
+                manifest.ImageFiles,
+                manifest.FontFiles,
+                manifest.ExportedAtUtc
+            },
+            new JsonSerializerOptions { WriteIndented = true });
 
     private static string WriteSubmissionPreview(byte[] previewBytes)
     {

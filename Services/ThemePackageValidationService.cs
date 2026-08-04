@@ -192,9 +192,29 @@ public sealed class ThemePackageValidationService : IThemePackageValidationServi
         using var stream = templateEntry.Open();
         using var memory = new MemoryStream();
         stream.CopyTo(memory);
-        var text = Encoding.UTF8.GetString(memory.ToArray());
+        var templateBytes = memory.ToArray();
+        if (ContainsEmbeddedPng(templateBytes))
+        {
+            return false;
+        }
+
+        var text = Encoding.UTF8.GetString(templateBytes);
         return text.Contains("GraphAnimation", StringComparison.OrdinalIgnoreCase) &&
                Regex.IsMatch(text, @"\.(mp4|h264|gif|png|jpe?g|webp)", RegexOptions.IgnoreCase);
+    }
+
+    private static bool ContainsEmbeddedPng(byte[] data)
+    {
+        ReadOnlySpan<byte> signature = stackalloc byte[] { 137, 80, 78, 71, 13, 10, 26, 10 };
+        for (var offset = 0; offset <= data.Length - signature.Length; offset++)
+        {
+            if (data.AsSpan(offset, signature.Length).SequenceEqual(signature))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
     private static bool IsUnsafePath(string path)
     {
