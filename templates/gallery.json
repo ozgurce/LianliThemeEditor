@@ -1251,6 +1251,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/asus-rog-rgb-horizontal-7620afeb.png",
       "packageUrl": "packages/asus-rog-rgb-horizontal-7620afeb.zip"
+    },
+    {
+      "id": "asus-rog-orange-horizontal-3a8bcc8c",
+      "name": "Asus Rog Orange Horizontal",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/asus-rog-orange-horizontal-3a8bcc8c.png",
+      "packageUrl": "packages/asus-rog-orange-horizontal-3a8bcc8c.zip"
     }
   ]
 }
