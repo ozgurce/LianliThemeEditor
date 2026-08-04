@@ -1193,14 +1193,14 @@
       "packageUrl": "packages/walkie-talkie-b02d0230.zip"
     },
     {
-      "id": "analogue-data-console-2-41258832",
-      "name": "Analogue data console 2",
+      "id": "analogue-data-console-02820332",
+      "name": "Analogue data console",
       "author": "Galrim",
       "description": "",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
-      "previewUrl": "previews/analogue-data-console-2-41258832.png",
-      "packageUrl": "packages/analogue-data-console-2-41258832.zip"
+      "previewUrl": "previews/analogue-data-console-02820332.png",
+      "packageUrl": "packages/analogue-data-console-02820332.zip"
     }
   ]
 }
