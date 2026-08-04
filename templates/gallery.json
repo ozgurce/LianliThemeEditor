@@ -1121,6 +1121,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/cyberpunk-cyan-red-v-d116e7b9.png",
       "packageUrl": "packages/cyberpunk-cyan-red-v-d116e7b9.zip"
+    },
+    {
+      "id": "assassins-credd-origins-20260729-000954-portrait-192117-db62e36b",
+      "name": "Assassins_Credd_Origins_20260729_000954-portrait_192117",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/assassins-credd-origins-20260729-000954-portrait-192117-db62e36b.png",
+      "packageUrl": "packages/assassins-credd-origins-20260729-000954-portrait-192117-db62e36b.zip"
     }
   ]
 }
