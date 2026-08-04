@@ -10227,11 +10227,13 @@ public partial class MainWindow : Window
     {
         var movable = dragged
             .Where(layer =>
+                Layers.Contains(layer) &&
                 !layer.IsEditorMetadata &&
                 !string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase) &&
                 int.TryParse(layer.Index, out _))
             .ToList();
-        if (movable.Count == 0 || !int.TryParse(targetLayer.Index, out var targetIndex)) return;
+        var targetCollectionIndex = Layers.IndexOf(targetLayer);
+        if (movable.Count == 0 || targetCollectionIndex < 0 || !int.TryParse(targetLayer.Index, out var targetIndex)) return;
 
         if (movable.Count > 1)
         {
@@ -10241,27 +10243,34 @@ public partial class MainWindow : Window
         }
 
         var source = movable[0];
-        if (!int.TryParse(source.Index, out var sourceIndex) || sourceIndex == targetIndex) return;
+        var sourceCollectionIndex = Layers.IndexOf(source);
+        if (sourceCollectionIndex < 0 || !int.TryParse(source.Index, out var sourceIndex) || sourceIndex == targetIndex) return;
         if (!CanMoveLayerAcrossRange(sourceIndex, targetIndex))
         {
             MessageBox.Show(this, GetLanguageText("messages.backgroundCannotMove", "Background animation layer cannot be reordered."), GetLanguageText("messages.moveFailed", "Move failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var insertionIndex = targetIndex + (dropAfter ? 1 : 0);
-        var finalIndex = insertionIndex;
-        if (sourceIndex < insertionIndex)
+        var insertionCollectionIndex = targetCollectionIndex + (dropAfter ? 1 : 0);
+        var finalCollectionIndex = insertionCollectionIndex;
+        if (sourceCollectionIndex < insertionCollectionIndex)
         {
-            finalIndex--;
+            finalCollectionIndex--;
         }
-        finalIndex = Math.Clamp(finalIndex, 0, Layers.Count - 1);
-        if (sourceIndex == finalIndex) return;
+        finalCollectionIndex = Math.Clamp(finalCollectionIndex, 0, Layers.Count - 1);
+        if (sourceCollectionIndex == finalCollectionIndex) return;
+
+        var targetLayerAtFinalPosition = Layers[finalCollectionIndex];
+        if (!int.TryParse(targetLayerAtFinalPosition.Index, out var finalIndex))
+        {
+            return;
+        }
 
         PushUndoState(GetLanguageText("history.reorderLayers", "Reorder layers"));
         _pendingLayerMoves.Add(new PendingLayerMove(sourceIndex, finalIndex, CreateLayerDeleteSignature(source)));
-        Layers.Move(sourceIndex, finalIndex);
+        Layers.Move(sourceCollectionIndex, finalCollectionIndex);
         RefreshLayerIndexes();
-        SaveEditorSettingsForLocalReorder(sourceIndex, finalIndex);
+        SaveEditorSettingsForLocalReorder(sourceCollectionIndex, finalCollectionIndex);
 
         var targetGroup = FindGroupForLayer(targetLayer);
         if (!string.Equals(source.GroupId, targetLayer.GroupId, StringComparison.Ordinal))
@@ -10327,9 +10336,12 @@ public partial class MainWindow : Window
             var sourceIndex = ResolvePendingLayerMoveSourceIndex(move, currentLayers);
             if (sourceIndex < 0)
             {
-                throw new InvalidOperationException(GetLanguageText(
-                    "messages.layerMoveVerificationFailed",
-                    "Layer move verification failed because the layer list changed. Reload the active theme and try moving again."));
+                AppLogger.Warning(
+                    "Skipping pending layer move because the layer list changed. " +
+                    $"source={move.SourceIndex}; target={move.TargetIndex}; currentCount={currentLayers.Count}");
+                _pendingLayerMoves.Clear();
+                _currentTemplateWriteStampUtc = GetTemplateWriteStampUtc(templatePath);
+                return;
             }
 
             var targetIndex = Math.Clamp(move.TargetIndex, 0, Math.Max(0, currentLayers.Count - 1));
@@ -19290,7 +19302,10 @@ public partial class MainWindow : Window
             }
         }
 
-        importedBackgroundPath = EnsureUniversal88PreviewBackgroundPath(deviceModel, importedBackgroundPath);
+        importedBackgroundPath = EnsureUniversal88PreviewBackgroundPath(
+            deviceModel,
+            importedBackgroundPath,
+            manifest.UniversalOrientation);
         AppLogger.Info(
             $"Experimental gallery background flow: template layer normalization skipped; " +
             $"runtime background={DescribeFileForLog(importedBackgroundPath)}.");
@@ -19821,7 +19836,8 @@ public partial class MainWindow : Window
 
         if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
             sourceSize.Width == expected.Width &&
-            sourceSize.Height == expected.Height)
+            sourceSize.Height == expected.Height &&
+            HasFullRangeH264Metadata(sourcePath))
         {
             if (!string.Equals(sourceFullPath, outputFullPath, StringComparison.OrdinalIgnoreCase))
             {
@@ -22924,6 +22940,69 @@ public partial class MainWindow : Window
         }
     }
 
+    private static bool HasFullRangeH264Metadata(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) ||
+                !Path.GetExtension(path).Equals(".h264", StringComparison.OrdinalIgnoreCase) ||
+                !File.Exists(path))
+            {
+                return false;
+            }
+
+            var ffprobePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                "Lian-Li",
+                "L-Connect 3",
+                "x64",
+                "ffprobe.exe");
+            if (!File.Exists(ffprobePath))
+            {
+                return false;
+            }
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = ffprobePath,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardError = true,
+                RedirectStandardOutput = true
+            };
+            startInfo.ArgumentList.Add("-v");
+            startInfo.ArgumentList.Add("error");
+            startInfo.ArgumentList.Add("-f");
+            startInfo.ArgumentList.Add("h264");
+            startInfo.ArgumentList.Add("-i");
+            startInfo.ArgumentList.Add(path);
+            startInfo.ArgumentList.Add("-select_streams");
+            startInfo.ArgumentList.Add("v:0");
+            startInfo.ArgumentList.Add("-show_entries");
+            startInfo.ArgumentList.Add("stream=color_range");
+            startInfo.ArgumentList.Add("-of");
+            startInfo.ArgumentList.Add("default=noprint_wrappers=1:nokey=1");
+
+            using var process = new Process { StartInfo = startInfo };
+            process.Start();
+            var stdout = process.StandardOutput.ReadToEnd();
+            _ = process.StandardError.ReadToEnd();
+            if (!process.WaitForExit(3000))
+            {
+                try { process.Kill(); } catch { }
+                return false;
+            }
+
+            return stdout
+                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                .Any(value => value.Trim().Equals("pc", StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static string TryInferUniversalOrientationFromTemplateBytes(byte[] templateBytes)
     {
         if (templateBytes.Length == 0)
@@ -24060,6 +24139,13 @@ public partial class MainWindow : Window
             targetTemplateId = SanitizeFileName(GetGalleryPackageFileBaseName(item.PackageUrl));
         }
 
+        var installDeviceModel = item.DeviceModel;
+        var installDeviceTag = PromptLocalThemeDeviceInstanceTag(installDeviceModel);
+        if (string.IsNullOrWhiteSpace(installDeviceTag))
+        {
+            return false;
+        }
+
         item.IsBusy = true;
         item.Progress = 0;
         item.Status = GetLanguageText("gallery.downloading", "Downloading");
@@ -24092,8 +24178,6 @@ public partial class MainWindow : Window
             item.Status = GetLanguageText("gallery.installing", "Installing");
             item.Progress = 92;
             SetBusy(true, FormatLanguageText("gallery.statusInstallingTheme", "Installing theme: {0}", item.Name));
-            var installDeviceModel = item.DeviceModel;
-            var installDeviceTag = GetPreferredDeviceTagForModel(installDeviceModel);
             await SelectDeviceModelForLocalThemeAsync(installDeviceModel, installDeviceTag);
 
             var imported = await ImportThemePackageAsync(
@@ -24103,7 +24187,14 @@ public partial class MainWindow : Window
                 overwriteExisting: true,
                 installThroughLConnect: true);
             installDeviceModel = FirstNonEmpty(imported.DeviceModel, item.DeviceModel, installDeviceModel);
-            installDeviceTag = GetPreferredDeviceTagForModel(installDeviceModel);
+            if (!string.Equals(GetDeviceModelFromSelectionTag(installDeviceTag), installDeviceModel, StringComparison.OrdinalIgnoreCase))
+            {
+                installDeviceTag = PromptLocalThemeDeviceInstanceTag(installDeviceModel);
+                if (string.IsNullOrWhiteSpace(installDeviceTag))
+                {
+                    return false;
+                }
+            }
             await SelectDeviceModelForLocalThemeAsync(installDeviceModel, installDeviceTag);
             await RefreshTemplateListAsync(selectFirstWhenMissing: true);
             SelectTemplateCombo(imported.Path);
@@ -24176,6 +24267,11 @@ public partial class MainWindow : Window
             if (imported.InstalledPackagedFonts)
             {
                 ShowGalleryPackagedFontRestartDialog();
+            }
+            if (RememberApplyTargetCheck?.IsChecked == true)
+            {
+                _lastLocalApplyTargets[installDeviceModel] = installDeviceTag;
+                SaveEditorSettings();
             }
             return true;
         }
@@ -32095,7 +32191,10 @@ private static string CreateExportPackageBaseName(string templateId)
             templateId);
     }
 
-    private static bool TryCreateUniversal88PreviewBackgroundSibling(string h264Path, string mp4Path)
+    private static bool TryCreateUniversal88PreviewBackgroundSibling(
+        string h264Path,
+        string mp4Path,
+        bool preferLandscape = true)
     {
         if (string.IsNullOrWhiteSpace(h264Path) ||
             string.IsNullOrWhiteSpace(mp4Path) ||
@@ -32131,7 +32230,9 @@ private static string CreateExportPackageBaseName(string templateId)
             foreach (var arg in new[]
                      {
                          "-y", "-f", "h264", "-i", h264Path,
-                         "-vf", "transpose=cclock,scale=1920:480:out_range=pc,setsar=1,fps=30,format=yuv420p",
+                         "-vf", preferLandscape
+                             ? "transpose=cclock,scale=1920:480:out_range=pc,setsar=1,fps=30,format=yuv420p"
+                             : "scale=480:1920:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc,crop=480:1920,setsar=1,fps=30,format=yuv420p",
                          "-an", "-c:v", "libx264", "-preset", "ultrafast",
                          "-x264opts", "bframes=0", "-color_range", "pc",
                          "-x264-params", "fullrange=on", "-pix_fmt", "yuv420p",
@@ -32169,7 +32270,10 @@ private static string CreateExportPackageBaseName(string templateId)
         }
     }
 
-    private static string EnsureUniversal88PreviewBackgroundPath(string deviceModel, string backgroundPath)
+    private static string EnsureUniversal88PreviewBackgroundPath(
+        string deviceModel,
+        string backgroundPath,
+        string orientation = "")
     {
         if (!string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase) ||
             string.IsNullOrWhiteSpace(backgroundPath))
@@ -32177,18 +32281,33 @@ private static string CreateExportPackageBaseName(string templateId)
             return backgroundPath;
         }
 
+        var preferLandscape = !string.Equals(
+            NormalizeUniversalOrientation(orientation),
+            "portrait",
+            StringComparison.OrdinalIgnoreCase);
+        var expectedPreviewSize = preferLandscape ? (Width: 1920, Height: 480) : (Width: 480, Height: 1920);
         var extension = Path.GetExtension(backgroundPath);
         if (extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase))
         {
             if (File.Exists(backgroundPath))
             {
-                return backgroundPath;
+                var size = TryGetVideoPixelSize(backgroundPath);
+                if (string.IsNullOrWhiteSpace(orientation) ||
+                    (size.Width == expectedPreviewSize.Width && size.Height == expectedPreviewSize.Height))
+                {
+                    return backgroundPath;
+                }
             }
 
             var h264Sibling = Path.ChangeExtension(backgroundPath, ".h264");
             if (File.Exists(h264Sibling) &&
-                TryCreateUniversal88PreviewBackgroundSibling(h264Sibling, backgroundPath) &&
+                TryCreateUniversal88PreviewBackgroundSibling(h264Sibling, backgroundPath, preferLandscape) &&
                 File.Exists(backgroundPath))
+            {
+                return backgroundPath;
+            }
+
+            if (File.Exists(backgroundPath))
             {
                 return backgroundPath;
             }
@@ -32197,9 +32316,17 @@ private static string CreateExportPackageBaseName(string templateId)
         if (extension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
         {
             var mp4Sibling = Path.ChangeExtension(backgroundPath, ".mp4");
-            if (!File.Exists(mp4Sibling))
+            var shouldCreateSibling = !File.Exists(mp4Sibling);
+            if (!shouldCreateSibling && !string.IsNullOrWhiteSpace(orientation))
             {
-                TryCreateUniversal88PreviewBackgroundSibling(backgroundPath, mp4Sibling);
+                var size = TryGetVideoPixelSize(mp4Sibling);
+                shouldCreateSibling = size.Width != expectedPreviewSize.Width ||
+                                      size.Height != expectedPreviewSize.Height;
+            }
+
+            if (shouldCreateSibling)
+            {
+                TryCreateUniversal88PreviewBackgroundSibling(backgroundPath, mp4Sibling, preferLandscape);
             }
 
             if (File.Exists(mp4Sibling))
