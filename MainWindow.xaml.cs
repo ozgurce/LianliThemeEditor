@@ -19173,7 +19173,8 @@ public partial class MainWindow : Window
                     await PatchInstalledTemplateRuntimeBackgroundAsync(
                         deviceModel,
                         destinationTemplate,
-                        templateRuntimeBackgroundPath);
+                        templateRuntimeBackgroundPath,
+                        packagePrefersLandscape ? "landscape" : "portrait");
                 }
 
                 AppLogger.Info(
@@ -19451,7 +19452,8 @@ public partial class MainWindow : Window
                 await PatchInstalledTemplateRuntimeBackgroundAsync(
                     deviceModel,
                     installedTemplatePath,
-                    importedBackgroundPath);
+                    importedBackgroundPath,
+                    manifest.UniversalOrientation);
             }
         }
 
@@ -19564,7 +19566,8 @@ public partial class MainWindow : Window
         await PatchInstalledTemplateRuntimeBackgroundAsync(
             UniversalScreenDeviceModel,
             templatePath,
-            runtimeH264Path);
+            runtimeH264Path,
+            preferLandscape ? "landscape" : "portrait");
         if (File.Exists(previewMp4Path))
         {
             var previewFramePath = await CreateDeterministicBackgroundPreviewAsync(previewMp4Path);
@@ -19608,7 +19611,8 @@ public partial class MainWindow : Window
     private async Task PatchInstalledTemplateRuntimeBackgroundAsync(
         string deviceModel,
         string templatePath,
-        string runtimeBackgroundPath)
+        string runtimeBackgroundPath,
+        string universalOrientation = "")
     {
         if (string.IsNullOrWhiteSpace(deviceModel) ||
             string.IsNullOrWhiteSpace(templatePath) ||
@@ -19636,6 +19640,18 @@ public partial class MainWindow : Window
             animationLayer.ZoomRate = "";
             animationLayer.Rotate = "";
             await _supporter.ApplyLayersAsync(deviceModel, templatePath, new[] { animationLayer });
+            var orientation = NormalizeUniversalOrientation(universalOrientation);
+            if (IsWideScreenDeviceModel(deviceModel) && !string.IsNullOrWhiteSpace(orientation))
+            {
+                var canvas = GetDeviceCanvasPixels(deviceModel, orientation);
+                await _supporter.SetBackgroundRefsAsync(
+                    deviceModel,
+                    templatePath,
+                    runtimeBackgroundPath,
+                    canvas.Width,
+                    canvas.Height,
+                    string.Equals(orientation, "landscape", StringComparison.OrdinalIgnoreCase));
+            }
             AppLogger.Info(
                 $"Runtime background patched into GraphAnimation layer: " +
                 $"{DescribeFileForLog(runtimeBackgroundPath)} -> {templatePath}");
@@ -20215,7 +20231,11 @@ public partial class MainWindow : Window
                     $"size={h264Size.Width}x{h264Size.Height}; expected={expectedH264.Width}x{expectedH264.Height}");
             }
 
-            await PatchInstalledTemplateRuntimeBackgroundAsync(deviceModel, installedTemplatePath, runtimeBackgroundPath);
+            await PatchInstalledTemplateRuntimeBackgroundAsync(
+                deviceModel,
+                installedTemplatePath,
+                runtimeBackgroundPath,
+                preferLandscape ? "landscape" : "portrait");
             return runtimeBackgroundPath;
         }
         catch (Exception ex)
