@@ -1261,6 +1261,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/asus-rog-orange-horizontal-3a8bcc8c.png",
       "packageUrl": "packages/asus-rog-orange-horizontal-3a8bcc8c.zip"
+    },
+    {
+      "id": "cyberpunk-cyan-red-v-5c5faed0",
+      "name": "Cyberpunk Cyan Red V",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyberpunk-cyan-red-v-5c5faed0.png",
+      "packageUrl": "packages/cyberpunk-cyan-red-v-5c5faed0.zip"
     }
   ]
 }
