@@ -4926,24 +4926,43 @@ public partial class MainWindow : Window
             LoadBackgroundPreview(mediaPath, Path.GetFileName(mediaPath));
             RequestPreviewDraw();
 
-            await RevertTemplateBackgroundAsync();
+            await RevertTemplateBackgroundAsync(restoreEmbeddedTemplateBackground: false);
             await Task.Delay(900);
 
             var backgroundOperationStartedUtc = DateTime.UtcNow;
             var stagedMediaPath = CreateShortBackgroundStagingPath(mediaPath);
             string generatedBackgroundPath;
+            string previewBackgroundPath = "";
+            PreparedExportBackground? preparedBackground = null;
             try
             {
                 var convertStopwatch = Stopwatch.StartNew();
                 using var backgroundCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
-                var canvas = GetTemplateCanvasPixels();
-                generatedBackgroundPath = await Task.Run(() => _supporter.SetBackgroundMediaAsync(
+                var orientation = GetUniversalOrientationForExport(deviceModel, stagedMediaPath);
+                preparedBackground = await PrepareExportBackgroundAsync(
+                    deviceModel,
+                    stagedMediaPath,
+                    templateIdBeforeBackgroundChange,
+                    orientation);
+                var installedBackground = await InstallPreparedTemplateBackgroundAsync(
+                    deviceModel,
+                    templateIdBeforeBackgroundChange,
+                    preparedBackground,
+                    orientation);
+                generatedBackgroundPath = installedBackground.RuntimePath;
+                previewBackgroundPath = installedBackground.PreviewPath;
+                var canvas = GetDeviceCanvasPixels(deviceModel, orientation);
+                await _supporter.SetBackgroundRefsAsync(
                     deviceModel,
                     templatePath,
-                    stagedMediaPath,
+                    generatedBackgroundPath,
                     canvas.Width,
                     canvas.Height,
-                    backgroundCts.Token));
+                    string.Equals(NormalizeUniversalOrientation(orientation), "landscape", StringComparison.OrdinalIgnoreCase),
+                    backgroundCts.Token);
+                await Task.Run(() => TryClearTemplateBackgroundProfile(
+                    templateIdBeforeBackgroundChange,
+                    deviceModel));
                 convertStopwatch.Stop();
                 AppLogger.Info(
                     $"Background media prepared in {convertStopwatch.ElapsedMilliseconds}ms; " +
@@ -4952,6 +4971,13 @@ public partial class MainWindow : Window
             finally
             {
                 TryDeleteFile(stagedMediaPath);
+                if (preparedBackground != null)
+                {
+                    foreach (var temporaryPath in preparedBackground.TemporaryPaths)
+                    {
+                        TryDeleteFile(temporaryPath);
+                    }
+                }
             }
 
             _backgroundDirty = true;
@@ -4973,10 +4999,10 @@ public partial class MainWindow : Window
                 generatedBackgroundPath,
                 TimeSpan.FromSeconds(15));
 
-            // Update the embedded/card preview before asking L-Connect to activate the
-            // background. UpdateThemePreview serializes the template, so doing it after
-            // ChangeTemplateBackground can invalidate the state L-Connect just loaded.
-            var previewFramePath = await CreateDeterministicBackgroundPreviewAsync(backgroundForLConnect);
+            // Update the embedded/card preview after the template references point at
+            // the prepared runtime media, so the card matches the file-backed background.
+            var previewFramePath = await CreateDeterministicBackgroundPreviewAsync(
+                FirstNonEmpty(previewBackgroundPath, backgroundForLConnect));
             if (!string.IsNullOrWhiteSpace(previewFramePath) && File.Exists(previewFramePath))
             {
                 var previewSource = previewFramePath;
@@ -5008,13 +5034,14 @@ public partial class MainWindow : Window
                         templatePath,
                         backgroundForLConnect,
                         updatePreview: false,
-                        applyBackgroundOverride: true)
-                    : await TriggerLConnectBackgroundChangeAsync(
-                        backgroundForLConnect,
-                        templateIdBeforeBackgroundChange));
+                        applyBackgroundOverride: false)
+                    : await ActivateInstalledThemeSelectionOnlyAsync(
+                        templateIdBeforeBackgroundChange,
+                        deviceModel,
+                        templatePath));
             if (!accepted && !IsOfflineMode)
             {
-                accepted = await TriggerLConnectRefreshAsync();
+                accepted = await TriggerLConnectRefreshAsync(allowBackgroundChange: false);
             }
 
             if (accepted)
@@ -5143,6 +5170,83 @@ public partial class MainWindow : Window
             .FirstOrDefault() ?? "";
     }
 
+    private async Task<(string RuntimePath, string PreviewPath)> InstallPreparedTemplateBackgroundAsync(
+        string deviceModel,
+        string templateId,
+        PreparedExportBackground prepared,
+        string orientation)
+    {
+        if (prepared == null ||
+            string.IsNullOrWhiteSpace(prepared.RuntimePath) ||
+            !File.Exists(prepared.RuntimePath))
+        {
+            return ("", "");
+        }
+
+        var safeTemplateId = SanitizeFileName(templateId);
+        if (string.IsNullOrWhiteSpace(safeTemplateId))
+        {
+            safeTemplateId = "theme-background";
+        }
+
+        var baseName = $"{safeTemplateId}-background-{DateTime.Now:yyyyMMddHHmmss}-{Guid.NewGuid().ToString("N")[..8]}";
+        var runtimeExtension = Path.GetExtension(prepared.RuntimePath);
+        if (string.IsNullOrWhiteSpace(runtimeExtension))
+        {
+            runtimeExtension = GetExportBackgroundExtension(deviceModel);
+        }
+
+        var videoRoot = Path.Combine(LConnectPaths.ProgramDataRoot, deviceModel, "video");
+        var uploadRoot = Path.Combine(
+            LConnectPaths.ProgramDataRoot,
+            "uploaded",
+            deviceModel,
+            "template-background");
+        Directory.CreateDirectory(videoRoot);
+        Directory.CreateDirectory(uploadRoot);
+
+        var videoRuntimePath = Path.Combine(videoRoot, baseName + runtimeExtension);
+        var uploadRuntimePath = Path.Combine(uploadRoot, baseName + runtimeExtension);
+        CopyFileIfDifferent(prepared.RuntimePath, videoRuntimePath);
+        CopyFileIfDifferent(prepared.RuntimePath, uploadRuntimePath);
+        CopyFileIfDifferent(prepared.RuntimePath, Path.Combine(uploadRoot, safeTemplateId + runtimeExtension));
+
+        var previewPath = "";
+        if (!string.IsNullOrWhiteSpace(prepared.PreviewPath) && File.Exists(prepared.PreviewPath))
+        {
+            var previewExtension = Path.GetExtension(prepared.PreviewPath);
+            if (string.IsNullOrWhiteSpace(previewExtension))
+            {
+                previewExtension = ".mp4";
+            }
+
+            var videoPreviewPath = Path.Combine(videoRoot, baseName + previewExtension);
+            CopyFileIfDifferent(prepared.PreviewPath, videoPreviewPath);
+            CopyFileIfDifferent(prepared.PreviewPath, Path.Combine(uploadRoot, baseName + previewExtension));
+            CopyFileIfDifferent(prepared.PreviewPath, Path.Combine(uploadRoot, safeTemplateId + previewExtension));
+            previewPath = videoPreviewPath;
+        }
+
+        if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            await EnsureUniversal88DeviceBackgroundSiblingAsync(videoRuntimePath);
+            if (string.IsNullOrWhiteSpace(previewPath))
+            {
+                var mp4Sibling = Path.ChangeExtension(videoRuntimePath, ".mp4");
+                if (File.Exists(mp4Sibling))
+                {
+                    previewPath = mp4Sibling;
+                }
+            }
+        }
+
+        AppLogger.Info(
+            $"Template background installed without profile override: " +
+            $"template={templateId}; orientation={orientation}; runtime={DescribeFileForLog(videoRuntimePath)}; " +
+            $"preview={DescribeFileForLog(previewPath)}; uploaded={DescribeFileForLog(uploadRuntimePath)}");
+        return (videoRuntimePath, previewPath);
+    }
+
     private static async Task<string> WaitForUploadedBackgroundReadyAsync(
         string generatedPath,
         TimeSpan timeout)
@@ -5158,12 +5262,14 @@ public partial class MainWindow : Window
         var deadline = DateTime.UtcNow + timeout;
         long previousMp4Size = -1;
         long previousH264Size = -1;
+        long previousGeneratedSize = -1;
         var stableSamples = 0;
 
         while (DateTime.UtcNow < deadline)
         {
             var mp4Size = File.Exists(mp4Path) ? new FileInfo(mp4Path).Length : 0;
             var h264Size = File.Exists(h264Path) ? new FileInfo(h264Path).Length : 0;
+            var generatedSize = File.Exists(generatedPath) ? new FileInfo(generatedPath).Length : 0;
 
             if (mp4Size > 0 &&
                 h264Size > 0 &&
@@ -5173,7 +5279,16 @@ public partial class MainWindow : Window
                 stableSamples++;
                 if (stableSamples >= 3)
                 {
-                    return mp4Path;
+                    return File.Exists(generatedPath) ? generatedPath : mp4Path;
+                }
+            }
+            else if (generatedSize > 0 &&
+                     generatedSize == previousGeneratedSize)
+            {
+                stableSamples++;
+                if (stableSamples >= 3)
+                {
+                    return generatedPath;
                 }
             }
             else
@@ -5183,6 +5298,7 @@ public partial class MainWindow : Window
 
             previousMp4Size = mp4Size;
             previousH264Size = h264Size;
+            previousGeneratedSize = generatedSize;
             await Task.Delay(150);
         }
 
@@ -18988,13 +19104,36 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    var canvas = GetDeviceCanvasPixels(deviceModel, manifest.UniversalOrientation);
-                    importedBackgroundPath = await _supporter.SetBackgroundMediaAsync(
+                    var preparedImportBackground = await PrepareExportBackgroundAsync(
                         deviceModel,
-                        destinationTemplate,
                         backgroundTemp,
-                        canvas.Width,
-                        canvas.Height);
+                        importedId,
+                        manifest.UniversalOrientation);
+                    try
+                    {
+                        var installedImportBackground = await InstallPreparedTemplateBackgroundAsync(
+                            deviceModel,
+                            importedId,
+                            preparedImportBackground,
+                            manifest.UniversalOrientation);
+                        importedBackgroundPath = installedImportBackground.RuntimePath;
+                        var canvas = GetDeviceCanvasPixels(deviceModel, manifest.UniversalOrientation);
+                        await _supporter.SetBackgroundRefsAsync(
+                            deviceModel,
+                            destinationTemplate,
+                            importedBackgroundPath,
+                            canvas.Width,
+                            canvas.Height,
+                            string.Equals(NormalizeUniversalOrientation(manifest.UniversalOrientation), "landscape", StringComparison.OrdinalIgnoreCase));
+                    }
+                    finally
+                    {
+                        foreach (var temporaryPath in preparedImportBackground.TemporaryPaths)
+                        {
+                            TryDeleteFile(temporaryPath);
+                        }
+                    }
+
                     if (string.IsNullOrWhiteSpace(importedBackgroundPath) || !File.Exists(importedBackgroundPath))
                     {
                         throw new InvalidDataException("L-Connect did not create the imported theme background media.");
@@ -19530,13 +19669,38 @@ public partial class MainWindow : Window
                 return backgroundPath;
             }
 
-            var canvas = GetDeviceCanvasPixels(deviceModel, universalOrientation);
-            var syncedBackgroundPath = await _supporter.SetBackgroundMediaAsync(
+            var templateId = Path.GetFileNameWithoutExtension(templatePath);
+            var preparedBackground = await PrepareExportBackgroundAsync(
                 deviceModel,
-                templatePath,
                 backgroundPath,
-                canvas.Width,
-                canvas.Height);
+                templateId,
+                universalOrientation);
+            string syncedBackgroundPath;
+            try
+            {
+                var installedBackground = await InstallPreparedTemplateBackgroundAsync(
+                    deviceModel,
+                    templateId,
+                    preparedBackground,
+                    universalOrientation);
+                syncedBackgroundPath = installedBackground.RuntimePath;
+                var canvas = GetDeviceCanvasPixels(deviceModel, universalOrientation);
+                await _supporter.SetBackgroundRefsAsync(
+                    deviceModel,
+                    templatePath,
+                    syncedBackgroundPath,
+                    canvas.Width,
+                    canvas.Height,
+                    string.Equals(NormalizeUniversalOrientation(universalOrientation), "landscape", StringComparison.OrdinalIgnoreCase));
+            }
+            finally
+            {
+                foreach (var temporaryPath in preparedBackground.TemporaryPaths)
+                {
+                    TryDeleteFile(temporaryPath);
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(syncedBackgroundPath) && File.Exists(syncedBackgroundPath))
             {
                 AppLogger.Info(
@@ -32977,6 +33141,71 @@ private static string CreateExportPackageBaseName(string templateId)
         return false;
     }
 
+    private static bool TryClearTemplateBackgroundProfile(string templateId, string deviceModel)
+    {
+        if (string.IsNullOrWhiteSpace(templateId) ||
+            string.IsNullOrWhiteSpace(deviceModel))
+        {
+            return false;
+        }
+
+        if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+        {
+            return TryClearUniversal88TemplateBackgroundProfile(templateId);
+        }
+
+        var profileDir = Path.Combine(LConnectPaths.ProgramDataRoot, "profile");
+        if (!Directory.Exists(profileDir))
+        {
+            return false;
+        }
+
+        var patchedAny = false;
+        foreach (var file in Directory.GetFiles(profileDir)
+                     .Where(file => !Path.GetFileName(file).Contains(".theme-editor-backup", StringComparison.OrdinalIgnoreCase))
+                     .OrderByDescending(File.GetLastWriteTimeUtc))
+        {
+            try
+            {
+                var (json, gzip) = ReadLConnectProfileJson(file);
+                if (json is not JsonObject root ||
+                    !root.ContainsKey("SelectedTemplateId") ||
+                    !TemplateExistsForDevice(deviceModel, root["SelectedTemplateId"]?.GetValue<string>()))
+                {
+                    continue;
+                }
+
+                var changed = false;
+                if (root["TemplateCustomBackgrounds"] is JsonObject backgrounds &&
+                    backgrounds.Remove(templateId))
+                {
+                    changed = true;
+                }
+
+                if (root["SelectedTemplateId"] is JsonValue selected &&
+                    string.Equals(selected.GetValue<string>(), templateId, StringComparison.OrdinalIgnoreCase) &&
+                    root["CustomTheme"] is JsonObject customTheme)
+                {
+                    changed |= ClearCustomThemeBackgroundPath(customTheme);
+                }
+
+                if (!changed)
+                {
+                    continue;
+                }
+
+                BackupLConnectProfile(file);
+                WriteLConnectProfileJson(file, root, gzip);
+                patchedAny = true;
+            }
+            catch
+            {
+            }
+        }
+
+        return patchedAny;
+    }
+
     private static bool TemplateExistsForDevice(string deviceModel, string? templateId)
     {
         if (string.IsNullOrWhiteSpace(deviceModel) || string.IsNullOrWhiteSpace(templateId))
@@ -33579,7 +33808,10 @@ private static string CreateExportPackageBaseName(string templateId)
         }
     }
 
-    private async Task<bool> TriggerLConnectRefreshAsync(bool skipUniversalPreviewUpdate = false, bool fastApply = false)
+    private async Task<bool> TriggerLConnectRefreshAsync(
+        bool skipUniversalPreviewUpdate = false,
+        bool fastApply = false,
+        bool allowBackgroundChange = true)
     {
         var accepted = false;
         var selectedDeviceModel = GetSelectedDeviceModel();
@@ -33600,7 +33832,10 @@ private static string CreateExportPackageBaseName(string templateId)
         var deferBackgroundToVm92FastApply =
             fastApply &&
             string.Equals(selectedDeviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase);
-        if (_backgroundDirty && !string.IsNullOrWhiteSpace(_currentTemplateId) && !deferBackgroundToVm92FastApply)
+        if (allowBackgroundChange &&
+            _backgroundDirty &&
+            !string.IsNullOrWhiteSpace(_currentTemplateId) &&
+            !deferBackgroundToVm92FastApply)
         {
             accepted = await TriggerLConnectBackgroundChangeAsync();
             if (accepted) _backgroundDirty = false;
@@ -37089,11 +37324,13 @@ private static string CreateExportPackageBaseName(string templateId)
             ? item.Tag?.ToString() ?? ""
             : fallbackDeviceModel;
 
-    private async Task RevertTemplateBackgroundAsync()
+    private async Task RevertTemplateBackgroundAsync(bool restoreEmbeddedTemplateBackground = true)
     {
         if (string.IsNullOrWhiteSpace(_currentTemplateId)) return;
+        var deviceModel = GetSelectedDeviceModel();
+        var templatePath = _currentTemplatePath;
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
-        var devicePaths = GetLConnectDevicePaths();
+        var devicePaths = GetLConnectDevicePaths(deviceModel);
         var templateIdJson = JsonSerializer.Serialize(_currentTemplateId);
 
         foreach (var path in devicePaths)
@@ -37103,6 +37340,73 @@ private static string CreateExportPackageBaseName(string templateId)
                 await SendLConnectDeviceRequestAsync(client, path, "RevertTemplateBackground", templateIdJson);
             }
             catch { }
+        }
+
+        await Task.Run(() => TryClearTemplateBackgroundProfile(_currentTemplateId, deviceModel));
+        if (restoreEmbeddedTemplateBackground)
+        {
+            await RestoreEmbeddedTemplateBackgroundAfterRevertAsync(
+                deviceModel,
+                _currentTemplateId,
+                templatePath);
+        }
+    }
+
+    private async Task RestoreEmbeddedTemplateBackgroundAfterRevertAsync(
+        string deviceModel,
+        string templateId,
+        string templatePath)
+    {
+        if (string.IsNullOrWhiteSpace(deviceModel) ||
+            string.IsNullOrWhiteSpace(templateId) ||
+            string.IsNullOrWhiteSpace(templatePath) ||
+            !File.Exists(templatePath))
+        {
+            return;
+        }
+
+        try
+        {
+            var loaded = await _supporter.LoadTemplatePathAsync(deviceModel, templatePath);
+            var animationLayer = loaded.Layers
+                .Where(layer => !layer.IsEditorMetadata)
+                .FirstOrDefault(layer => string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase));
+            var embeddedBackground = ResolveBackgroundPath(
+                FirstNonEmpty(animationLayer?.MediaPath ?? "", loaded.BackgroundPath),
+                FirstNonEmpty(animationLayer?.Media ?? "", loaded.Background));
+            if (string.IsNullOrWhiteSpace(embeddedBackground) || !File.Exists(embeddedBackground))
+            {
+                AppLogger.Warning(
+                    $"Embedded background restore skipped after revert; background was not resolvable. " +
+                    $"template={templateId}; device={deviceModel}");
+                return;
+            }
+
+            if (string.Equals(deviceModel, UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
+            {
+                await EnsureUniversal88DeviceBackgroundSiblingAsync(embeddedBackground);
+            }
+
+            _currentBackgroundPath = embeddedBackground;
+            _selectedBackgroundSourcePath = embeddedBackground;
+            await Task.Run(() => TryClearTemplateBackgroundProfile(templateId, deviceModel));
+            await ActivateInstalledThemeSelectionOnlyAsync(templateId, deviceModel, templatePath);
+            LoadBackgroundPreview(
+                EnsureUniversal88PreviewBackgroundPath(
+                    deviceModel,
+                    embeddedBackground,
+                    NormalizeUniversalOrientation((UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString())),
+                Path.GetFileName(embeddedBackground));
+            RequestPreviewDraw();
+            AppLogger.Info(
+                $"Embedded background restored after revert: template={templateId}; " +
+                $"background={DescribeFileForLog(embeddedBackground)}");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Warning(
+                $"Embedded background restore after revert failed: template={templateId}; " +
+                $"{ex.GetType().Name}: {ex.Message}");
         }
     }
 

@@ -71,9 +71,19 @@ public sealed class SupporterBridge : ISupporterBridge
         return RunLinesAsync(new[] { "-ListFonts" }, cancellationToken);
     }
 
-    public async Task<IReadOnlyList<GraphStyleOption>> ListGraphStylesAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<GraphStyleOption>> ListGraphStylesAsync(string deviceModel = "", string templatePath = "", CancellationToken cancellationToken = default)
     {
-        var json = await RunSupporterAsync(new[] { "-ListGraphStyles", "-Json" }, cancellationToken).ConfigureAwait(false);
+        var args = string.IsNullOrWhiteSpace(deviceModel) && string.IsNullOrWhiteSpace(templatePath)
+            ? new List<string> { "-ListGraphStyles", "-Json" }
+            : BaseTemplateArgs(
+                string.IsNullOrWhiteSpace(deviceModel) ? "hydroshift-ii-lcd-s" : deviceModel,
+                templatePath ?? "");
+        if (args.All(arg => !string.Equals(arg, "-ListGraphStyles", StringComparison.OrdinalIgnoreCase)))
+        {
+            args.Add("-ListGraphStyles");
+            args.Add("-Json");
+        }
+        var json = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
         var styles = JsonSerializer.Deserialize<List<GraphStyleOption>>(json, new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
@@ -107,6 +117,7 @@ public sealed class SupporterBridge : ISupporterBridge
         var isImage = type.Equals("GraphImage", StringComparison.OrdinalIgnoreCase);
         var isAnimation = type.Equals("GraphAnimation", StringComparison.OrdinalIgnoreCase);
         var isClock = type.Equals("GraphClock", StringComparison.OrdinalIgnoreCase);
+        var isModular = type.Equals("ModularTheme", StringComparison.OrdinalIgnoreCase);
 
         AddIfPresent(args, "-LayerHide", layer.Hide);
 
@@ -260,6 +271,13 @@ public sealed class SupporterBridge : ISupporterBridge
                 AddIfPresent(args, "-LayerClockOriginY", layer.ClockOriginY, layer.CanWrite("o_Y"));
                 AddIfPresent(args, "-LayerRevert", layer.Revert, layer.CanWrite("revert"));
             }
+        }
+
+        if (isModular)
+        {
+            AddIfPresent(args, "-LayerZoomRate", layer.ZoomRate);
+            AddIfPresent(args, "-LayerDataSource", NormalizeDataSource(layer.DataSource ?? ""));
+            AddIfPresent(args, "-LayerText", layer.Text);
         }
 
         return args;
@@ -615,6 +633,38 @@ public sealed class SupporterBridge : ISupporterBridge
         });
         var output = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
         const string prefix = "BackgroundPath:";
+        return output
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            .Select(line => line[prefix.Length..].Trim())
+            .LastOrDefault() ?? "";
+    }
+
+    public async Task<string> SetBackgroundRefsAsync(
+        string deviceModel,
+        string templatePath,
+        string mediaPath,
+        int canvasWidth = 480,
+        int canvasHeight = 480,
+        bool landscape = false,
+        CancellationToken cancellationToken = default)
+    {
+        var args = BaseTemplateArgs(deviceModel, templatePath);
+        args.AddRange(new[]
+        {
+            "-SetBackgroundRefs", mediaPath,
+            "-CanvasWidth", canvasWidth.ToString(),
+            "-CanvasHeight", canvasHeight.ToString(),
+            "-NoBackup"
+        });
+        if (landscape)
+        {
+            args.Add("-Landscape");
+        }
+
+        var output = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
+        const string prefix = "BackgroundRefsPath:";
         return output
             .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries)
             .Select(line => line.Trim())
@@ -1111,6 +1161,7 @@ public sealed class SupporterBridge : ISupporterBridge
         return layer.Type switch
         {
             "GraphAnimation" => ("M5,6 H27 V26 H5 Z M8,6 V26 M24,6 V26 M12,12 L21,16 L12,20 Z", "#7C3AED"),
+            "ModularTheme" => ("M5,7 H27 V25 H5 Z M8,22 L14,15 L18,19 L23,13 L27,22 Z M10,11 A2,2 0 1 1 9.9,11", "#14B8A6"),
             "GraphItem" when string.Equals(layer.TypeName, "Text", StringComparison.OrdinalIgnoreCase)
                 => ("M5,6 H27 V12 H20 V27 H12 V12 H5 Z", "#E11D48"),
             "GraphItem" => ("M6,8 H26 V24 H6 Z M9,17 H13 V20 H9 Z M15,13 H18 V20 H15 Z M20,15 H23 V20 H20 Z M24,5 A3,3 0 1 1 23.9,5", "#0284C7"),
@@ -1138,6 +1189,7 @@ public sealed class SupporterBridge : ISupporterBridge
         return (layer.Type ?? "") switch
         {
             "GraphAnimation" => "Background",
+            "ModularTheme" => "Modular",
             "GraphImage" => "Image",
             "GraphClock" => "Gauge",
             "GraphSensor" => "Sensor",
