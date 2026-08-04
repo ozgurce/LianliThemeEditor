@@ -1211,6 +1211,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/cyberpunk2077-edgerunners-darkpink-1944d425.png",
       "packageUrl": "packages/cyberpunk2077-edgerunners-darkpink-1944d425.zip"
+    },
+    {
+      "id": "assassins-credd-origins-9c396d0b",
+      "name": "Assassins Credd Origins",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/assassins-credd-origins-9c396d0b.png",
+      "packageUrl": "packages/assassins-credd-origins-9c396d0b.zip"
     }
   ]
 }
