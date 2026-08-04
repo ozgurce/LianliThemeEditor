@@ -16,6 +16,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
 namespace ThemeEditorSupporter;
@@ -522,6 +523,7 @@ internal static class Program
                 .Where(ShouldExposeLayerTarget)
                 .Select(ReadLayerTarget)
                 .ToList();
+            layers.AddRange(EnumerateChildThemeRows(theme, layers.Count));
             var templateId = Path.GetFileNameWithoutExtension(_templatePath);
             var profileBackground = ProfileStore.GetTemplateBackground(_profileDir, templateId, _deviceModel);
             var profileModulars = ProfileStore.GetActiveUniversal88CustomLayers(_profileDir, templateId, _deviceModel).ToList();
@@ -913,6 +915,17 @@ internal static class Program
             field.SetValue(source, value);
         }
 
+        private static void SetMemberValueIfPresent(object source, string name, object? value)
+        {
+            try
+            {
+                SetMemberValue(source, name, value);
+            }
+            catch
+            {
+            }
+        }
+
         private static IList CreateNullByteArrayList(Assembly themeAssembly)
         {
             var listType = typeof(List<>).MakeGenericType(typeof(byte[]));
@@ -1085,11 +1098,29 @@ internal static class Program
                     try
                     {
                         var theme = TemplateSerializer.Load(file);
-                        var graph = Graphs(theme).Cast<object>().FirstOrDefault(IsGraphLayer);
+                        var graphList = TryGraphs(theme);
+                        var graph = graphList?.Cast<object>().FirstOrDefault(IsGraphLayer);
+                        var type = graph?.GetType().Name ?? "";
                         if (graph == null) continue;
-                        var type = graph.GetType().Name;
                         var code = $"MOD::{Path.GetFileName(file)}::{type}";
                         if (!seen.Add(code)) continue;
+                        var preview = Path.Combine(Path.GetDirectoryName(_templateRoot)!, "preview",
+                            "modular_" + Path.GetFileNameWithoutExtension(file) + ".png");
+                        if (!File.Exists(preview) && graph != null && IsGraphLayer(graph))
+                        {
+                            preview = LayerInspector.GraphPreviewPath(graph, file);
+                        }
+                        if (!File.Exists(preview) && graph != null)
+                        {
+                            preview = LayerInspector.Read(theme, graph, "0", 0, file)
+                                .TryGetValue("MediaPath", out var mediaPath)
+                                ? mediaPath?.ToString() ?? ""
+                                : "";
+                        }
+                        if (!File.Exists(preview))
+                        {
+                            preview = ExtractModularThemePreview(theme, file);
+                        }
                         result.Add(new GraphStyle
                         {
                             Label = Path.GetFileNameWithoutExtension(file),
@@ -1098,8 +1129,7 @@ internal static class Program
                             GraphType = type,
                             TypeName = Reflection.GetString(graph, "TypeName"),
                             SubTypeName = Reflection.GetString(graph, "SubTypeName"),
-                            Preview = Path.Combine(Path.GetDirectoryName(_templateRoot)!, "preview",
-                                "modular_" + Path.GetFileNameWithoutExtension(file) + ".png")
+                            Preview = preview
                         });
                     }
                     catch { }
@@ -1122,6 +1152,96 @@ internal static class Program
             yield return Path.Combine(_lConnectDir, "Assets", "hydroshift-ii-lcd-c", "modulars");
             yield return Path.Combine(_lConnectDir, "Assets", "universal-screen-8.8-inch", "modulars", "Landscape");
             yield return Path.Combine(_lConnectDir, "Assets", "universal-screen-8.8-inch", "modulars", "Portrait");
+        }
+
+        private static string ExtractModularThemePreview(object theme, string file)
+        {
+            var key = First(
+                Reflection.GetString(theme, "themePath"),
+                Reflection.GetString(theme, "name"),
+                file,
+                theme.GetHashCode().ToString(CultureInfo.InvariantCulture));
+            var animatedPreview = ExtractEmbeddedFramesPreview(theme, key);
+            if (!string.IsNullOrWhiteSpace(animatedPreview))
+            {
+                return animatedPreview;
+            }
+
+            foreach (var member in new[] { "themePic", "VideoPic", "BgImg" })
+            {
+                if (Reflection.Get(theme, member) is not Bitmap bitmap)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var directory = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "modular-theme-previews");
+                    Directory.CreateDirectory(directory);
+                    var preview = Path.Combine(directory, LayerInspector.SafeFilePart(Path.GetFileNameWithoutExtension(key) + "-" + member) + ".png");
+                    bitmap.SetResolution(96f, 96f);
+                    bitmap.Save(preview, ImageFormat.Png);
+                    return preview;
+                }
+                catch
+                {
+                }
+            }
+
+            return "";
+        }
+
+        private static string ExtractEmbeddedFramesPreview(object theme, string key)
+        {
+            if (Reflection.Get(theme, "Frames") is not IDictionary frames || frames.Count <= 1)
+            {
+                return "";
+            }
+
+            try
+            {
+                var directory = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "modular-theme-previews");
+                Directory.CreateDirectory(directory);
+                var preview = Path.Combine(directory, LayerInspector.SafeFilePart(Path.GetFileNameWithoutExtension(key) + "-frames") + ".gif");
+                if (File.Exists(preview))
+                {
+                    return preview;
+                }
+
+                var encoder = new GifBitmapEncoder();
+                foreach (DictionaryEntry entry in frames.Cast<DictionaryEntry>()
+                             .OrderBy(entry => Convert.ToInt32(entry.Key, CultureInfo.InvariantCulture)))
+                {
+                    if (entry.Value is not byte[] bytes || bytes.Length == 0)
+                    {
+                        continue;
+                    }
+
+                    using var stream = new MemoryStream(bytes);
+                    var decoder = BitmapDecoder.Create(
+                        stream,
+                        BitmapCreateOptions.PreservePixelFormat,
+                        BitmapCacheOption.OnLoad);
+                    var frame = decoder.Frames.FirstOrDefault();
+                    if (frame != null)
+                    {
+                        encoder.Frames.Add(BitmapFrame.Create(frame));
+                    }
+                }
+
+                if (encoder.Frames.Count <= 1)
+                {
+                    return "";
+                }
+
+                using var output = File.Create(preview);
+                encoder.Save(output);
+                return preview;
+            }
+            catch
+            {
+                return "";
+            }
         }
 
         private IEnumerable<string> GetTemplateSearchModels()
@@ -1206,7 +1326,12 @@ internal static class Program
 
             Reflection.TrySet(theme, "name", newId);
             Reflection.TrySet(theme, "Name", newId);
-            ReplaceTemplateIdentityStrings(theme, oldIds, newId, new HashSet<object>(ReferenceEqualityComparer.Instance));
+            ReplaceTemplateIdentityStrings(
+                theme,
+                oldIds,
+                newId,
+                new HashSet<object>(ReferenceEqualityComparer.Instance),
+                "");
             Console.WriteLine("TemplateIdentityNormalized: " + newId);
         }
 
@@ -1296,7 +1421,8 @@ internal static class Program
             object? value,
             IReadOnlyList<string> oldIds,
             string newId,
-            HashSet<object> visited)
+            HashSet<object> visited,
+            string memberName)
         {
             if (value == null || oldIds.Count == 0) return;
             var type = value.GetType();
@@ -1312,7 +1438,7 @@ internal static class Program
                     }
                     else
                     {
-                        ReplaceTemplateIdentityStrings(list[index], oldIds, newId, visited);
+                        ReplaceTemplateIdentityStrings(list[index], oldIds, newId, visited, memberName);
                     }
                 }
             }
@@ -1328,7 +1454,7 @@ internal static class Program
                     }
                     else
                     {
-                        ReplaceTemplateIdentityStrings(item, oldIds, newId, visited);
+                        ReplaceTemplateIdentityStrings(item, oldIds, newId, visited, key?.ToString() ?? memberName);
                     }
                 }
             }
@@ -1336,7 +1462,7 @@ internal static class Program
             {
                 foreach (var item in enumerable)
                 {
-                    ReplaceTemplateIdentityStrings(item, oldIds, newId, visited);
+                    ReplaceTemplateIdentityStrings(item, oldIds, newId, visited, memberName);
                 }
             }
 
@@ -1348,14 +1474,16 @@ internal static class Program
                     var current = property.GetValue(value);
                     if (current is string currentText)
                     {
-                        if (property.CanWrite)
+                        if (property.CanWrite &&
+                            !IsFontIdentityMember(property.Name) &&
+                            !IsFontIdentityMember(memberName))
                         {
                             property.SetValue(value, RewriteTemplateIdentityString(currentText, oldIds, newId));
                         }
                     }
                     else
                     {
-                        ReplaceTemplateIdentityStrings(current, oldIds, newId, visited);
+                        ReplaceTemplateIdentityStrings(current, oldIds, newId, visited, property.Name);
                     }
                 }
                 catch { }
@@ -1368,15 +1496,31 @@ internal static class Program
                     var current = field.GetValue(value);
                     if (current is string currentText)
                     {
-                        field.SetValue(value, RewriteTemplateIdentityString(currentText, oldIds, newId));
+                        if (!IsFontIdentityMember(field.Name) && !IsFontIdentityMember(memberName))
+                        {
+                            field.SetValue(value, RewriteTemplateIdentityString(currentText, oldIds, newId));
+                        }
                     }
                     else
                     {
-                        ReplaceTemplateIdentityStrings(current, oldIds, newId, visited);
+                        ReplaceTemplateIdentityStrings(current, oldIds, newId, visited, field.Name);
                     }
                 }
                 catch { }
             }
+        }
+
+        private static bool IsFontIdentityMember(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return false;
+            }
+
+            return name.IndexOf("fontConfig", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   name.IndexOf("cachedFont", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   name.Equals("FontFamily", StringComparison.OrdinalIgnoreCase) ||
+                   name.Equals("<FontFamily>k__BackingField", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string RewriteTemplateIdentityString(string value, IReadOnlyList<string> oldIds, string newId)
@@ -1726,7 +1870,8 @@ internal static class Program
             }
             else if (addGraph)
             {
-                var layer = NewGraphFromStyle(_args.Get("AddProgressBar"));
+                var styleCode = _args.Get("AddProgressBar");
+                var layer = NewGraphFromStyle(styleCode);
                 SetDataSource(layer, _args.Get("AddDataSource", "CPULOAD"));
                 Reflection.TrySet(layer, "posX", _args.GetInt("AddX", 240));
                 Reflection.TrySet(layer, "posY", _args.GetInt("AddY", 240));
@@ -1846,6 +1991,7 @@ internal static class Program
             var styleName = _args.Get("SensorStyle", "Ring2");
             var sensorName = _args.Get("SensorType", "CPULoad");
             var output = _args.Get("Output", Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "sensor-previews", Guid.NewGuid() + ".png"));
+
             var layer = NewSensorLayer(
                 styleName,
                 sensorName,
@@ -2087,7 +2233,7 @@ internal static class Program
                 var d3Name = Path.GetFileNameWithoutExtension(_templatePath);
                 RenderGraphList(graphics, Graphs(theme), "", d3Cache, d3Name);
 
-                if (IsOledCurveDevice())
+                if (ShouldRenderNestedThemes(theme))
                 {
                     var themes = ThemeList(theme);
                     if (themes != null)
@@ -2096,7 +2242,7 @@ internal static class Program
                         {
                             var child = themes[themeIndex];
                             var childList = TryGraphs(child);
-                            if (child == null || childList == null)
+                            if (child == null)
                             {
                                 continue;
                             }
@@ -2111,7 +2257,7 @@ internal static class Program
                                 graphics.ScaleTransform(zoom, zoom);
                             }
 
-                            RenderGraphList(graphics, childList, "theme:" + themeIndex.ToString(CultureInfo.InvariantCulture) + ":", d3Cache, d3Name);
+                            RenderChildTheme(graphics, child, childList, "theme:" + themeIndex.ToString(CultureInfo.InvariantCulture) + ":", d3Cache, d3Name);
                             graphics.Restore(state);
                         }
                     }
@@ -2122,6 +2268,68 @@ internal static class Program
             bitmap.SetResolution(96f, 96f);
             bitmap.Save(output, ImageFormat.Png);
             Console.WriteLine(output);
+        }
+
+        private static bool ShouldRenderNestedThemes(object theme) =>
+            IsOledCurveTheme(theme) || HasModularChildThemes(theme);
+
+        private static bool IsOledCurveTheme(object theme) =>
+            Reflection.GetInt(theme, "width") == 2288 &&
+            Reflection.GetInt(theme, "height") == 1080;
+
+        private static bool HasModularChildThemes(object theme)
+        {
+            var themes = ThemeList(theme);
+            if (themes == null)
+            {
+                return false;
+            }
+
+            return themes.Cast<object?>().Any(child =>
+                child != null &&
+                (string.Equals(child.GetType().Name, "Modulars", StringComparison.OrdinalIgnoreCase) ||
+                 !string.IsNullOrWhiteSpace(Reflection.GetString(child, "ModularType"))));
+        }
+
+        private static void DrawThemePreviewBitmap(Graphics graphics, object theme)
+        {
+            var bitmap = Reflection.Get(theme, "themePic") as Bitmap ??
+                         Reflection.Get(theme, "VideoPic") as Bitmap ??
+                         Reflection.Get(theme, "BgImg") as Bitmap;
+            if (bitmap == null)
+            {
+                return;
+            }
+
+            var width = Math.Max(1, (int)Math.Round(GetThemeCoordinate(theme, "width")));
+            var height = Math.Max(1, (int)Math.Round(GetThemeCoordinate(theme, "height")));
+            graphics.DrawImage(bitmap, new Rectangle(0, 0, width, height));
+        }
+
+        private void RenderChildTheme(Graphics graphics, object child, IList? childList, string pathPrefix, object? d3Cache, string d3Name)
+        {
+            try
+            {
+                var render = child.GetType().GetMethod("Render", new[] { typeof(Graphics), typeof(bool), typeof(bool), typeof(bool) });
+                if (render != null)
+                {
+                    render.Invoke(child, new object[] { graphics, true, true, false });
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine("ThemeRenderChildFailed: " + pathPrefix + " " + (ex.InnerException?.Message ?? ex.Message));
+            }
+
+            if (childList != null && childList.Count > 0)
+            {
+                RenderGraphList(graphics, childList, pathPrefix, d3Cache, d3Name);
+            }
+            else
+            {
+                DrawThemePreviewBitmap(graphics, child);
+            }
         }
 
         private void RenderGraphList(Graphics graphics, IList list, string pathPrefix, object? d3Cache = null, string d3Name = "")
@@ -2530,8 +2738,11 @@ internal static class Program
         private void AddImage(object theme, string sourcePath)
         {
             if (!File.Exists(sourcePath)) throw new FileNotFoundException("Image not found: " + sourcePath);
-            var sample = FindSampleAcrossTemplates("GraphImage") ?? throw new InvalidOperationException("No GraphImage sample exists.");
-            var layer = TemplateSerializer.Clone(sample);
+            var sample = FindSampleAcrossTemplates("GraphImage");
+            var layer = sample != null
+                ? TemplateSerializer.Clone(sample)
+                : Activator.CreateInstance(ThemeType("ThemeEngine.GraphImage"))
+                  ?? throw new InvalidOperationException("GraphImage could not be created.");
             var imageDir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(_templatePath)!)!, "image");
             Directory.CreateDirectory(imageDir);
             var target = Path.Combine(imageDir, Path.GetFileName(sourcePath));
@@ -2543,7 +2754,12 @@ internal static class Program
             Reflection.TrySet(layer, "Path", target);
             Reflection.TrySet(layer, "ImagePath", target);
             using var bitmap = new Bitmap(target);
-            EmbedImage(layer, bitmap, _args.GetInt("AddSize", bitmap.Width));
+            var requestedSize = Math.Max(1, _args.GetInt("AddSize", bitmap.Width));
+            var zoom = requestedSize / (double)Math.Max(1, bitmap.Width);
+            var renderedWidth = Math.Max(1, (int)Math.Round(bitmap.Width * zoom));
+            Reflection.TrySet(layer, "zoom_rate", zoom);
+            Reflection.TrySet(layer, "ZoomRate", zoom);
+            EmbedImage(layer, bitmap, renderedWidth);
             Graphs(theme).Add(layer);
         }
 
@@ -2551,7 +2767,7 @@ internal static class Program
         {
             if (!File.Exists(sourcePath)) throw new FileNotFoundException("Animation not found: " + sourcePath);
             var extension = Path.GetExtension(sourcePath).ToLowerInvariant();
-            if (extension is not (".mov" or ".mp4" or ".h264"))
+            if (extension is not (".mov" or ".mp4" or ".h264" or ".gif"))
             {
                 throw new InvalidOperationException("Unsupported animation media type: " + extension);
             }
@@ -2629,9 +2845,13 @@ internal static class Program
         {
             if (_args.HasValue("RemoveLayerIndexes"))
             {
-                foreach (var layerIndex in ParseLayerIndexList(_args.Get("RemoveLayerIndexes"))
+                foreach (var layerIndex in CollapseNestedLayerDeletes(ParseLayerIndexList(_args.Get("RemoveLayerIndexes")))
                              .OrderByDescending(GetLayerIndexSortKey))
                 {
+                    if (TryRemoveThemeTarget(theme, layerIndex))
+                    {
+                        continue;
+                    }
                     var target = ResolveLayerTarget(theme, layerIndex);
                     var list = target.List;
                     var index = target.Index;
@@ -2642,36 +2862,86 @@ internal static class Program
             }
             if (_args.HasValue("RemoveLayerIndex"))
             {
-                var target = ResolveLayerTarget(theme, _args.Get("RemoveLayerIndex"));
-                var list = target.List;
-                var index = target.Index;
-                if (list[index]!.GetType().Name == "GraphAnimation" && !_args.Has("ForceRemoveBaseLayer"))
-                    throw new InvalidOperationException("Background animation layer cannot be removed.");
-                list.RemoveAt(index);
+                if (!TryRemoveThemeTarget(theme, _args.Get("RemoveLayerIndex")))
+                {
+                    var target = ResolveLayerTarget(theme, _args.Get("RemoveLayerIndex"));
+                    var list = target.List;
+                    var index = target.Index;
+                    if (list[index]!.GetType().Name == "GraphAnimation" && !_args.Has("ForceRemoveBaseLayer"))
+                        throw new InvalidOperationException("Background animation layer cannot be removed.");
+                    list.RemoveAt(index);
+                }
             }
             if (_args.HasValue("DuplicateLayerIndex"))
             {
-                var target = ResolveLayerTarget(theme, _args.Get("DuplicateLayerIndex"));
-                var list = target.List;
-                var index = target.Index;
-                var clone = TemplateSerializer.Clone(list[index]!);
-                Reflection.TrySet(clone, "posX", Reflection.GetInt(clone, "posX") + 10);
-                Reflection.TrySet(clone, "posY", Reflection.GetInt(clone, "posY") + 10);
-                list.Insert(index + 1, clone);
+                if (!TryDuplicateThemeTarget(theme, _args.Get("DuplicateLayerIndex")))
+                {
+                    var target = ResolveLayerTarget(theme, _args.Get("DuplicateLayerIndex"));
+                    var list = target.List;
+                    var index = target.Index;
+                    var clone = TemplateSerializer.Clone(list[index]!);
+                    Reflection.TrySet(clone, "posX", Reflection.GetInt(clone, "posX") + 10);
+                    Reflection.TrySet(clone, "posY", Reflection.GetInt(clone, "posY") + 10);
+                    list.Insert(index + 1, clone);
+                }
             }
             if (_args.HasValue("MoveLayerIndex"))
             {
-                var targetLayer = ResolveLayerTarget(theme, _args.Get("MoveLayerIndex"));
-                var list = targetLayer.List;
-                var index = targetLayer.Index;
-                var target = _args.Get("MoveLayerDirection").Equals("Up", StringComparison.OrdinalIgnoreCase) ? index - 1 : index + 1;
-                ValidateIndex(list, target);
-                if (list[index]!.GetType().Name == "GraphAnimation" || list[target]!.GetType().Name == "GraphAnimation")
-                    throw new InvalidOperationException("Background animation layer cannot be reordered.");
-                var item = list[index];
-                list[index] = list[target];
-                list[target] = item;
+                if (!TryMoveThemeTarget(theme, _args.Get("MoveLayerIndex"), _args.Get("MoveLayerDirection")))
+                {
+                    var targetLayer = ResolveLayerTarget(theme, _args.Get("MoveLayerIndex"));
+                    var list = targetLayer.List;
+                    var index = targetLayer.Index;
+                    var target = _args.Get("MoveLayerDirection").Equals("Up", StringComparison.OrdinalIgnoreCase) ? index - 1 : index + 1;
+                    ValidateIndex(list, target);
+                    if (list[index]!.GetType().Name == "GraphAnimation" || list[target]!.GetType().Name == "GraphAnimation")
+                        throw new InvalidOperationException("Background animation layer cannot be reordered.");
+                    var item = list[index];
+                    list[index] = list[target];
+                    list[target] = item;
+                }
             }
+        }
+
+        private static bool TryRemoveThemeTarget(object theme, string layerIndex)
+        {
+            if (!TryResolveThemeOnlyTarget(theme, layerIndex, out var themes, out var themeIndex, out var child))
+            {
+                return false;
+            }
+
+            RemoveMatchingModularCarrier(theme, child);
+            themes.RemoveAt(themeIndex);
+            return true;
+        }
+
+        private static bool TryDuplicateThemeTarget(object theme, string layerIndex)
+        {
+            if (!TryResolveThemeOnlyTarget(theme, layerIndex, out var themes, out var themeIndex, out var child))
+            {
+                return false;
+            }
+
+            var clone = TemplateSerializer.Clone(child);
+            SetThemeCoordinate(clone, "X", GetThemeCoordinate(clone, "X") + 10);
+            SetThemeCoordinate(clone, "Y", GetThemeCoordinate(clone, "Y") + 10);
+            themes.Insert(themeIndex + 1, clone);
+            return true;
+        }
+
+        private static bool TryMoveThemeTarget(object theme, string layerIndex, string direction)
+        {
+            if (!TryResolveThemeOnlyTarget(theme, layerIndex, out var themes, out var themeIndex, out _))
+            {
+                return false;
+            }
+
+            var target = direction.Equals("Up", StringComparison.OrdinalIgnoreCase) ? themeIndex - 1 : themeIndex + 1;
+            ValidateIndex(themes, target);
+            var item = themes[themeIndex];
+            themes[themeIndex] = themes[target];
+            themes[target] = item;
+            return true;
         }
 
         private static IEnumerable<string> ParseLayerIndexList(string value) =>
@@ -2679,6 +2949,45 @@ internal static class Program
             .Split(new[] { '|', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(index => index.Trim())
             .Where(index => index.Length > 0);
+
+        private static IEnumerable<string> CollapseNestedLayerDeletes(IEnumerable<string> indexes)
+        {
+            var distinct = indexes
+                .Where(index => !string.IsNullOrWhiteSpace(index))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            var themeDeletes = distinct
+                .Where(IsThemeRootLayerIndex)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return distinct.Where(index => !IsNestedLayerCoveredByThemeDelete(index, themeDeletes));
+        }
+
+        private static bool IsThemeRootLayerIndex(string index)
+        {
+            var parts = (index ?? "").Split(':');
+            return parts.Length == 2 &&
+                   parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+                   int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out _);
+        }
+
+        private static bool IsNestedLayerCoveredByThemeDelete(string index, ISet<string> themeDeleteIndexes)
+        {
+            if (string.IsNullOrWhiteSpace(index) || IsThemeRootLayerIndex(index))
+            {
+                return false;
+            }
+
+            var parts = index.Split(':');
+            if (parts.Length < 3 ||
+                !parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) ||
+                !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex))
+            {
+                return false;
+            }
+
+            return themeDeleteIndexes.Contains($"theme:{themeIndex}");
+        }
 
         private static long GetLayerIndexSortKey(string index)
         {
@@ -2688,12 +2997,19 @@ internal static class Program
             }
 
             var parts = (index ?? "").Split(':');
+            if (parts.Length == 2 &&
+                parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeOnlyIndex))
+            {
+                return (1L << 48) | (uint)themeOnlyIndex;
+            }
+
             if (parts.Length == 3 &&
                 parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
                 int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var themeIndex) &&
                 int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var childIndex))
             {
-                return (1L << 48) | ((long)(uint)themeIndex << 24) | (uint)childIndex;
+                return ((long)1 << 47) | ((long)(uint)themeIndex << 24) | (uint)childIndex;
             }
 
             return 0;
@@ -2702,6 +3018,11 @@ internal static class Program
         private void ApplyLayerEdit(object theme)
         {
             if (!_args.HasValue("LayerIndex")) return;
+            if (TryApplyThemeTargetEdit(theme, _args.Get("LayerIndex")))
+            {
+                return;
+            }
+
             var target = ResolveLayerTarget(theme, _args.Get("LayerIndex"));
             ApplyOledNestedEditTransform(target);
             var list = target.List;
@@ -2825,6 +3146,215 @@ internal static class Program
             }
         }
 
+        private bool TryApplyThemeTargetEdit(object theme, string layerIndex)
+        {
+            if (!TryResolveThemeOnlyTarget(theme, layerIndex, out _, out _, out var child))
+            {
+                return false;
+            }
+
+            var editable = GetThemeEditTarget(child);
+            if (!ReferenceEquals(editable, child))
+            {
+                SetThemeCoordinate(child, "X", 0);
+                SetThemeCoordinate(child, "Y", 0);
+                Reflection.TrySet(child, "ZoomRate", 1.0);
+            }
+            if (_args.HasValue("LayerX")) SetThemeCoordinate(editable, "X", _args.GetDouble("LayerX"));
+            if (_args.HasValue("LayerY")) SetThemeCoordinate(editable, "Y", _args.GetDouble("LayerY"));
+            ApplyThemeTargetScale(editable, GetThemeEditBaseZoom(child, editable));
+            if (_args.HasValue("LayerDataSource")) ApplyThemeTargetDataSource(editable, _args.Get("LayerDataSource"));
+            if (_args.HasValue("LayerHide")) Reflection.TrySet(child, "IsHide", _args.GetBool("LayerHide"));
+            if (_args.Has("LayerText")) Reflection.TrySet(child, "name", _args.Get("LayerText"));
+            UpdateMatchingModularCarrier(theme, child);
+            return true;
+        }
+
+        private static object GetThemeEditTarget(object theme)
+        {
+            var current = theme;
+            while (IsThemeVisualWrapper(current, out var child))
+            {
+                current = child;
+            }
+
+            return current;
+        }
+
+        private static bool IsThemeVisualWrapper(object? theme, out object child)
+        {
+            child = null!;
+            if (theme == null || (TryGraphs(theme)?.Count ?? 0) > 0)
+            {
+                return false;
+            }
+
+            var themes = ThemeList(theme);
+            if (themes == null || themes.Count != 1 || themes[0] == null)
+            {
+                return false;
+            }
+
+            child = themes[0]!;
+            return true;
+        }
+
+        private static double GetThemeEditBaseZoom(object theme, object editable)
+        {
+            if (ReferenceEquals(theme, editable))
+            {
+                return 1.0;
+            }
+
+            var wrapperWidth = GetThemeCoordinate(theme, "width");
+            var wrapperHeight = GetThemeCoordinate(theme, "height");
+            var editableWidth = GetThemeCoordinate(editable, "width");
+            var editableHeight = GetThemeCoordinate(editable, "height");
+            var widthZoom = wrapperWidth > 0 && editableWidth > 0 ? wrapperWidth / editableWidth : 0;
+            var heightZoom = wrapperHeight > 0 && editableHeight > 0 ? wrapperHeight / editableHeight : 0;
+            if (widthZoom > 0 && heightZoom > 0)
+            {
+                return Math.Min(widthZoom, heightZoom);
+            }
+
+            if (widthZoom > 0) return widthZoom;
+            if (heightZoom > 0) return heightZoom;
+            return 1.0;
+        }
+
+        private static void ApplyThemeTargetDataSource(object? theme, string source)
+        {
+            if (theme == null || string.IsNullOrWhiteSpace(source))
+            {
+                return;
+            }
+
+            foreach (var graph in EnumerateThemeGraphs(theme))
+            {
+                var data = Reflection.Get(graph, "m_data");
+                if (data == null)
+                {
+                    continue;
+                }
+
+                var current = Reflection.GetString(data, "DataName");
+                if (string.Equals(current, "StaticText", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                SetDataSource(graph, source);
+            }
+        }
+
+        private static IEnumerable<object> EnumerateThemeGraphs(object? theme)
+        {
+            var graphs = TryGraphs(theme);
+            if (graphs != null)
+            {
+                foreach (var graph in graphs)
+                {
+                    if (graph != null)
+                    {
+                        yield return graph;
+                    }
+                }
+            }
+
+            var themes = ThemeList(theme);
+            if (themes == null)
+            {
+                yield break;
+            }
+
+            foreach (var child in themes)
+            {
+                foreach (var graph in EnumerateThemeGraphs(child))
+                {
+                    yield return graph;
+                }
+            }
+        }
+
+        private void ApplyThemeTargetScale(object child, double baseZoom = 1.0)
+        {
+            if (_args.HasValue("LayerZoomRate"))
+            {
+                Reflection.TrySet(child, "ZoomRate", _args.GetDouble("LayerZoomRate") * Math.Max(0.0001, baseZoom));
+                return;
+            }
+
+            var baseWidth = Math.Max(1.0, GetThemeCoordinate(child, "width") * Math.Max(0.0001, baseZoom));
+            var baseHeight = Math.Max(1.0, GetThemeCoordinate(child, "height") * Math.Max(0.0001, baseZoom));
+            double? requestedZoom = null;
+            if (_args.HasValue("LayerWidth"))
+            {
+                requestedZoom = Math.Max(0.01, _args.GetDouble("LayerWidth") / baseWidth);
+            }
+            if (_args.HasValue("LayerHeight"))
+            {
+                var heightZoom = Math.Max(0.01, _args.GetDouble("LayerHeight") / baseHeight);
+                requestedZoom = requestedZoom.HasValue
+                    ? Math.Min(requestedZoom.Value, heightZoom)
+                    : heightZoom;
+            }
+            if (requestedZoom.HasValue)
+            {
+                Reflection.TrySet(child, "ZoomRate", requestedZoom.Value * Math.Max(0.0001, baseZoom));
+                return;
+            }
+
+        }
+
+        private static void RemoveMatchingModularCarrier(object theme, object child)
+        {
+            var carrier = FindMatchingModularCarrier(theme, child, out var index);
+            if (carrier != null && index >= 0)
+            {
+                Graphs(theme).RemoveAt(index);
+            }
+        }
+
+        private static void UpdateMatchingModularCarrier(object theme, object child)
+        {
+            var carrier = FindMatchingModularCarrier(theme, child, out _);
+            if (carrier == null)
+            {
+                return;
+            }
+
+            var editable = GetThemeEditTarget(child);
+            Reflection.TrySet(carrier, "posX", GetThemeCoordinate(editable, "X"));
+            Reflection.TrySet(carrier, "posY", GetThemeCoordinate(editable, "Y"));
+            Reflection.TrySet(carrier, "hide", Reflection.GetBool(child, "IsHide"));
+            Reflection.TrySet(carrier, "zoom_rate", GetThemeZoom(editable));
+            Reflection.TrySet(carrier, "ZoomRate", GetThemeZoom(editable));
+        }
+
+        private static object? FindMatchingModularCarrier(object theme, object child, out int index)
+        {
+            var marker = "__flex_modular_carrier:" + Reflection.GetString(child, "name");
+            var list = Graphs(theme);
+            for (var i = 0; i < list.Count; i++)
+            {
+                var graph = list[i];
+                if (graph == null ||
+                    !graph.GetType().Name.Equals("GraphImage", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (Reflection.GetString(graph, "DisplayName").Equals(marker, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    return graph;
+                }
+            }
+
+            index = -1;
+            return null;
+        }
+
         private void ApplyLayerBatch(object theme)
         {
             if (!_args.HasValue("ApplyLayerBatchJson")) return;
@@ -2845,10 +3375,19 @@ internal static class Program
                     var index = -1;
                     if (!string.IsNullOrWhiteSpace(indexText))
                     {
-                        var target = ResolveLayerTarget(theme, indexText);
-                        list = target.List;
-                        index = target.Index;
-                        before = TemplateSerializer.Clone(list[index]!);
+                        if (TryResolveThemeOnlyTarget(theme, indexText, out var themes, out var themeIndex, out var child))
+                        {
+                            list = themes;
+                            index = themeIndex;
+                            before = TemplateSerializer.Clone(child);
+                        }
+                        else
+                        {
+                            var target = ResolveLayerTarget(theme, indexText);
+                            list = target.List;
+                            index = target.Index;
+                            before = TemplateSerializer.Clone(list[index]!);
+                        }
                     }
 
                     ApplyLayerEdit(theme);
@@ -3220,17 +3759,6 @@ internal static class Program
                 return Activator.CreateInstance(ThemeType("ThemeEngine.GraphDynamicBar"), mData)
                        ?? throw new InvalidOperationException("GraphDynamicBar could not be created.");
             }
-            if (code.StartsWith("MODPATH::", StringComparison.OrdinalIgnoreCase))
-            {
-                var pathParts = code.Split(new[] { "::" }, StringSplitOptions.None);
-                if (pathParts.Length < 3) throw new InvalidOperationException("Invalid graph style: " + code);
-                var path = DecodePath(pathParts[1]);
-                if (!File.Exists(path)) throw new FileNotFoundException("Modular graph not found: " + path);
-                var modular = TemplateSerializer.Load(path);
-                var graph = Graphs(modular).Cast<object>().FirstOrDefault(x => x.GetType().Name == pathParts[2]);
-                if (graph != null) return TemplateSerializer.Clone(graph);
-                throw new InvalidOperationException("Modular graph type not found: " + pathParts[2]);
-            }
             if (!code.StartsWith("MOD::", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Unsupported graph style: " + code);
             var parts = code.Split(new[] { "::" }, StringSplitOptions.None);
@@ -3250,11 +3778,6 @@ internal static class Program
         {
             try
             {
-                if (code.StartsWith("MODPATH::", StringComparison.OrdinalIgnoreCase))
-                {
-                    var parts = code.Split(new[] { "::" }, StringSplitOptions.None);
-                    if (parts.Length >= 2) return Path.GetFileNameWithoutExtension(DecodePath(parts[1]));
-                }
                 if (code.StartsWith("MOD::", StringComparison.OrdinalIgnoreCase))
                 {
                     var parts = code.Split(new[] { "::" }, StringSplitOptions.None);
@@ -3263,21 +3786,6 @@ internal static class Program
             }
             catch { }
             return "Modular";
-        }
-
-        private static string EncodePath(string path)
-        {
-            return Convert.ToBase64String(Encoding.UTF8.GetBytes(path))
-                .TrimEnd('=')
-                .Replace('+', '-')
-                .Replace('/', '_');
-        }
-
-        private static string DecodePath(string encoded)
-        {
-            var value = encoded.Replace('-', '+').Replace('_', '/');
-            value = value.PadRight(value.Length + (4 - value.Length % 4) % 4, '=');
-            return Encoding.UTF8.GetString(Convert.FromBase64String(value));
         }
 
         private object? FindSampleGraph(object theme, string type) =>
@@ -3655,7 +4163,7 @@ internal static class Program
                 using var family = string.IsNullOrWhiteSpace(fontName)
                     ? new FontFamily("Arial")
                     : new FontFamily(fontName);
-                using var font = new Font(family, fontSize, style);
+                using var font = CreateSupportedFont(family, fontSize, style);
                 using var bitmap = new Bitmap(200, 200);
                 using var graphics = Graphics.FromImage(bitmap);
                 var line = value.Split(new[] { Environment.NewLine }, StringSplitOptions.None)
@@ -3667,6 +4175,57 @@ internal static class Program
             {
                 Reflection.TrySet(layer, "LineHeight", (int)Math.Ceiling(fontSize * 1.25));
             }
+        }
+
+        private static Font CreateSupportedFont(FontFamily family, float size, FontStyle preferredStyle)
+        {
+            var style = ResolveSupportedFontStyle(family, preferredStyle);
+            if (style.HasValue)
+            {
+                return new Font(family, size, style.Value);
+            }
+
+            using var fallbackFamily = new FontFamily("Arial");
+            return new Font(
+                fallbackFamily,
+                size,
+                ResolveSupportedFontStyle(fallbackFamily, preferredStyle) ?? FontStyle.Regular);
+        }
+
+        private static FontStyle? ResolveSupportedFontStyle(FontFamily family, FontStyle preferredStyle)
+        {
+            if (family.IsStyleAvailable(preferredStyle))
+            {
+                return preferredStyle;
+            }
+
+            var withoutBold = preferredStyle & ~FontStyle.Bold;
+            if (withoutBold != preferredStyle && family.IsStyleAvailable(withoutBold))
+            {
+                return withoutBold;
+            }
+
+            var withoutItalic = preferredStyle & ~FontStyle.Italic;
+            if (withoutItalic != preferredStyle && family.IsStyleAvailable(withoutItalic))
+            {
+                return withoutItalic;
+            }
+
+            foreach (var candidate in new[]
+                     {
+                         FontStyle.Regular,
+                         FontStyle.Bold,
+                         FontStyle.Italic,
+                         FontStyle.Bold | FontStyle.Italic
+                     })
+            {
+                if (family.IsStyleAvailable(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         private static string NormalizeDynamicDataValue(string dataSource, string value)
@@ -3780,10 +4339,10 @@ internal static class Program
                     ["Index"] = index,
                     ["Type"] = child?.GetType().FullName,
                     ["Name"] = Reflection.GetString(child, "name"),
-                    ["Width"] = Reflection.Get(child, "width"),
-                    ["Height"] = Reflection.Get(child, "height"),
-                    ["X"] = Reflection.Get(child, "posX"),
-                    ["Y"] = Reflection.Get(child, "posY"),
+                    ["Width"] = FormatNumber(GetThemeCoordinate(child, "width") * GetThemeZoom(child)),
+                    ["Height"] = FormatNumber(GetThemeCoordinate(child, "height") * GetThemeZoom(child)),
+                    ["X"] = FormatNumber(GetThemeCoordinate(child, "X")),
+                    ["Y"] = FormatNumber(GetThemeCoordinate(child, "Y")),
                     ["Left"] = Reflection.Get(child, "left"),
                     ["Top"] = Reflection.Get(child, "top"),
                     ["ZoomRate"] = Reflection.Get(child, "ZoomRate"),
@@ -3806,7 +4365,7 @@ internal static class Program
                 yield return new LayerTarget(rootList, index, index.ToString(CultureInfo.InvariantCulture), displayIndex++, theme);
             }
 
-            if (!IsOledCurveDevice())
+            if (!ShouldExposeNestedThemeLayers(theme))
             {
                 yield break;
             }
@@ -3819,36 +4378,95 @@ internal static class Program
 
             for (var themeIndex = 0; themeIndex < themeList.Count; themeIndex++)
             {
-                var childList = TryGraphs(themeList[themeIndex]);
-                if (childList == null)
+                var child = themeList[themeIndex];
+                var path = $"theme:{themeIndex.ToString(CultureInfo.InvariantCulture)}";
+                foreach (var target in BuildNestedLayerTargets(
+                             child,
+                             path,
+                             ref displayIndex,
+                             GetThemeCoordinate(child, "X"),
+                             GetThemeCoordinate(child, "Y"),
+                             GetThemeZoom(child),
+                             GetThemeCoordinate(child, "width"),
+                             GetThemeCoordinate(child, "height")))
+                {
+                    yield return target;
+                }
+            }
+        }
+
+        private List<LayerTarget> BuildNestedLayerTargets(
+            object? theme,
+            string pathPrefix,
+            ref int displayIndex,
+            double parentX,
+            double parentY,
+            double parentZoom,
+            double parentWidth,
+            double parentHeight)
+        {
+            var result = new List<LayerTarget>();
+            var graphList = TryGraphs(theme);
+            if (graphList != null)
+            {
+                for (var layerIndex = 0; layerIndex < graphList.Count; layerIndex++)
+                {
+                    result.Add(new LayerTarget(
+                        graphList,
+                        layerIndex,
+                        $"{pathPrefix}:{layerIndex.ToString(CultureInfo.InvariantCulture)}",
+                        displayIndex++,
+                        theme,
+                        parentX,
+                        parentY,
+                        parentZoom,
+                        parentWidth,
+                        parentHeight));
+                }
+            }
+
+            var themes = ThemeList(theme);
+            if (themes == null)
+            {
+                return result;
+            }
+
+            for (var themeIndex = 0; themeIndex < themes.Count; themeIndex++)
+            {
+                var child = themes[themeIndex];
+                if (child == null)
                 {
                     continue;
                 }
 
-                for (var layerIndex = 0; layerIndex < childList.Count; layerIndex++)
-                {
-                    var child = themeList[themeIndex];
-                    yield return new LayerTarget(
-                        childList,
-                        layerIndex,
-                        $"theme:{themeIndex.ToString(CultureInfo.InvariantCulture)}:{layerIndex.ToString(CultureInfo.InvariantCulture)}",
-                        displayIndex++,
-                        child,
-                        GetThemeCoordinate(child, "X"),
-                        GetThemeCoordinate(child, "Y"),
-                        GetThemeZoom(child),
-                        GetThemeCoordinate(child, "width"),
-                        GetThemeCoordinate(child, "height"));
-                }
+                var childZoom = GetThemeZoom(child);
+                var combinedZoom = parentZoom * childZoom;
+                var combinedX = parentX + GetThemeCoordinate(child, "X") * parentZoom;
+                var combinedY = parentY + GetThemeCoordinate(child, "Y") * parentZoom;
+                var childPath = $"{pathPrefix}:theme:{themeIndex.ToString(CultureInfo.InvariantCulture)}";
+                result.AddRange(BuildNestedLayerTargets(
+                             child,
+                             childPath,
+                             ref displayIndex,
+                             combinedX,
+                             combinedY,
+                             combinedZoom,
+                             GetThemeCoordinate(child, "width"),
+                             GetThemeCoordinate(child, "height")));
             }
+
+            return result;
         }
 
         private bool IsOledCurveDevice() =>
             _deviceModel.Equals("hydroshift-ii-oled-curve", StringComparison.OrdinalIgnoreCase);
 
+        private static bool ShouldExposeNestedThemeLayers(object theme) =>
+            IsOledCurveTheme(theme);
+
         private void ApplyOledNestedEditTransform(LayerTarget target)
         {
-            if (!target.IsNested || !IsOledCurveDevice())
+            if (!target.IsNested)
             {
                 return;
             }
@@ -3914,6 +4532,100 @@ internal static class Program
             return row;
         }
 
+        private static IEnumerable<Dictionary<string, object?>> EnumerateChildThemeRows(object theme, int displayIndexStart)
+        {
+            var themes = ThemeList(theme);
+            if (themes == null)
+            {
+                yield break;
+            }
+
+            var displayIndex = displayIndexStart;
+            for (var themeIndex = 0; themeIndex < themes.Count; themeIndex++)
+            {
+                var child = themes[themeIndex];
+                if (child == null)
+                {
+                    continue;
+                }
+
+                var editable = GetThemeEditTarget(child);
+                var editBaseZoom = GetThemeEditBaseZoom(child, editable);
+                var visibleZoom = GetThemeZoom(editable) / Math.Max(0.0001, editBaseZoom);
+                var graphChildCount = CountNestedGraphs(child);
+                var mediaPath = First(
+                    Reflection.GetString(child, "videoPath"),
+                    Reflection.GetString(child, "o_videoPath"),
+                    Reflection.GetString(child, "videoName"));
+                var previewPath = File.Exists(mediaPath)
+                    ? mediaPath
+                    : ExtractModularThemePreview(child, Reflection.GetString(child, "name"));
+                yield return new Dictionary<string, object?>
+                {
+                    ["Index"] = "theme:" + themeIndex.ToString(CultureInfo.InvariantCulture),
+                    ["Type"] = "ModularTheme",
+                    ["TypeName"] = Reflection.GetString(child, "ModularType"),
+                    ["SubTypeName"] = Reflection.GetString(child, "ThemeMode"),
+                    ["DataSource"] = FirstThemeDataSource(child),
+                    ["Text"] = Reflection.GetString(child, "name"),
+                    ["Media"] = First(
+                        Path.GetFileName(Reflection.GetString(child, "videoPath")),
+                        Path.GetFileName(Reflection.GetString(child, "o_videoPath")),
+                        Path.GetFileName(Reflection.GetString(child, "videoName")),
+                        Reflection.GetString(child, "name")),
+                    ["MediaPath"] = First(previewPath, mediaPath),
+                    ["X"] = FormatNumber(GetThemeCoordinate(editable, "X")),
+                    ["Y"] = FormatNumber(GetThemeCoordinate(editable, "Y")),
+                    ["Width"] = FormatNumber(GetThemeCoordinate(editable, "width") * editBaseZoom * visibleZoom),
+                    ["Height"] = FormatNumber(GetThemeCoordinate(editable, "height") * editBaseZoom * visibleZoom),
+                    ["ZoomRate"] = FormatNumber(visibleZoom),
+                    ["Hide"] = Reflection.GetBool(child, "IsHide"),
+                    ["GraphCount"] = graphChildCount,
+                    ["WritableProperties"] = new[] { "X", "Y", "width", "height", "ZoomRate", "IsHide", "name" },
+                    ["WritableFontProperties"] = Array.Empty<string>(),
+                    ["DisplayIndex"] = displayIndex++
+                };
+            }
+        }
+
+        private static int CountNestedGraphs(object? theme)
+        {
+            var count = TryGraphs(theme)?.Count ?? 0;
+            var themes = ThemeList(theme);
+            if (themes == null)
+            {
+                return count;
+            }
+
+            foreach (var child in themes)
+            {
+                count += CountNestedGraphs(child);
+            }
+
+            return count;
+        }
+
+        private static string FirstThemeDataSource(object? theme)
+        {
+            foreach (var graph in EnumerateThemeGraphs(theme))
+            {
+                var data = Reflection.Get(graph, "m_data");
+                if (data == null)
+                {
+                    continue;
+                }
+
+                var dataName = Reflection.GetString(data, "DataName");
+                if (!string.IsNullOrWhiteSpace(dataName) &&
+                    !string.Equals(dataName, "StaticText", StringComparison.OrdinalIgnoreCase))
+                {
+                    return dataName;
+                }
+            }
+
+            return "";
+        }
+
         private static void ApplyOledNestedDisplayTransform(Dictionary<string, object?> row, LayerTarget target)
         {
             TransformOledNestedPosition(row, "X", target.ParentX, target.ParentZoom);
@@ -3970,10 +4682,37 @@ internal static class Program
         private static double GetThemeCoordinate(object? theme, string name) =>
             Reflection.GetDouble(theme, name, Reflection.GetDouble(theme, name.Equals("X", StringComparison.OrdinalIgnoreCase) ? "posX" : name.Equals("Y", StringComparison.OrdinalIgnoreCase) ? "posY" : name));
 
+        private static void SetThemeCoordinate(object? theme, string name, double value)
+        {
+            if (!Reflection.TrySet(theme, name, value))
+            {
+                Reflection.TrySet(theme, name.Equals("X", StringComparison.OrdinalIgnoreCase) ? "posX" : "posY", value);
+            }
+        }
+
         private static double GetThemeZoom(object? theme)
         {
             var zoom = Reflection.GetDouble(theme, "ZoomRate", 1.0);
             return zoom > 0.0001 ? zoom : 1.0;
+        }
+
+        private static bool TryResolveThemeOnlyTarget(object theme, string layerIndex, out IList themes, out int themeIndex, out object child)
+        {
+            themes = Array.Empty<object>();
+            themeIndex = -1;
+            child = null!;
+            var parts = (layerIndex ?? "").Split(':');
+            if (parts.Length != 2 ||
+                !parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) ||
+                !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out themeIndex))
+            {
+                return false;
+            }
+
+            themes = ThemeList(theme) ?? throw new InvalidOperationException("ThemeList not found.");
+            ValidateIndex(themes, themeIndex);
+            child = themes[themeIndex]!;
+            return child != null;
         }
 
         private static LayerTarget ResolveLayerTarget(object theme, string layerIndex)
@@ -4008,6 +4747,58 @@ internal static class Program
                     GetThemeZoom(child),
                     GetThemeCoordinate(child, "width"),
                     GetThemeCoordinate(child, "height"));
+            }
+
+            if (parts.Length > 3 &&
+                parts[0].Equals("theme", StringComparison.OrdinalIgnoreCase) &&
+                int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var firstThemeIndex))
+            {
+                var themes = ThemeList(theme) ?? throw new InvalidOperationException("ThemeList not found.");
+                ValidateIndex(themes, firstThemeIndex);
+                var current = themes[firstThemeIndex];
+                var parentX = GetThemeCoordinate(current, "X");
+                var parentY = GetThemeCoordinate(current, "Y");
+                var parentZoom = GetThemeZoom(current);
+                var parentWidth = GetThemeCoordinate(current, "width");
+                var parentHeight = GetThemeCoordinate(current, "height");
+                var partIndex = 2;
+                while (partIndex < parts.Length - 1)
+                {
+                    if (!parts[partIndex].Equals("theme", StringComparison.OrdinalIgnoreCase) ||
+                        !int.TryParse(parts[partIndex + 1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var nestedThemeIndex))
+                    {
+                        break;
+                    }
+
+                    var nestedThemes = ThemeList(current) ?? throw new InvalidOperationException("Nested ThemeList not found.");
+                    ValidateIndex(nestedThemes, nestedThemeIndex);
+                    var nested = nestedThemes[nestedThemeIndex];
+                    parentX += GetThemeCoordinate(nested, "X") * parentZoom;
+                    parentY += GetThemeCoordinate(nested, "Y") * parentZoom;
+                    parentZoom *= GetThemeZoom(nested);
+                    parentWidth = GetThemeCoordinate(nested, "width");
+                    parentHeight = GetThemeCoordinate(nested, "height");
+                    current = nested;
+                    partIndex += 2;
+                }
+
+                if (partIndex == parts.Length - 1 &&
+                    int.TryParse(parts[partIndex], NumberStyles.Integer, CultureInfo.InvariantCulture, out var nestedLayerIndex))
+                {
+                    var childList = TryGraphs(current) ?? throw new InvalidOperationException("Nested GraphList not found.");
+                    ValidateIndex(childList, nestedLayerIndex);
+                    return new LayerTarget(
+                        childList,
+                        nestedLayerIndex,
+                        normalizedLayerIndex,
+                        nestedLayerIndex,
+                        current,
+                        parentX,
+                        parentY,
+                        parentZoom,
+                        parentWidth,
+                        parentHeight);
+                }
             }
 
             throw new InvalidOperationException("LayerIndex is invalid: " + normalizedLayerIndex);
@@ -5652,13 +6443,29 @@ internal static class Program
 
         private static string ImagePath(object graph, string templatePath, string index)
         {
-            var direct = First(Reflection.GetString(graph, "FilePath"), Reflection.GetString(graph, "Path"), Reflection.GetString(graph, "ImagePath"));
-            if (File.Exists(direct)) return direct;
             var name = Reflection.GetString(graph, "ImgName");
             var embeddedBitmapProperties = graph.GetType().Name.Equals("GraphImage", StringComparison.OrdinalIgnoreCase)
                 ? new[] { "bitmap", "S_bitmap", "O_bitmap" }
                 : new[] { "O_bitmap", "bitmap", "S_bitmap" };
-            foreach (var property in embeddedBitmapProperties)
+            if (graph.GetType().Name.Equals("GraphImage", StringComparison.OrdinalIgnoreCase))
+            {
+                var embedded = EmbeddedImagePath(graph, templatePath, index, embeddedBitmapProperties);
+                if (File.Exists(embedded)) return embedded;
+            }
+
+            var direct = First(Reflection.GetString(graph, "FilePath"), Reflection.GetString(graph, "Path"), Reflection.GetString(graph, "ImagePath"));
+            if (File.Exists(direct)) return direct;
+
+            var fallbackEmbedded = EmbeddedImagePath(graph, templatePath, index, embeddedBitmapProperties);
+            if (File.Exists(fallbackEmbedded)) return fallbackEmbedded;
+            var candidate = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(templatePath)!)!, "image", name);
+            if (File.Exists(candidate)) return candidate;
+            return candidate;
+        }
+
+        private static string EmbeddedImagePath(object graph, string templatePath, string index, IEnumerable<string> propertyNames)
+        {
+            foreach (var property in propertyNames)
             {
                 if (Reflection.Get(graph, property) is not Bitmap bitmap) continue;
                 try
@@ -5689,9 +6496,8 @@ internal static class Program
                 }
                 catch { }
             }
-            var candidate = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(templatePath)!)!, "image", name);
-            if (File.Exists(candidate)) return candidate;
-            return candidate;
+
+            return "";
         }
 
         private static bool IsGraphImageRenderedBitmapPath(string mediaPath)
@@ -5717,6 +6523,8 @@ internal static class Program
                 {
                     value = 52;
                 }
+                var style = Reflection.GetString(graph, "styleType");
+                var sensor = Reflection.GetString(graph, "senSorType");
                 var styleInfo = CloneSensorStyleInfo(graph);
                 var originalStyleInfo = CloneSensorStyleInfo(graph);
                 NormalizeSensorPreviewZoom(graph, styleInfo);
@@ -5733,8 +6541,6 @@ internal static class Program
 
                 var directory = Path.Combine(Path.GetTempPath(), "LianLiThemeEditor", "sensor-previews");
                 Directory.CreateDirectory(directory);
-                var style = Reflection.GetString(graph, "styleType");
-                var sensor = Reflection.GetString(graph, "senSorType");
                 var key = string.Join("-",
                     Path.GetFileNameWithoutExtension(templatePath),
                     Reflection.GetInt(graph, "posX"),
