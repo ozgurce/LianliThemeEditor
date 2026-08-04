@@ -3633,7 +3633,7 @@
                                     <RectangleGeometry x:Name="PreviewClipGeometry" Rect="0,0,240,240"/>
                                 </Grid.Clip>
                                 <Canvas x:Name="OledCurveSplitBackgroundCanvas" Width="240" Height="240" IsHitTestVisible="False" Visibility="Collapsed"/>
-                                <MediaElement x:Name="BackgroundMedia" Width="240" Height="240" Stretch="Fill" LoadedBehavior="Manual" UnloadedBehavior="Manual" Visibility="Collapsed" MediaEnded="BackgroundMedia_MediaEnded"/>
+                                <MediaElement x:Name="BackgroundMedia" Width="240" Height="240" Stretch="Fill" Volume="0" IsMuted="True" LoadedBehavior="Manual" UnloadedBehavior="Manual" Visibility="Collapsed" MediaEnded="BackgroundMedia_MediaEnded"/>
                                 <Image x:Name="BackgroundImage" Width="240" Height="240" Stretch="Fill" Visibility="Collapsed"/>
                                 <Rectangle Fill="#08000000"/>
                                 <Canvas x:Name="PreviewCanvas" Width="240" Height="240" Background="Transparent"

@@ -865,6 +865,7 @@ public partial class MainWindow : Window
             {
                 if (BackgroundMedia.Source != null && BackgroundMedia.Visibility == Visibility.Visible)
                 {
+                    MuteBackgroundPreviewMedia();
                     BackgroundMedia.Play();
                 }
             }
@@ -5348,6 +5349,7 @@ public partial class MainWindow : Window
         try
         {
             BackgroundMedia.Position = TimeSpan.FromMilliseconds(120);
+            MuteBackgroundPreviewMedia();
             BackgroundMedia.Play();
         }
         catch
@@ -15398,8 +15400,20 @@ public partial class MainWindow : Window
         BackgroundMedia.Position = TimeSpan.Zero;
         if (!BackgroundPreviewPaused)
         {
+            MuteBackgroundPreviewMedia();
             BackgroundMedia.Play();
         }
+    }
+
+    private void MuteBackgroundPreviewMedia()
+    {
+        if (BackgroundMedia == null)
+        {
+            return;
+        }
+
+        BackgroundMedia.Volume = 0;
+        BackgroundMedia.IsMuted = true;
     }
 
     private string GetSelectedDeviceModel()
@@ -17449,6 +17463,7 @@ public partial class MainWindow : Window
 
         if (BackgroundPreviewPaused)
         {
+            MuteBackgroundPreviewMedia();
             BackgroundMedia.Play();
             BackgroundPreviewPaused = false;
         }
@@ -26355,6 +26370,7 @@ private static string CreateExportPackageBaseName(string templateId)
 
     private void LoadBackgroundPreview(string backgroundPath, string backgroundName)
     {
+        MuteBackgroundPreviewMedia();
         BackgroundMedia.Stop();
         BackgroundMedia.MediaOpened -= BackgroundMedia_MediaOpened;
         BackgroundMedia.MediaFailed -= BackgroundMedia_MediaFailed;
@@ -26425,6 +26441,7 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             if (ext is ".mp4" or ".avi" or ".mov" or ".wmv" or ".h264")
             {
+                MuteBackgroundPreviewMedia();
                 BackgroundMedia.Source = new Uri(resolved, UriKind.Absolute);
                 BackgroundMedia.Tag = new BackgroundPreviewMediaTag
                 {
@@ -26435,6 +26452,7 @@ private static string CreateExportPackageBaseName(string templateId)
                 BackgroundMedia.MediaOpened += BackgroundMedia_MediaOpened;
                 BackgroundMedia.MediaFailed += BackgroundMedia_MediaFailed;
                 BackgroundMedia.Position = TimeSpan.Zero;
+                MuteBackgroundPreviewMedia();
                 BackgroundMedia.Play();
                 BackgroundPreviewPaused = false;
                 _currentBackgroundPath = mediaFallbackSource;
@@ -26585,6 +26603,7 @@ private static string CreateExportPackageBaseName(string templateId)
                     TryDeleteFile(_generatedBackgroundPreviewFramePath);
                     _generatedBackgroundPreviewFramePath = previewVideo;
                     BackgroundMedia.Stop();
+                    MuteBackgroundPreviewMedia();
                     BackgroundMedia.Source = new Uri(previewVideo, UriKind.Absolute);
                     BackgroundMedia.Tag = new BackgroundPreviewMediaTag
                     {
@@ -26594,6 +26613,7 @@ private static string CreateExportPackageBaseName(string templateId)
                     };
                     BackgroundMedia.Visibility = Visibility.Visible;
                     BackgroundMedia.Position = TimeSpan.Zero;
+                    MuteBackgroundPreviewMedia();
                     BackgroundMedia.Play();
                     BackgroundPreviewPaused = false;
                     UpdatePreviewPlaybackButton(true);
