@@ -1231,6 +1231,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/multi-colour-sensorpanellc-bb08b459.png",
       "packageUrl": "packages/multi-colour-sensorpanellc-bb08b459.zip"
+    },
+    {
+      "id": "smb-vert-653b6919",
+      "name": "SMB VERT",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/smb-vert-653b6919.png",
+      "packageUrl": "packages/smb-vert-653b6919.zip"
     }
   ]
 }
