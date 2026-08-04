@@ -1241,7 +1241,7 @@
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/smb-vert-653b6919.png",
-      "packageUrl": "packages/smb-vert-653b6919-v2.zip",
+      "packageUrl": "packages/smb-vert-653b6919-v3.zip",
       "orientation": "portrait"
     },
     {
@@ -1276,4 +1276,5 @@
     }
   ]
 }
+
 
