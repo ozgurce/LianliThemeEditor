@@ -2949,8 +2949,9 @@ public partial class MainWindow : Window
             if (SupportsOrientationSelectionSelected())
             {
                 templateOrientation = FirstNonEmpty(
-                    InferUniversalOrientationFromCanvas(result.Width, result.Height),
                     NormalizeUniversalOrientation((TemplateCombo?.SelectedItem as TemplateOption)?.UniversalOrientation),
+                    NormalizeUniversalOrientation((UniversalOrientationCombo?.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
+                    InferUniversalOrientationFromCanvas(result.Width, result.Height),
                     TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
                     InferGalleryThemeOrientation(_currentTemplateId, _currentTemplatePath, displayBackground, result.BackgroundPath),
                     InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, GetSelectedDeviceModel()),
@@ -11640,11 +11641,42 @@ public partial class MainWindow : Window
 
     private string ResolveLayerMediaPath(LayerRow layer)
     {
+        if (string.Equals(layer.Type, "GraphImage", StringComparison.OrdinalIgnoreCase) &&
+            layer.MediaHasAppliedZoom &&
+            TryResolveOriginalLayerImagePath(layer) is { Length: > 0 } originalImagePath)
+        {
+            return originalImagePath;
+        }
+
         if (!string.IsNullOrWhiteSpace(layer.MediaPath) && File.Exists(layer.MediaPath))
         {
             return layer.MediaPath;
         }
         return ResolveLayerMediaPath(layer.Media);
+    }
+
+    private string TryResolveOriginalLayerImagePath(LayerRow layer)
+    {
+        if (string.IsNullOrWhiteSpace(layer.Media))
+        {
+            return "";
+        }
+
+        var templateDir = Path.GetDirectoryName(_currentTemplatePath) ?? "";
+        var deviceDir = Path.GetDirectoryName(templateDir) ?? "";
+        foreach (var candidate in new[]
+                 {
+                     Path.Combine(deviceDir, "image", layer.Media),
+                     Path.Combine(LConnectPaths.ProgramDataRoot, GetSelectedDeviceModel(), "image", layer.Media)
+                 })
+        {
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        return "";
     }
 
     private string ResolveLayerMediaExportPath(LayerRow layer)
@@ -11971,12 +12003,14 @@ public partial class MainWindow : Window
         }
     }
 
-    private static double GetImagePreviewZoomFactor(LayerRow layer)
+    private double GetImagePreviewZoomFactor(LayerRow layer)
     {
         var currentZoom = TryParseZoom(layer.ZoomRate, out var parsedCurrent) && parsedCurrent > 0
             ? parsedCurrent
             : 1.0;
-        if (!layer.MediaHasAppliedZoom)
+        if (!layer.MediaHasAppliedZoom ||
+            (string.Equals(layer.Type, "GraphImage", StringComparison.OrdinalIgnoreCase) &&
+             !string.IsNullOrWhiteSpace(TryResolveOriginalLayerImagePath(layer))))
         {
             return currentZoom;
         }
@@ -18160,8 +18194,8 @@ public partial class MainWindow : Window
         }
 
         return FirstNonEmpty(
-            InferUniversalOrientationFromCanvas(_currentTemplatePixelWidth, _currentTemplatePixelHeight),
             NormalizeUniversalOrientation((UniversalOrientationCombo.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
+            InferUniversalOrientationFromCanvas(_currentTemplatePixelWidth, _currentTemplatePixelHeight),
             TryInferUniversalOrientationFromBackgroundPath(backgroundPath),
             InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, deviceModel),
             "landscape");

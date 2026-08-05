@@ -1,5 +1,11 @@
 # Changelog
 
+## V 2.8.7
+
+- Fixed image-layer preview quality after zoom edits by resolving `GraphImage` previews from the original image file when the loaded media path points to a zoom-baked embedded bitmap.
+- Fixed Universal 8.8" portrait theme creation/background changes so the explicit orientation selection is preserved instead of being overridden by stale canvas or background orientation inference.
+- Improved Universal 8.8" template loading orientation priority so stored template orientation and the current orientation selector win over inferred canvas/background dimensions.
+
 ## V 2.8.5
 
 - Added gallery theme package support for bundled fonts through manifest `FontFiles`, including validation for `.ttf` and `.otf` entries.
