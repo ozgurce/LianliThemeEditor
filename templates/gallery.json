@@ -1293,6 +1293,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/static-theme-black-vertical-32f95a68.png",
       "packageUrl": "packages/static-theme-black-vertical-32f95a68.zip"
+    },
+    {
+      "id": "static-theme-white-94e34a5e",
+      "name": "Static Theme White",
+      "author": "\u00D6Zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/static-theme-white-94e34a5e.png",
+      "packageUrl": "packages/static-theme-white-94e34a5e.zip"
     }
   ]
 }
