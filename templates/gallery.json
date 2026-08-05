@@ -1,4 +1,4 @@
-﻿{
+{
   "themes": [
     {
       "id": "purple-gold-panel-88",
@@ -1273,8 +1273,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/cyberpunk-cyan-red-v-5c5faed0.png",
       "packageUrl": "packages/cyberpunk-cyan-red-v-5c5faed0.zip"
+    },
+    {
+      "id": "static-theme-white-vertical-f8a97e53",
+      "name": "Static Theme White Vertical",
+      "author": "\u00D6Zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/static-theme-white-vertical-f8a97e53.png",
+      "packageUrl": "packages/static-theme-white-vertical-f8a97e53.zip"
     }
   ]
 }
-
-
