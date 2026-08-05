@@ -2949,12 +2949,13 @@ public partial class MainWindow : Window
             if (SupportsOrientationSelectionSelected())
             {
                 templateOrientation = FirstNonEmpty(
-                    NormalizeUniversalOrientation((TemplateCombo?.SelectedItem as TemplateOption)?.UniversalOrientation),
-                    NormalizeUniversalOrientation((UniversalOrientationCombo?.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
+                    InferUniversalOrientationFromTemplateFlag(result),
                     InferUniversalOrientationFromCanvas(result.Width, result.Height),
                     TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
                     InferGalleryThemeOrientation(_currentTemplateId, _currentTemplatePath, displayBackground, result.BackgroundPath),
                     InferUniversalOrientationFromTemplateMediaReferences(_currentTemplatePath, GetSelectedDeviceModel()),
+                    NormalizeUniversalOrientation((TemplateCombo?.SelectedItem as TemplateOption)?.UniversalOrientation),
+                    NormalizeUniversalOrientation((UniversalOrientationCombo?.SelectedItem as ComboBoxItem)?.Tag?.ToString()),
                     InferWideGalleryOrientationFromLayers(Layers));
             }
             if (!string.IsNullOrWhiteSpace(templateOrientation))
@@ -16307,6 +16308,16 @@ public partial class MainWindow : Window
         return height > width ? "portrait" : "landscape";
     }
 
+    private static string InferUniversalOrientationFromTemplateFlag(TemplateLoadResult result)
+    {
+        if (result.IsLandscape.HasValue)
+        {
+            return result.IsLandscape.Value ? "landscape" : "portrait";
+        }
+
+        return "";
+    }
+
     private static string InferUniversalOrientationFromTemplateMediaReferences(string templatePath, string deviceModel)
     {
         if (!IsWideScreenDeviceModel(deviceModel) ||
@@ -16979,10 +16990,12 @@ public partial class MainWindow : Window
             if (IsWideScreenDeviceModel(option.DeviceModel))
             {
                 var orientation = FirstNonEmpty(
-                    NormalizeUniversalOrientation(option.UniversalOrientation),
+                    InferUniversalOrientationFromTemplateFlag(result),
+                    InferUniversalOrientationFromCanvas(result.Width, result.Height),
+                    TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
                     InferGalleryThemeOrientation(option.Id, option.Path, result.Background, result.BackgroundPath),
                     InferUniversalOrientationFromTemplateMediaReferences(option.Path, option.DeviceModel),
-                    TryInferUniversalOrientationFromBackgroundPath(result.BackgroundPath),
+                    NormalizeUniversalOrientation(option.UniversalOrientation),
                     InferWideGalleryOrientationFromLayers(Layers));
                 if (!string.IsNullOrWhiteSpace(orientation))
                 {
@@ -23389,6 +23402,12 @@ public partial class MainWindow : Window
             return "";
         }
 
+        var serializedCanvasOrientation = TryInferUniversalOrientationFromSerializedCanvasMarkers(templateBytes);
+        if (!string.IsNullOrWhiteSpace(serializedCanvasOrientation))
+        {
+            return serializedCanvasOrientation;
+        }
+
         var previewBytes = ExtractLargestEmbeddedPng(templateBytes);
         if (previewBytes.Length > 0)
         {
@@ -23399,7 +23418,7 @@ public partial class MainWindow : Window
             }
         }
 
-        return TryInferUniversalOrientationFromSerializedCanvasMarkers(templateBytes);
+        return "";
     }
 
     private static string TryInferUniversalOrientationFromSerializedCanvasMarkers(byte[] templateBytes)
@@ -26455,17 +26474,34 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             var mp4Variant = ResolveBackgroundVariant(resolved, ".mp4");
             if (!mp4Variant.Equals(resolved, StringComparison.OrdinalIgnoreCase) &&
-                IsBackgroundPreviewVariantCompatibleWithCurrentOrientation(mp4Variant))
+                IsBackgroundPreviewVariantCompatibleWithCurrentOrientation(mp4Variant) &&
+                IsBackgroundPreviewVariantCurrentForSource(resolved, mp4Variant))
             {
                 resolved = mp4Variant;
             }
             else
             {
-                var previewVideo = CreateBackgroundPreviewVideo(resolved);
-                if (!string.IsNullOrWhiteSpace(previewVideo) && File.Exists(previewVideo))
+                var resolvedFromUniversalSibling = false;
+                if (string.Equals(GetSelectedDeviceModel(), UniversalScreenDeviceModel, StringComparison.OrdinalIgnoreCase))
                 {
-                    _generatedBackgroundPreviewFramePath = previewVideo;
-                    resolved = previewVideo;
+                    var preferredPreview = Path.ChangeExtension(resolved, ".mp4");
+                    if (TryCreateUniversal88PreviewBackgroundSibling(resolved, preferredPreview, IsUniversalLandscape()) &&
+                        File.Exists(preferredPreview) &&
+                        IsBackgroundPreviewVariantCompatibleWithCurrentOrientation(preferredPreview))
+                    {
+                        resolved = preferredPreview;
+                        resolvedFromUniversalSibling = true;
+                    }
+                }
+
+                if (!resolvedFromUniversalSibling)
+                {
+                    var previewVideo = CreateBackgroundPreviewVideo(resolved);
+                    if (!string.IsNullOrWhiteSpace(previewVideo) && File.Exists(previewVideo))
+                    {
+                        _generatedBackgroundPreviewFramePath = previewVideo;
+                        resolved = previewVideo;
+                    }
                 }
             }
         }
@@ -26606,6 +26642,26 @@ private static string CreateExportPackageBaseName(string templateId)
 
         var mediaLandscape = size.Width >= size.Height;
         return IsUniversalLandscape() == mediaLandscape;
+    }
+
+    private static bool IsBackgroundPreviewVariantCurrentForSource(string sourcePath, string previewPath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath) ||
+            string.IsNullOrWhiteSpace(previewPath) ||
+            !File.Exists(sourcePath) ||
+            !File.Exists(previewPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            return File.GetLastWriteTimeUtc(previewPath) >= File.GetLastWriteTimeUtc(sourcePath);
+        }
+        catch
+        {
+            return true;
+        }
     }
 
     private void BackgroundMedia_MediaOpened(object sender, RoutedEventArgs e)
@@ -32617,12 +32673,7 @@ private static string CreateExportPackageBaseName(string templateId)
             return false;
         }
 
-        var ffmpegPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-            "Lian-Li",
-            "L-Connect 3",
-            "x64",
-            "ffmpeg.exe");
+        var ffmpegPath = GetLConnectFfmpegPath();
         if (!File.Exists(ffmpegPath))
         {
             return false;
@@ -32703,17 +32754,19 @@ private static string CreateExportPackageBaseName(string templateId)
         var extension = Path.GetExtension(backgroundPath);
         if (extension.Equals(".mp4", StringComparison.OrdinalIgnoreCase))
         {
+            var h264Sibling = Path.ChangeExtension(backgroundPath, ".h264");
             if (File.Exists(backgroundPath))
             {
                 var size = TryGetVideoPixelSize(backgroundPath);
-                if (string.IsNullOrWhiteSpace(orientation) ||
-                    (size.Width == expectedPreviewSize.Width && size.Height == expectedPreviewSize.Height))
+                var sizeMatches = string.IsNullOrWhiteSpace(orientation) ||
+                    (size.Width == expectedPreviewSize.Width && size.Height == expectedPreviewSize.Height);
+                if (sizeMatches &&
+                    (!File.Exists(h264Sibling) || IsBackgroundPreviewVariantCurrentForSource(h264Sibling, backgroundPath)))
                 {
                     return backgroundPath;
                 }
             }
 
-            var h264Sibling = Path.ChangeExtension(backgroundPath, ".h264");
             if (File.Exists(h264Sibling) &&
                 TryCreateUniversal88PreviewBackgroundSibling(h264Sibling, backgroundPath, preferLandscape) &&
                 File.Exists(backgroundPath))
@@ -32730,7 +32783,8 @@ private static string CreateExportPackageBaseName(string templateId)
         if (extension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
         {
             var mp4Sibling = Path.ChangeExtension(backgroundPath, ".mp4");
-            var shouldCreateSibling = !File.Exists(mp4Sibling);
+            var shouldCreateSibling = !File.Exists(mp4Sibling) ||
+                                      !IsBackgroundPreviewVariantCurrentForSource(backgroundPath, mp4Sibling);
             if (!shouldCreateSibling && !string.IsNullOrWhiteSpace(orientation))
             {
                 var size = TryGetVideoPixelSize(mp4Sibling);
