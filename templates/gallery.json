@@ -1303,6 +1303,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/static-theme-metallic-vertical-8aaba338.png",
       "packageUrl": "packages/static-theme-metallic-vertical-8aaba338.zip"
+    },
+    {
+      "id": "static-theme-metallic-31a46aca",
+      "name": "Static Theme Metallic",
+      "author": "\u00D6Zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/static-theme-metallic-31a46aca.png",
+      "packageUrl": "packages/static-theme-metallic-31a46aca.zip"
     }
   ]
 }
