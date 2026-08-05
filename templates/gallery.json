@@ -1,1422 +1,1432 @@
 {
-    "themes":  [
-                   {
-                       "id":  "purple-gold-panel-88",
-                       "name":  "Purple and Gold Panel",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/purple-gold-panel-88.png",
-                       "packageUrl":  "packages/purple-gold-panel-88.lltheme"
-                   },
-                   {
-                       "id":  "universal-88-car-cruise-night",
-                       "name":  "Car Cruise Night",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8 Universal Screen",
-                       "previewUrl":  "previews/universal-88-car-cruise-night.png",
-                       "packageUrl":  "packages/universal-88-car-cruise-night.lltheme"
-                   },
-                   {
-                       "id":  "universal-88-gs-theme-hor",
-                       "name":  "Gs Theme HOR",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8 Universal Screen",
-                       "previewUrl":  "previews/universal-88-gs-theme-hor.png",
-                       "packageUrl":  "packages/universal-88-gs-theme-hor.lltheme"
-                   },
-                   {
-                       "id":  "universal-88-rick-and-morty-h",
-                       "name":  "Rick and Morty H",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8 Universal Screen",
-                       "previewUrl":  "previews/universal-88-rick-and-morty-h.png",
-                       "packageUrl":  "packages/universal-88-rick-and-morty-h.lltheme"
-                   },
-                   {
-                       "id":  "arc-raiders-v2lc",
-                       "name":  "Arc raiders V2LC",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/arc-raiders-v2lc.png",
-                       "packageUrl":  "packages/arc-raiders-v2lc.lltheme"
-                   },
-                   {
-                       "id":  "007-fl-v1",
-                       "name":  "007 FL V1",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/007-fl-v1.png",
-                       "packageUrl":  "packages/007-fl-v1.lltheme"
-                   },
-                   {
-                       "id":  "007-fl-v2",
-                       "name":  "007 FL V2",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/007-fl-v2.png",
-                       "packageUrl":  "packages/007-fl-v2.lltheme"
-                   },
-                   {
-                       "id":  "cyberpunk2077-v5lc",
-                       "name":  "Cyberpunk2077 V5LC",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-v5lc.png",
-                       "packageUrl":  "packages/cyberpunk2077-v5lc.lltheme"
-                   },
-                   {
-                       "id":  "hades",
-                       "name":  "Hades",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/hades.png",
-                       "packageUrl":  "packages/hades.lltheme"
-                   },
-                   {
-                       "id":  "smb-v3",
-                       "name":  "SMB V3",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/smb-v3.png",
-                       "packageUrl":  "packages/smb-v3.lltheme"
-                   },
-                   {
-                       "id":  "gs-theme-rgb-hor-version",
-                       "name":  "Gs Theme RGB HOR version",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gs-theme-rgb-hor-version.png",
-                       "packageUrl":  "packages/gs-theme-rgb-hor-version.lltheme"
-                   },
-                   {
-                       "id":  "spaceship-dashboard-horisontal-remake",
-                       "name":  "Spaceship Dashboard Horisontal remake",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/spaceship-dashboard-horisontal-remake.png",
-                       "packageUrl":  "packages/spaceship-dashboard-horisontal-remake.lltheme"
-                   },
-                   {
-                       "id":  "predator",
-                       "name":  "Predator",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/predator.png",
-                       "packageUrl":  "packages/predator.lltheme"
-                   },
-                   {
-                       "id":  "smb-retro",
-                       "name":  "SMB Retro",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/smb-retro.png",
-                       "packageUrl":  "packages/smb-retro.lltheme"
-                   },
-                   {
-                       "id":  "gaming-rig-v2",
-                       "name":  "Gaming rig V2",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gaming-rig-v2.png",
-                       "packageUrl":  "packages/gaming-rig-v2.lltheme"
-                   },
-                   {
-                       "id":  "clockv1-hydroshift-c",
-                       "name":  "ClockV1 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-clockv1.png",
-                       "packageUrl":  "packages/hydroshift-clockv1.zip"
-                   },
-                   {
-                       "id":  "clockv1-hydroshift-s",
-                       "name":  "ClockV1 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-clockv1.png",
-                       "packageUrl":  "packages/hydroshift-clockv1.zip"
-                   },
-                   {
-                       "id":  "clockv2-hydroshift-c",
-                       "name":  "ClockV2 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-clockv2.png",
-                       "packageUrl":  "packages/hydroshift-clockv2.zip"
-                   },
-                   {
-                       "id":  "clockv2-hydroshift-s",
-                       "name":  "ClockV2 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-clockv2.png",
-                       "packageUrl":  "packages/hydroshift-clockv2.zip"
-                   },
-                   {
-                       "id":  "clockv3-hydroshift-c",
-                       "name":  "ClockV3 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-clockv3.png",
-                       "packageUrl":  "packages/hydroshift-clockv3.zip"
-                   },
-                   {
-                       "id":  "clockv3-hydroshift-s",
-                       "name":  "ClockV3 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-clockv3.png",
-                       "packageUrl":  "packages/hydroshift-clockv3.zip"
-                   },
-                   {
-                       "id":  "m1-hydroshift-c",
-                       "name":  "m1 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m1.png",
-                       "packageUrl":  "packages/hydroshift-m1.zip"
-                   },
-                   {
-                       "id":  "m1-hydroshift-s",
-                       "name":  "m1 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m1.png",
-                       "packageUrl":  "packages/hydroshift-m1.zip"
-                   },
-                   {
-                       "id":  "m10-hydroshift-c",
-                       "name":  "m10 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m10.png",
-                       "packageUrl":  "packages/hydroshift-m10.zip"
-                   },
-                   {
-                       "id":  "m10-hydroshift-s",
-                       "name":  "m10 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m10.png",
-                       "packageUrl":  "packages/hydroshift-m10.zip"
-                   },
-                   {
-                       "id":  "m2-hydroshift-c",
-                       "name":  "m2 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m2.png",
-                       "packageUrl":  "packages/hydroshift-m2.zip"
-                   },
-                   {
-                       "id":  "m2-hydroshift-s",
-                       "name":  "m2 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m2.png",
-                       "packageUrl":  "packages/hydroshift-m2.zip"
-                   },
-                   {
-                       "id":  "m3-hydroshift-c",
-                       "name":  "m3 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m3.png",
-                       "packageUrl":  "packages/hydroshift-m3.zip"
-                   },
-                   {
-                       "id":  "m3-hydroshift-s",
-                       "name":  "m3 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m3.png",
-                       "packageUrl":  "packages/hydroshift-m3.zip"
-                   },
-                   {
-                       "id":  "m4-hydroshift-c",
-                       "name":  "m4 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m4.png",
-                       "packageUrl":  "packages/hydroshift-m4.zip"
-                   },
-                   {
-                       "id":  "m4-hydroshift-s",
-                       "name":  "m4 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m4.png",
-                       "packageUrl":  "packages/hydroshift-m4.zip"
-                   },
-                   {
-                       "id":  "m5-hydroshift-c",
-                       "name":  "m5 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m5.png",
-                       "packageUrl":  "packages/hydroshift-m5.zip"
-                   },
-                   {
-                       "id":  "m5-hydroshift-s",
-                       "name":  "m5 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m5.png",
-                       "packageUrl":  "packages/hydroshift-m5.zip"
-                   },
-                   {
-                       "id":  "m6-hydroshift-c",
-                       "name":  "m6 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m6.png",
-                       "packageUrl":  "packages/hydroshift-m6.zip"
-                   },
-                   {
-                       "id":  "m6-hydroshift-s",
-                       "name":  "m6 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m6.png",
-                       "packageUrl":  "packages/hydroshift-m6.zip"
-                   },
-                   {
-                       "id":  "m7-hydroshift-c",
-                       "name":  "m7 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m7.png",
-                       "packageUrl":  "packages/hydroshift-m7.zip"
-                   },
-                   {
-                       "id":  "m7-hydroshift-s",
-                       "name":  "m7 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m7.png",
-                       "packageUrl":  "packages/hydroshift-m7.zip"
-                   },
-                   {
-                       "id":  "m8-hydroshift-c",
-                       "name":  "m8 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m8.png",
-                       "packageUrl":  "packages/hydroshift-m8.zip"
-                   },
-                   {
-                       "id":  "m8-hydroshift-s",
-                       "name":  "m8 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m8.png",
-                       "packageUrl":  "packages/hydroshift-m8.zip"
-                   },
-                   {
-                       "id":  "m9-hydroshift-c",
-                       "name":  "m9 (LCD-C)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/hydroshift-m9.png",
-                       "packageUrl":  "packages/hydroshift-m9.zip"
-                   },
-                   {
-                       "id":  "m9-hydroshift-s",
-                       "name":  "m9 (LCD-S)",
-                       "author":  "Lian Li",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/hydroshift-m9.png",
-                       "packageUrl":  "packages/hydroshift-m9.zip"
-                   },
-                   {
-                       "id":  "clock-with-sensors-9f367ce3",
-                       "name":  "Clock_With_Sensors",
-                       "author":  "Community",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/clock-with-sensors-9f367ce3.png",
-                       "packageUrl":  "packages/clock-with-sensors-9f367ce3.zip"
-                   },
-                   {
-                       "id":  "omega-vault-c6b12005",
-                       "name":  "Omega Vault",
-                       "author":  "Özgür",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/omega-vault-c6b12005.png",
-                       "packageUrl":  "packages/omega-vault-c6b12005.zip"
-                   },
-                   {
-                       "id":  "omega-vault-noshadowstaticbg-e5a000b5",
-                       "name":  "Omega Vault",
-                       "author":  "Özgür",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/omega-vault-noshadowstaticbg-e5a000b5.png",
-                       "packageUrl":  "packages/omega-vault-noshadowstaticbg-e5a000b5.zip"
-                   },
-                   {
-                       "id":  "omega-vault-staticbg-c9d7e7b1",
-                       "name":  "Omega Vault StaticBG",
-                       "author":  "Özgür",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/omega-vault-staticbg-c9d7e7b1.png",
-                       "packageUrl":  "packages/omega-vault-staticbg-c9d7e7b1.zip"
-                   },
-                   {
-                       "id":  "omega-vault-noshadow-13f02a2d",
-                       "name":  "Omega Vault noshadow",
-                       "author":  "Özgür",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/omega-vault-noshadow-13f02a2d.png",
-                       "packageUrl":  "packages/omega-vault-noshadow-13f02a2d.zip"
-                   },
-                   {
-                       "id":  "007-fl-vertical",
-                       "name":  "007 FL Vertical",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/007-fl-vertical.png",
-                       "packageUrl":  "packages/007-fl-vertical.lltheme"
-                   },
-                   {
-                       "id":  "cyberpunk2077-v5lc-vertical",
-                       "name":  "Cyberpunk2077 V5LC Vertical",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/cyberpunk2077-v5lc-vertical.png",
-                       "packageUrl":  "packages/cyberpunk2077-v5lc-vertical.lltheme"
-                   },
-                   {
-                       "id":  "doom-the-dark-ages-v2-vert",
-                       "name":  "Doom the Dark Ages V2 Vertical",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/doom-the-dark-ages-v2-vert.png",
-                       "packageUrl":  "packages/doom-the-dark-ages-v2-vert.lltheme"
-                   },
-                   {
-                       "id":  "spaceship-dashboard-vertical",
-                       "name":  "Spaceship Dashboard Vertical",
-                       "author":  "Galrim",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/spaceship-dashboard-vertical.png",
-                       "packageUrl":  "packages/spaceship-dashboard-vertical.lltheme"
-                   },
-                   {
-                       "id":  "greenclock-1b5f0b54",
-                       "name":  "GreenClock",
-                       "author":  "Turzx",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/greenclock-1b5f0b54.png",
-                       "packageUrl":  "packages/greenclock-1b5f0b54.zip"
-                   },
-                   {
-                       "id":  "analogromannumerals-029cfb8a",
-                       "name":  "AnalogRomanNumerals",
-                       "author":  "Turzx",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/analogromannumerals-029cfb8a.png",
-                       "packageUrl":  "packages/analogromannumerals-029cfb8a.zip"
-                   },
-                   {
-                       "id":  "blue-white-clock-c47e6d70",
-                       "name":  "Blue\u0026White_Clock",
-                       "author":  "Turzx",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/blue-white-clock-c47e6d70.png",
-                       "packageUrl":  "packages/blue-white-clock-c47e6d70.zip"
-                   },
-                   {
-                       "id":  "digital-and-analog-watch-dad4132f",
-                       "name":  "Digital And Analog Watch",
-                       "author":  "Turzx",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/digital-and-analog-watch-dad4132f.png",
-                       "packageUrl":  "packages/digital-and-analog-watch-dad4132f.zip"
-                   },
-                   {
-                       "id":  "lian-li-stock-added-fps-ff9e88cf",
-                       "name":  "Lian li stock Added FPS",
-                       "author":  "Aäron",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/lian-li-stock-added-fps-ff9e88cf.png",
-                       "packageUrl":  "packages/lian-li-stock-added-fps-ff9e88cf.lltheme"
-                   },
-                   {
-                       "id":  "valorantlc-6d555be5",
-                       "name":  "ValorantLC",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/valorantlc-6d555be5.png",
-                       "packageUrl":  "packages/valorantlc-6d555be5.zip"
-                   },
-                   {
-                       "id":  "spaceship-dashboard-horisontal-248061a5",
-                       "name":  "Spaceship Dashboard Horisontal",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/spaceship-dashboard-horisontal-248061a5.png",
-                       "packageUrl":  "packages/spaceship-dashboard-horisontal-248061a5.zip"
-                   },
-                   {
-                       "id":  "rog-strix-a36a2a69",
-                       "name":  "Rog Strix",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/rog-strix-a36a2a69.png",
-                       "packageUrl":  "packages/rog-strix-a36a2a69.zip"
-                   },
-                   {
-                       "id":  "predator-a04bc2bc",
-                       "name":  "Predator",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/predator-a04bc2bc.png",
-                       "packageUrl":  "packages/predator-a04bc2bc.zip"
-                   },
-                   {
-                       "id":  "neon-city-9623cc0d",
-                       "name":  "Neon City",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/neon-city-9623cc0d.png",
-                       "packageUrl":  "packages/neon-city-9623cc0d.zip"
-                   },
-                   {
-                       "id":  "cyberpunk2077-v6horlc-96adce3d",
-                       "name":  "Cyberpunk2077 V6HORLC",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-v6horlc-96adce3d.png",
-                       "packageUrl":  "packages/cyberpunk2077-v6horlc-96adce3d.zip"
-                   },
-                   {
-                       "id":  "cyberpunk2077-v5-vram-af20858d",
-                       "name":  "Cyberpunk2077 V5 VRAM",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-v5-vram-af20858d.png",
-                       "packageUrl":  "packages/cyberpunk2077-v5-vram-af20858d.zip"
-                   },
-                   {
-                       "id":  "cyberpunk2077-edgerunners-white-63e73814",
-                       "name":  "Cyberpunk2077 Edgerunners White",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-edgerunners-white-63e73814.png",
-                       "packageUrl":  "packages/cyberpunk2077-edgerunners-white-63e73814.zip"
-                   },
-                   {
-                       "id":  "brickwall-bar-scene-97f0cf8c",
-                       "name":  "Brickwall Bar Scene",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/brickwall-bar-scene-97f0cf8c.png",
-                       "packageUrl":  "packages/brickwall-bar-scene-97f0cf8c.zip"
-                   },
-                   {
-                       "id":  "blue-dials-lc-2c98ea30",
-                       "name":  "Blue Dials LC",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/blue-dials-lc-2c98ea30.png",
-                       "packageUrl":  "packages/blue-dials-lc-2c98ea30.zip"
-                   },
-                   {
-                       "id":  "aida-one-dial-fda4762f",
-                       "name":  "Aida One Dial",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/aida-one-dial-fda4762f.png",
-                       "packageUrl":  "packages/aida-one-dial-fda4762f.zip"
-                   },
-                   {
-                       "id":  "comprehensive-blue-panel-5eb78314",
-                       "name":  "Comprehensive blue panel",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/comprehensive-blue-panel-5eb78314.png",
-                       "packageUrl":  "packages/comprehensive-blue-panel-5eb78314.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "gs-theme-silver-and-white-ead20d6a",
-                       "name":  "Gs Theme Silver and white",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gs-theme-silver-and-white-ead20d6a.png",
-                       "packageUrl":  "packages/gs-theme-silver-and-white-ead20d6a.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "cyberpunk2077-v4lcvert-0f3937cf",
-                       "name":  "Cyberpunk2077 V4LCVERT",
-                       "author":  "Galrim",
-                       "description":  "Includes FPS",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-v4lcvert-0f3937cf.png",
-                       "packageUrl":  "packages/cyberpunk2077-v4lcvert-0f3937cf.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "gs-theme-blood-and-black-02e79ebf",
-                       "name":  "Gs Theme Blood and Black",
-                       "author":  "Galrim",
-                       "description":  "Includes FPS",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gs-theme-blood-and-black-02e79ebf.png",
-                       "packageUrl":  "packages/gs-theme-blood-and-black-02e79ebf.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "spaceship-dashboard-vertical-v2-f4833921",
-                       "name":  "Spaceship Dashboard Vertical V2",
-                       "author":  "Galrim",
-                       "description":  "Includes FPS",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/spaceship-dashboard-vertical-v2-f4833921.png",
-                       "packageUrl":  "packages/spaceship-dashboard-vertical-v2-f4833921.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "neon-v-8cce03eb",
-                       "name":  "Neon V",
-                       "author":  "Galrim",
-                       "description":  "Includes FPS",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/neon-v-8cce03eb.png",
-                       "packageUrl":  "packages/neon-v-8cce03eb.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "deadpool-20260520-195419-20260706-235724-60c0f921",
-                       "name":  "Deadpool",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/deadpool-20260520-195419-20260706-235724-60c0f921.png",
-                       "packageUrl":  "packages/deadpool-20260520-195419-20260706-235724-60c0f921.zip"
-                   },
-                   {
-                       "id":  "btfv1-20260429-151135-20260706-235849-c912b96a",
-                       "name":  "BTF V1",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/btfv1-20260429-151135-20260706-235849-c912b96a.png",
-                       "packageUrl":  "packages/btfv1-20260429-151135-20260706-235849-c912b96a.zip"
-                   },
-                   {
-                       "id":  "simpleblack-big-bff06511",
-                       "name":  "SimpleBlack_big",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/simpleblack-big-bff06511.png",
-                       "packageUrl":  "packages/simpleblack-big-bff06511.zip"
-                   },
-                   {
-                       "id":  "neon-blue-and-purple-6493865f",
-                       "name":  "Neon Blue And Purple",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/neon-blue-and-purple-6493865f.png",
-                       "packageUrl":  "packages/neon-blue-and-purple-6493865f.zip"
-                   },
-                   {
-                       "id":  "simpleblack-b29d68a2",
-                       "name":  "SimpleBlack",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/simpleblack-b29d68a2.png",
-                       "packageUrl":  "packages/simpleblack-b29d68a2.zip"
-                   },
-                   {
-                       "id":  "simplewhite-50b75f72",
-                       "name":  "SimpleWhite",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/simplewhite-50b75f72.png",
-                       "packageUrl":  "packages/simplewhite-50b75f72.zip"
-                   },
-                   {
-                       "id":  "cyberpunk2077-darkpink-4a27389c",
-                       "name":  "Cyberpunk2077 DarkPink",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-darkpink-4a27389c.png",
-                       "packageUrl":  "packages/cyberpunk2077-darkpink-4a27389c.zip"
-                   },
-                   {
-                       "id":  "bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136",
-                       "name":  "BlueTech Asus Rog V2",
-                       "author":  "Wr3ck3r",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.png",
-                       "packageUrl":  "packages/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.zip"
-                   },
-                   {
-                       "id":  "white-black-5-dials-26343047",
-                       "name":  "White Black 5 Dials",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/white-black-5-dials-26343047.png",
-                       "packageUrl":  "packages/white-black-5-dials-26343047.zip"
-                   },
-                   {
-                       "id":  "white-snd-gold-clocks-4bd697d9",
-                       "name":  "White Snd Gold Clocks",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/white-snd-gold-clocks-4bd697d9.png",
-                       "packageUrl":  "packages/white-snd-gold-clocks-4bd697d9.zip"
-                   },
-                   {
-                       "id":  "tomb-raider-407b1157",
-                       "name":  "Tomb Raider",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/tomb-raider-407b1157.png",
-                       "packageUrl":  "packages/tomb-raider-407b1157.zip"
-                   },
-                   {
-                       "id":  "sw-l2-vertical-98d1474a",
-                       "name":  "SW L2 Vertical",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/sw-l2-vertical-98d1474a.png",
-                       "packageUrl":  "packages/sw-l2-vertical-98d1474a.zip"
-                   },
-                   {
-                       "id":  "steins-gate-f3e16ff0",
-                       "name":  "Steins Gate",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/steins-gate-f3e16ff0.png",
-                       "packageUrl":  "packages/steins-gate-f3e16ff0.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "space-shuttle-8dbeaa7c",
-                       "name":  "Space Shuttle",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/space-shuttle-8dbeaa7c.png",
-                       "packageUrl":  "packages/space-shuttle-8dbeaa7c.zip"
-                   },
-                   {
-                       "id":  "resident-evil-requiem-lc-v2-07a551bd",
-                       "name":  "Resident Evil Requiem LC V2",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/resident-evil-requiem-lc-v2-07a551bd.png",
-                       "packageUrl":  "packages/resident-evil-requiem-lc-v2-07a551bd.zip"
-                   },
-                   {
-                       "id":  "re-requiem-v3-white-0a609287",
-                       "name":  "RE Requiem V3 White",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/re-requiem-v3-white-0a609287.png",
-                       "packageUrl":  "packages/re-requiem-v3-white-0a609287.zip"
-                   },
-                   {
-                       "id":  "re-requiem-v2-ba29bf72",
-                       "name":  "RE Requiem V2",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/re-requiem-v2-ba29bf72.png",
-                       "packageUrl":  "packages/re-requiem-v2-ba29bf72.zip"
-                   },
-                   {
-                       "id":  "purple-white-dials-65a8d232",
-                       "name":  "Purple White Dials",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/purple-white-dials-65a8d232.png",
-                       "packageUrl":  "packages/purple-white-dials-65a8d232.zip"
-                   },
-                   {
-                       "id":  "gigabyte-aorus-dc9460d9",
-                       "name":  "Gigabyte Aorus",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/gigabyte-aorus-dc9460d9.png",
-                       "packageUrl":  "packages/gigabyte-aorus-dc9460d9.zip"
-                   },
-                   {
-                       "id":  "ghost-of-tsushima-1f644dd9",
-                       "name":  "Ghost of Tsushima",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/ghost-of-tsushima-1f644dd9.png",
-                       "packageUrl":  "packages/ghost-of-tsushima-1f644dd9.zip"
-                   },
-                   {
-                       "id":  "btf-v1-vert-ba6b9e69",
-                       "name":  "BTF V1 VERT",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/btf-v1-vert-ba6b9e69.png",
-                       "packageUrl":  "packages/btf-v1-vert-ba6b9e69.zip"
-                   },
-                   {
-                       "id":  "alien2-19d639fb",
-                       "name":  "Alien2",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/alien2-19d639fb.png",
-                       "packageUrl":  "packages/alien2-19d639fb.zip"
-                   },
-                   {
-                       "id":  "aida64-ripoff-f5575eed",
-                       "name":  "Aida64 Ripoff",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/aida64-ripoff-f5575eed.png",
-                       "packageUrl":  "packages/aida64-ripoff-f5575eed.zip"
-                   },
-                   {
-                       "id":  "casio-hydroshift-s-a3d4af84",
-                       "name":  "Casio-Hydroshift-S",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "Hydroshift II LCD-S",
-                       "previewUrl":  "previews/casio-hydroshift-s-a3d4af84.png",
-                       "packageUrl":  "packages/casio-hydroshift-s-a3d4af84.zip"
-                   },
-                   {
-                       "id":  "casio-hydroshift-c-4245840e",
-                       "name":  "Casio-Hydroshift-C",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-c",
-                       "deviceName":  "Hydroshift II LCD-C",
-                       "previewUrl":  "previews/casio-hydroshift-c-4245840e.png",
-                       "packageUrl":  "packages/casio-hydroshift-c-4245840e.zip"
-                   },
-                   {
-                       "id":  "bluetech-animated-f44d27cc",
-                       "name":  "BlueTech_Animated",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/bluetech-animated-f44d27cc.png",
-                       "packageUrl":  "packages/bluetech-animated-f44d27cc.zip"
-                   },
-                   {
-                       "id":  "crystals-182127-805110d2",
-                       "name":  "Crystals_182127",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/crystals-182127-805110d2.png",
-                       "packageUrl":  "packages/crystals-182127-805110d2.zip"
-                   },
-                   {
-                       "id":  "crystals-182127-lconnect-vm92-d97530a7",
-                       "name":  "Crystals_182127-LConnect-VM92",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "vm-9.2-inch",
-                       "deviceName":  "VM 9.2 LCD",
-                       "previewUrl":  "previews/crystals-182127-lconnect-vm92-d97530a7.png",
-                       "packageUrl":  "packages/crystals-182127-lconnect-vm92-d97530a7.zip"
-                   },
-                   {
-                       "id":  "simpleblack-vertical-with-time-69e4ec26",
-                       "name":  "SimpleBlack Vertical With Time",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/simpleblack-vertical-with-time-69e4ec26.png",
-                       "packageUrl":  "packages/simpleblack-vertical-with-time-69e4ec26.zip"
-                   },
-                   {
-                       "id":  "simple-black-vertical-f953dcef",
-                       "name":  "Simple Black Vertical",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/simple-black-vertical-f953dcef.png",
-                       "packageUrl":  "packages/simple-black-vertical-f953dcef.zip"
-                   },
-                   {
-                       "id":  "simple-white-vertical-25524e71",
-                       "name":  "Simple White Vertical",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/simple-white-vertical-25524e71.png",
-                       "packageUrl":  "packages/simple-white-vertical-25524e71.zip"
-                   },
-                   {
-                       "id":  "memento-mori-v2-d8897b0c",
-                       "name":  "Memento Mori V2",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/memento-mori-v2-d8897b0c.png",
-                       "packageUrl":  "packages/memento-mori-v2-d8897b0c.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "memento-mori-v1-97f382b2",
-                       "name":  "Memento Mori V1",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/memento-mori-v1-97f382b2.png",
-                       "packageUrl":  "packages/memento-mori-v1-97f382b2.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "doom-3c85572e",
-                       "name":  "Doom",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/doom-3c85572e.png",
-                       "packageUrl":  "packages/doom-3c85572e.zip"
-                   },
-                   {
-                       "id":  "graymetal-e3071ec2",
-                       "name":  "GrayMetal",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/graymetal-e3071ec2.png",
-                       "packageUrl":  "packages/graymetal-e3071ec2.zip"
-                   },
-                   {
-                       "id":  "radioactive-c302c775",
-                       "name":  "Radioactive",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/radioactive-c302c775.png",
-                       "packageUrl":  "packages/radioactive-c302c775-v2.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "techtheme-d151464d",
-                       "name":  "TechTheme",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/techtheme-d151464d.png",
-                       "packageUrl":  "packages/techtheme-d151464d.zip"
-                   },
-                   {
-                       "id":  "eft-v1-9b9ac874",
-                       "name":  "Escape From Tarkov V1",
-                       "author":  "Blakiukas",
-                       "description":  "Escape from Tarkov simple minimal info theme.",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/eft-v1-9b9ac874.png",
-                       "packageUrl":  "packages/eft-v1-9b9ac874.zip"
-                   },
-                   {
-                       "id":  "casual-black-with-fps-7caaefdc",
-                       "name":  "Casual_Black_with_FPS",
-                       "author":  "Nucleus",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/casual-black-with-fps-7caaefdc.png",
-                       "packageUrl":  "packages/casual-black-with-fps-7caaefdc.zip"
-                   },
-                   {
-                       "id":  "019-time-lcd-s-76fc6b11",
-                       "name":  "019 + time (LCD-S)",
-                       "author":  "hatiko",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "HydroShift II LCD-S",
-                       "packageUrl":  "packages/019-time-lcd-s-76fc6b11.zip",
-                       "previewUrl":  "previews/019-time-lcd-s-76fc6b11.png"
-                   },
-                   {
-                       "id":  "neon-board-44d1876c",
-                       "name":  "Neon Board",
-                       "author":  "Ozgur",
-                       "description":  "",
-                       "deviceModel":  "hydroshift-ii-lcd-s",
-                       "deviceName":  "HydroShift II LCD-S",
-                       "packageUrl":  "packages/neon-board-44d1876c.zip",
-                       "previewUrl":  "previews/neon-board-44d1876c.png"
-                   },
-                   {
-                       "id":  "kuromi-96bc246c",
-                       "name":  "Kuromi",
-                       "author":  "Ozgur",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "packageUrl":  "packages/kuromi-96bc246c.zip",
-                       "previewUrl":  "previews/kuromi-96bc246c.png"
-                   },
-                   {
-                       "id":  "cyberpunk-cyan-red-v-d116e7b9",
-                       "name":  "Cyberpunk Cyan Red V",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk-cyan-red-v-d116e7b9.png",
-                       "packageUrl":  "packages/cyberpunk-cyan-red-v-d116e7b9.zip"
-                   },
-                   {
-                       "id":  "assassins-credd-origins-20260729-000954-portrait-192117-db62e36b",
-                       "name":  "Assassins_Credd_Origins_20260729_000954-portrait_192117",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/assassins-credd-origins-20260729-000954-portrait-192117-db62e36b.png",
-                       "packageUrl":  "packages/assassins-credd-origins-20260729-000954-portrait-192117-db62e36b.zip"
-                   },
-                   {
-                       "id":  "multi-colour-sensorpanelv2-a718f07c",
-                       "name":  "Multi colour sensorpanelV2",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/multi-colour-sensorpanelv2-a718f07c.png",
-                       "packageUrl":  "packages/multi-colour-sensorpanelv2-a718f07c.zip"
-                   },
-                   {
-                       "id":  "asus-blue-62e0be0c",
-                       "name":  "Asus Blue",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/asus-blue-62e0be0c.png",
-                       "packageUrl":  "packages/asus-blue-62e0be0c.zip"
-                   },
-                   {
-                       "id":  "tron-reworked-v2-d04eac82",
-                       "name":  "Tron reworked V2",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/tron-reworked-v2-d04eac82.png",
-                       "packageUrl":  "packages/tron-reworked-v2-d04eac82.zip"
-                   },
-                   {
-                       "id":  "marshall-0abe0896",
-                       "name":  "Marshall",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/marshall-0abe0896.png",
-                       "packageUrl":  "packages/marshall-0abe0896.zip"
-                   },
-                   {
-                       "id":  "pinball-89639205",
-                       "name":  "Pinball",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "portrait",
-                       "previewUrl":  "previews/pinball-89639205.png",
-                       "packageUrl":  "packages/pinball-89639205.zip"
-                   },
-                   {
-                       "id":  "walkie-talkie-b02d0230",
-                       "name":  "Walkie Talkie",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/walkie-talkie-b02d0230.png",
-                       "packageUrl":  "packages/walkie-talkie-b02d0230.zip"
-                   },
-                   {
-                       "id":  "analogue-data-console-02820332",
-                       "name":  "Analogue data console",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/analogue-data-console-02820332.png",
-                       "packageUrl":  "packages/analogue-data-console-02820332.zip"
-                   },
-                   {
-                       "id":  "cyberpunk2077-edgerunners-darkpink-1944d425",
-                       "name":  "Cyberpunk2077 Edgerunners DarkPink",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk2077-edgerunners-darkpink-1944d425.png",
-                       "packageUrl":  "packages/cyberpunk2077-edgerunners-darkpink-1944d425.zip"
-                   },
-                   {
-                       "id":  "assassins-credd-origins-9c396d0b",
-                       "name":  "Assassins Credd Origins",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/assassins-credd-origins-9c396d0b.png",
-                       "packageUrl":  "packages/assassins-credd-origins-9c396d0b.zip"
-                   },
-                   {
-                       "id":  "multi-colour-sensorpanellc-bb08b459",
-                       "name":  "Multi colour sensorpanelLC",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/multi-colour-sensorpanellc-bb08b459.png",
-                       "packageUrl":  "packages/multi-colour-sensorpanellc-bb08b459.zip"
-                   },
-                   {
-                       "id":  "smb-vert-653b6919",
-                       "name":  "SMB VERT",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/smb-vert-653b6919.png",
-                       "packageUrl":  "packages/smb-vert-653b6919-v3.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "asus-rog-rgb-horizontal-7620afeb",
-                       "name":  "Asus Rog RGB Horizontal",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/asus-rog-rgb-horizontal-7620afeb.png",
-                       "packageUrl":  "packages/asus-rog-rgb-horizontal-7620afeb.zip"
-                   },
-                   {
-                       "id":  "asus-rog-orange-horizontal-3a8bcc8c",
-                       "name":  "Asus Rog Orange Horizontal",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/asus-rog-orange-horizontal-3a8bcc8c.png",
-                       "packageUrl":  "packages/asus-rog-orange-horizontal-3a8bcc8c.zip"
-                   },
-                   {
-                       "id":  "cyberpunk-cyan-red-v-5c5faed0",
-                       "name":  "Cyberpunk Cyan Red V",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyberpunk-cyan-red-v-5c5faed0.png",
-                       "packageUrl":  "packages/cyberpunk-cyan-red-v-5c5faed0.zip"
-                   },
-                   {
-                       "id":  "static-theme-white-vertical-f8a97e53",
-                       "name":  "Static Theme White Vertical",
-                       "author":  "ÖZgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/static-theme-white-vertical-f8a97e53.png",
-                       "packageUrl":  "packages/static-theme-white-vertical-f8a97e53.zip"
-                   },
-                   {
-                       "id":  "static-theme-black-vertical-32f95a68",
-                       "name":  "Static Theme Black Vertical",
-                       "author":  "ÖZgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/static-theme-black-vertical-32f95a68.png",
-                       "packageUrl":  "packages/static-theme-black-vertical-32f95a68.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "static-theme-metallic-vertical-8aaba338",
-                       "name":  "Static Theme Metallic Vertical",
-                       "author":  "ÖZgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/static-theme-metallic-vertical-8aaba338.png",
-                       "packageUrl":  "packages/static-theme-metallic-vertical-8aaba338.zip",
-                       "orientation":  "portrait"
-                   },
-                   {
-                       "id":  "static-theme-metallic-31a46aca",
-                       "name":  "Static Theme Metallic",
-                       "author":  "ÖZgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/static-theme-metallic-31a46aca.png",
-                       "packageUrl":  "packages/static-theme-metallic-31a46aca.zip"
-                   },
-                   {
-                       "id":  "limboli1-a5ca69f3",
-                       "name":  "Limboli1",
-                       "author":  "Powder_7077",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/limboli1-a5ca69f3.png",
-                       "packageUrl":  "packages/limboli1-a5ca69f3.zip"
-                   },
-                   {
-                       "id":  "analogue-data-console-2-41258832",
-                       "name":  "Analogue data console 2",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "landscape",
-                       "packageUrl":  "packages/analogue-data-console-2-41258832.zip",
-                       "previewUrl":  "previews/analogue-data-console-2-41258832.png"
-                   },
-                   {
-                       "id":  "static-theme-black-ba9f41db",
-                       "name":  "Static Theme Black",
-                       "author":  "ÖZgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "landscape",
-                       "packageUrl":  "packages/static-theme-black-ba9f41db.zip",
-                       "previewUrl":  "previews/static-theme-black-ba9f41db.png"
-                   },
-                   {
-                       "id":  "static-theme-white-94e34a5e",
-                       "name":  "Static Theme White",
-                       "author":  "ÖZgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "orientation":  "landscape",
-                       "packageUrl":  "packages/static-theme-white-94e34a5e.zip",
-                       "previewUrl":  "previews/static-theme-white-94e34a5e.png"
-                   },
-                   {
-                       "id":  "red-carbon-177471ee",
-                       "name":  "Red Carbon",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/red-carbon-177471ee.png",
-                       "packageUrl":  "packages/red-carbon-177471ee.zip"
-                   },
-                   {
-                       "id":  "white-and-gold-7d6917c6",
-                       "name":  "White and Gold",
-                       "author":  "Özgür",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/white-and-gold-7d6917c6.png",
-                       "packageUrl":  "packages/white-and-gold-7d6917c6.zip"
-                   },
-                   {
-                       "id":  "journey-2-e5826c09",
-                       "name":  "journey-2",
-                       "author":  "misterdarks",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/journey-2-e5826c09.png",
-                       "packageUrl":  "packages/journey-2-e5826c09.zip"
-                   },
-                   {
-                       "id":  "cyan-purple-discs-vertical-f8b507c1",
-                       "name":  "Cyan purple discs vertical",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyan-purple-discs-vertical-f8b507c1.png",
-                       "packageUrl":  "packages/cyan-purple-discs-vertical-f8b507c1.zip"
-                   },
-                   {
-                       "id":  "asus-proartv4-imported-224122-d615f6a5",
-                       "name":  "Asus_Proartv4-imported_224122",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/asus-proartv4-imported-224122-d615f6a5.png",
-                       "packageUrl":  "packages/asus-proartv4-imported-224122-d615f6a5.zip"
-                   },
-                   {
-                       "id":  "cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73",
-                       "name":  "Cyan_brushed_steel_dials_Vertical-imported_224018",
-                       "author":  "Galrim",
-                       "description":  "",
-                       "deviceModel":  "universal-screen-8.8-inch",
-                       "deviceName":  "8.8\" Universal Screen",
-                       "previewUrl":  "previews/cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73.png",
-                       "packageUrl":  "packages/cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73.zip"
-                   }
-               ]
+    "themes": [
+        {
+            "id": "purple-gold-panel-88",
+            "name": "Purple and Gold Panel",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/purple-gold-panel-88.png",
+            "packageUrl": "packages/purple-gold-panel-88.lltheme"
+        },
+        {
+            "id": "universal-88-car-cruise-night",
+            "name": "Car Cruise Night",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8 Universal Screen",
+            "previewUrl": "previews/universal-88-car-cruise-night.png",
+            "packageUrl": "packages/universal-88-car-cruise-night.lltheme"
+        },
+        {
+            "id": "universal-88-gs-theme-hor",
+            "name": "Gs Theme HOR",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8 Universal Screen",
+            "previewUrl": "previews/universal-88-gs-theme-hor.png",
+            "packageUrl": "packages/universal-88-gs-theme-hor.lltheme"
+        },
+        {
+            "id": "universal-88-rick-and-morty-h",
+            "name": "Rick and Morty H",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8 Universal Screen",
+            "previewUrl": "previews/universal-88-rick-and-morty-h.png",
+            "packageUrl": "packages/universal-88-rick-and-morty-h.lltheme"
+        },
+        {
+            "id": "arc-raiders-v2lc",
+            "name": "Arc raiders V2LC",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/arc-raiders-v2lc.png",
+            "packageUrl": "packages/arc-raiders-v2lc.lltheme"
+        },
+        {
+            "id": "007-fl-v1",
+            "name": "007 FL V1",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/007-fl-v1.png",
+            "packageUrl": "packages/007-fl-v1.lltheme"
+        },
+        {
+            "id": "007-fl-v2",
+            "name": "007 FL V2",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/007-fl-v2.png",
+            "packageUrl": "packages/007-fl-v2.lltheme"
+        },
+        {
+            "id": "cyberpunk2077-v5lc",
+            "name": "Cyberpunk2077 V5LC",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-v5lc.png",
+            "packageUrl": "packages/cyberpunk2077-v5lc.lltheme"
+        },
+        {
+            "id": "hades",
+            "name": "Hades",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/hades.png",
+            "packageUrl": "packages/hades.lltheme"
+        },
+        {
+            "id": "smb-v3",
+            "name": "SMB V3",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/smb-v3.png",
+            "packageUrl": "packages/smb-v3.lltheme"
+        },
+        {
+            "id": "gs-theme-rgb-hor-version",
+            "name": "Gs Theme RGB HOR version",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/gs-theme-rgb-hor-version.png",
+            "packageUrl": "packages/gs-theme-rgb-hor-version.lltheme"
+        },
+        {
+            "id": "spaceship-dashboard-horisontal-remake",
+            "name": "Spaceship Dashboard Horisontal remake",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/spaceship-dashboard-horisontal-remake.png",
+            "packageUrl": "packages/spaceship-dashboard-horisontal-remake.lltheme"
+        },
+        {
+            "id": "predator",
+            "name": "Predator",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/predator.png",
+            "packageUrl": "packages/predator.lltheme"
+        },
+        {
+            "id": "smb-retro",
+            "name": "SMB Retro",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/smb-retro.png",
+            "packageUrl": "packages/smb-retro.lltheme"
+        },
+        {
+            "id": "gaming-rig-v2",
+            "name": "Gaming rig V2",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/gaming-rig-v2.png",
+            "packageUrl": "packages/gaming-rig-v2.lltheme"
+        },
+        {
+            "id": "clockv1-hydroshift-c",
+            "name": "ClockV1 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-clockv1.png",
+            "packageUrl": "packages/hydroshift-clockv1.zip"
+        },
+        {
+            "id": "clockv1-hydroshift-s",
+            "name": "ClockV1 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-clockv1.png",
+            "packageUrl": "packages/hydroshift-clockv1.zip"
+        },
+        {
+            "id": "clockv2-hydroshift-c",
+            "name": "ClockV2 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-clockv2.png",
+            "packageUrl": "packages/hydroshift-clockv2.zip"
+        },
+        {
+            "id": "clockv2-hydroshift-s",
+            "name": "ClockV2 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-clockv2.png",
+            "packageUrl": "packages/hydroshift-clockv2.zip"
+        },
+        {
+            "id": "clockv3-hydroshift-c",
+            "name": "ClockV3 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-clockv3.png",
+            "packageUrl": "packages/hydroshift-clockv3.zip"
+        },
+        {
+            "id": "clockv3-hydroshift-s",
+            "name": "ClockV3 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-clockv3.png",
+            "packageUrl": "packages/hydroshift-clockv3.zip"
+        },
+        {
+            "id": "m1-hydroshift-c",
+            "name": "m1 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m1.png",
+            "packageUrl": "packages/hydroshift-m1.zip"
+        },
+        {
+            "id": "m1-hydroshift-s",
+            "name": "m1 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m1.png",
+            "packageUrl": "packages/hydroshift-m1.zip"
+        },
+        {
+            "id": "m10-hydroshift-c",
+            "name": "m10 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m10.png",
+            "packageUrl": "packages/hydroshift-m10.zip"
+        },
+        {
+            "id": "m10-hydroshift-s",
+            "name": "m10 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m10.png",
+            "packageUrl": "packages/hydroshift-m10.zip"
+        },
+        {
+            "id": "m2-hydroshift-c",
+            "name": "m2 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m2.png",
+            "packageUrl": "packages/hydroshift-m2.zip"
+        },
+        {
+            "id": "m2-hydroshift-s",
+            "name": "m2 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m2.png",
+            "packageUrl": "packages/hydroshift-m2.zip"
+        },
+        {
+            "id": "m3-hydroshift-c",
+            "name": "m3 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m3.png",
+            "packageUrl": "packages/hydroshift-m3.zip"
+        },
+        {
+            "id": "m3-hydroshift-s",
+            "name": "m3 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m3.png",
+            "packageUrl": "packages/hydroshift-m3.zip"
+        },
+        {
+            "id": "m4-hydroshift-c",
+            "name": "m4 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m4.png",
+            "packageUrl": "packages/hydroshift-m4.zip"
+        },
+        {
+            "id": "m4-hydroshift-s",
+            "name": "m4 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m4.png",
+            "packageUrl": "packages/hydroshift-m4.zip"
+        },
+        {
+            "id": "m5-hydroshift-c",
+            "name": "m5 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m5.png",
+            "packageUrl": "packages/hydroshift-m5.zip"
+        },
+        {
+            "id": "m5-hydroshift-s",
+            "name": "m5 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m5.png",
+            "packageUrl": "packages/hydroshift-m5.zip"
+        },
+        {
+            "id": "m6-hydroshift-c",
+            "name": "m6 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m6.png",
+            "packageUrl": "packages/hydroshift-m6.zip"
+        },
+        {
+            "id": "m6-hydroshift-s",
+            "name": "m6 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m6.png",
+            "packageUrl": "packages/hydroshift-m6.zip"
+        },
+        {
+            "id": "m7-hydroshift-c",
+            "name": "m7 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m7.png",
+            "packageUrl": "packages/hydroshift-m7.zip"
+        },
+        {
+            "id": "m7-hydroshift-s",
+            "name": "m7 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m7.png",
+            "packageUrl": "packages/hydroshift-m7.zip"
+        },
+        {
+            "id": "m8-hydroshift-c",
+            "name": "m8 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m8.png",
+            "packageUrl": "packages/hydroshift-m8.zip"
+        },
+        {
+            "id": "m8-hydroshift-s",
+            "name": "m8 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m8.png",
+            "packageUrl": "packages/hydroshift-m8.zip"
+        },
+        {
+            "id": "m9-hydroshift-c",
+            "name": "m9 (LCD-C)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/hydroshift-m9.png",
+            "packageUrl": "packages/hydroshift-m9.zip"
+        },
+        {
+            "id": "m9-hydroshift-s",
+            "name": "m9 (LCD-S)",
+            "author": "Lian Li",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/hydroshift-m9.png",
+            "packageUrl": "packages/hydroshift-m9.zip"
+        },
+        {
+            "id": "clock-with-sensors-9f367ce3",
+            "name": "Clock_With_Sensors",
+            "author": "Community",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/clock-with-sensors-9f367ce3.png",
+            "packageUrl": "packages/clock-with-sensors-9f367ce3.zip"
+        },
+        {
+            "id": "omega-vault-c6b12005",
+            "name": "Omega Vault",
+            "author": "Özgür",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/omega-vault-c6b12005.png",
+            "packageUrl": "packages/omega-vault-c6b12005.zip"
+        },
+        {
+            "id": "omega-vault-noshadowstaticbg-e5a000b5",
+            "name": "Omega Vault",
+            "author": "Özgür",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/omega-vault-noshadowstaticbg-e5a000b5.png",
+            "packageUrl": "packages/omega-vault-noshadowstaticbg-e5a000b5.zip"
+        },
+        {
+            "id": "omega-vault-staticbg-c9d7e7b1",
+            "name": "Omega Vault StaticBG",
+            "author": "Özgür",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/omega-vault-staticbg-c9d7e7b1.png",
+            "packageUrl": "packages/omega-vault-staticbg-c9d7e7b1.zip"
+        },
+        {
+            "id": "omega-vault-noshadow-13f02a2d",
+            "name": "Omega Vault noshadow",
+            "author": "Özgür",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/omega-vault-noshadow-13f02a2d.png",
+            "packageUrl": "packages/omega-vault-noshadow-13f02a2d.zip"
+        },
+        {
+            "id": "007-fl-vertical",
+            "name": "007 FL Vertical",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/007-fl-vertical.png",
+            "packageUrl": "packages/007-fl-vertical.lltheme"
+        },
+        {
+            "id": "cyberpunk2077-v5lc-vertical",
+            "name": "Cyberpunk2077 V5LC Vertical",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/cyberpunk2077-v5lc-vertical.png",
+            "packageUrl": "packages/cyberpunk2077-v5lc-vertical.lltheme"
+        },
+        {
+            "id": "doom-the-dark-ages-v2-vert",
+            "name": "Doom the Dark Ages V2 Vertical",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/doom-the-dark-ages-v2-vert.png",
+            "packageUrl": "packages/doom-the-dark-ages-v2-vert.lltheme"
+        },
+        {
+            "id": "spaceship-dashboard-vertical",
+            "name": "Spaceship Dashboard Vertical",
+            "author": "Galrim",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/spaceship-dashboard-vertical.png",
+            "packageUrl": "packages/spaceship-dashboard-vertical.lltheme"
+        },
+        {
+            "id": "greenclock-1b5f0b54",
+            "name": "GreenClock",
+            "author": "Turzx",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/greenclock-1b5f0b54.png",
+            "packageUrl": "packages/greenclock-1b5f0b54.zip"
+        },
+        {
+            "id": "analogromannumerals-029cfb8a",
+            "name": "AnalogRomanNumerals",
+            "author": "Turzx",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/analogromannumerals-029cfb8a.png",
+            "packageUrl": "packages/analogromannumerals-029cfb8a.zip"
+        },
+        {
+            "id": "blue-white-clock-c47e6d70",
+            "name": "Blue&White_Clock",
+            "author": "Turzx",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/blue-white-clock-c47e6d70.png",
+            "packageUrl": "packages/blue-white-clock-c47e6d70.zip"
+        },
+        {
+            "id": "digital-and-analog-watch-dad4132f",
+            "name": "Digital And Analog Watch",
+            "author": "Turzx",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/digital-and-analog-watch-dad4132f.png",
+            "packageUrl": "packages/digital-and-analog-watch-dad4132f.zip"
+        },
+        {
+            "id": "lian-li-stock-added-fps-ff9e88cf",
+            "name": "Lian li stock Added FPS",
+            "author": "Aäron",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/lian-li-stock-added-fps-ff9e88cf.png",
+            "packageUrl": "packages/lian-li-stock-added-fps-ff9e88cf.lltheme"
+        },
+        {
+            "id": "valorantlc-6d555be5",
+            "name": "ValorantLC",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/valorantlc-6d555be5.png",
+            "packageUrl": "packages/valorantlc-6d555be5.zip"
+        },
+        {
+            "id": "spaceship-dashboard-horisontal-248061a5",
+            "name": "Spaceship Dashboard Horisontal",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/spaceship-dashboard-horisontal-248061a5.png",
+            "packageUrl": "packages/spaceship-dashboard-horisontal-248061a5.zip"
+        },
+        {
+            "id": "rog-strix-a36a2a69",
+            "name": "Rog Strix",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/rog-strix-a36a2a69.png",
+            "packageUrl": "packages/rog-strix-a36a2a69.zip"
+        },
+        {
+            "id": "predator-a04bc2bc",
+            "name": "Predator",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/predator-a04bc2bc.png",
+            "packageUrl": "packages/predator-a04bc2bc.zip"
+        },
+        {
+            "id": "neon-city-9623cc0d",
+            "name": "Neon City",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/neon-city-9623cc0d.png",
+            "packageUrl": "packages/neon-city-9623cc0d.zip"
+        },
+        {
+            "id": "cyberpunk2077-v6horlc-96adce3d",
+            "name": "Cyberpunk2077 V6HORLC",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-v6horlc-96adce3d.png",
+            "packageUrl": "packages/cyberpunk2077-v6horlc-96adce3d.zip"
+        },
+        {
+            "id": "cyberpunk2077-v5-vram-af20858d",
+            "name": "Cyberpunk2077 V5 VRAM",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-v5-vram-af20858d.png",
+            "packageUrl": "packages/cyberpunk2077-v5-vram-af20858d.zip"
+        },
+        {
+            "id": "cyberpunk2077-edgerunners-white-63e73814",
+            "name": "Cyberpunk2077 Edgerunners White",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-edgerunners-white-63e73814.png",
+            "packageUrl": "packages/cyberpunk2077-edgerunners-white-63e73814.zip"
+        },
+        {
+            "id": "brickwall-bar-scene-97f0cf8c",
+            "name": "Brickwall Bar Scene",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/brickwall-bar-scene-97f0cf8c.png",
+            "packageUrl": "packages/brickwall-bar-scene-97f0cf8c.zip"
+        },
+        {
+            "id": "blue-dials-lc-2c98ea30",
+            "name": "Blue Dials LC",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/blue-dials-lc-2c98ea30.png",
+            "packageUrl": "packages/blue-dials-lc-2c98ea30.zip"
+        },
+        {
+            "id": "aida-one-dial-fda4762f",
+            "name": "Aida One Dial",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/aida-one-dial-fda4762f.png",
+            "packageUrl": "packages/aida-one-dial-fda4762f.zip"
+        },
+        {
+            "id": "comprehensive-blue-panel-5eb78314",
+            "name": "Comprehensive blue panel",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/comprehensive-blue-panel-5eb78314.png",
+            "packageUrl": "packages/comprehensive-blue-panel-5eb78314.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "gs-theme-silver-and-white-ead20d6a",
+            "name": "Gs Theme Silver and white",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/gs-theme-silver-and-white-ead20d6a.png",
+            "packageUrl": "packages/gs-theme-silver-and-white-ead20d6a.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "cyberpunk2077-v4lcvert-0f3937cf",
+            "name": "Cyberpunk2077 V4LCVERT",
+            "author": "Galrim",
+            "description": "Includes FPS",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-v4lcvert-0f3937cf.png",
+            "packageUrl": "packages/cyberpunk2077-v4lcvert-0f3937cf.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "gs-theme-blood-and-black-02e79ebf",
+            "name": "Gs Theme Blood and Black",
+            "author": "Galrim",
+            "description": "Includes FPS",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/gs-theme-blood-and-black-02e79ebf.png",
+            "packageUrl": "packages/gs-theme-blood-and-black-02e79ebf.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "spaceship-dashboard-vertical-v2-f4833921",
+            "name": "Spaceship Dashboard Vertical V2",
+            "author": "Galrim",
+            "description": "Includes FPS",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/spaceship-dashboard-vertical-v2-f4833921.png",
+            "packageUrl": "packages/spaceship-dashboard-vertical-v2-f4833921.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "neon-v-8cce03eb",
+            "name": "Neon V",
+            "author": "Galrim",
+            "description": "Includes FPS",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/neon-v-8cce03eb.png",
+            "packageUrl": "packages/neon-v-8cce03eb.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "deadpool-20260520-195419-20260706-235724-60c0f921",
+            "name": "Deadpool",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/deadpool-20260520-195419-20260706-235724-60c0f921.png",
+            "packageUrl": "packages/deadpool-20260520-195419-20260706-235724-60c0f921.zip"
+        },
+        {
+            "id": "btfv1-20260429-151135-20260706-235849-c912b96a",
+            "name": "BTF V1",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/btfv1-20260429-151135-20260706-235849-c912b96a.png",
+            "packageUrl": "packages/btfv1-20260429-151135-20260706-235849-c912b96a.zip"
+        },
+        {
+            "id": "simpleblack-big-bff06511",
+            "name": "SimpleBlack_big",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/simpleblack-big-bff06511.png",
+            "packageUrl": "packages/simpleblack-big-bff06511.zip"
+        },
+        {
+            "id": "neon-blue-and-purple-6493865f",
+            "name": "Neon Blue And Purple",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/neon-blue-and-purple-6493865f.png",
+            "packageUrl": "packages/neon-blue-and-purple-6493865f.zip"
+        },
+        {
+            "id": "simpleblack-b29d68a2",
+            "name": "SimpleBlack",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/simpleblack-b29d68a2.png",
+            "packageUrl": "packages/simpleblack-b29d68a2.zip"
+        },
+        {
+            "id": "simplewhite-50b75f72",
+            "name": "SimpleWhite",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/simplewhite-50b75f72.png",
+            "packageUrl": "packages/simplewhite-50b75f72.zip"
+        },
+        {
+            "id": "cyberpunk2077-darkpink-4a27389c",
+            "name": "Cyberpunk2077 DarkPink",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-darkpink-4a27389c.png",
+            "packageUrl": "packages/cyberpunk2077-darkpink-4a27389c.zip"
+        },
+        {
+            "id": "bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136",
+            "name": "BlueTech Asus Rog V2",
+            "author": "Wr3ck3r",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.png",
+            "packageUrl": "packages/bluetech-asus-rog-v2-20260710-202136-20260711-141239-55890136.zip"
+        },
+        {
+            "id": "white-black-5-dials-26343047",
+            "name": "White Black 5 Dials",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/white-black-5-dials-26343047.png",
+            "packageUrl": "packages/white-black-5-dials-26343047.zip"
+        },
+        {
+            "id": "white-snd-gold-clocks-4bd697d9",
+            "name": "White Snd Gold Clocks",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/white-snd-gold-clocks-4bd697d9.png",
+            "packageUrl": "packages/white-snd-gold-clocks-4bd697d9.zip"
+        },
+        {
+            "id": "tomb-raider-407b1157",
+            "name": "Tomb Raider",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/tomb-raider-407b1157.png",
+            "packageUrl": "packages/tomb-raider-407b1157.zip"
+        },
+        {
+            "id": "sw-l2-vertical-98d1474a",
+            "name": "SW L2 Vertical",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/sw-l2-vertical-98d1474a.png",
+            "packageUrl": "packages/sw-l2-vertical-98d1474a.zip"
+        },
+        {
+            "id": "steins-gate-f3e16ff0",
+            "name": "Steins Gate",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/steins-gate-f3e16ff0.png",
+            "packageUrl": "packages/steins-gate-f3e16ff0.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "space-shuttle-8dbeaa7c",
+            "name": "Space Shuttle",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/space-shuttle-8dbeaa7c.png",
+            "packageUrl": "packages/space-shuttle-8dbeaa7c.zip"
+        },
+        {
+            "id": "resident-evil-requiem-lc-v2-07a551bd",
+            "name": "Resident Evil Requiem LC V2",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/resident-evil-requiem-lc-v2-07a551bd.png",
+            "packageUrl": "packages/resident-evil-requiem-lc-v2-07a551bd.zip"
+        },
+        {
+            "id": "re-requiem-v3-white-0a609287",
+            "name": "RE Requiem V3 White",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/re-requiem-v3-white-0a609287.png",
+            "packageUrl": "packages/re-requiem-v3-white-0a609287.zip"
+        },
+        {
+            "id": "re-requiem-v2-ba29bf72",
+            "name": "RE Requiem V2",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/re-requiem-v2-ba29bf72.png",
+            "packageUrl": "packages/re-requiem-v2-ba29bf72.zip"
+        },
+        {
+            "id": "purple-white-dials-65a8d232",
+            "name": "Purple White Dials",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/purple-white-dials-65a8d232.png",
+            "packageUrl": "packages/purple-white-dials-65a8d232.zip"
+        },
+        {
+            "id": "gigabyte-aorus-dc9460d9",
+            "name": "Gigabyte Aorus",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/gigabyte-aorus-dc9460d9.png",
+            "packageUrl": "packages/gigabyte-aorus-dc9460d9.zip"
+        },
+        {
+            "id": "ghost-of-tsushima-1f644dd9",
+            "name": "Ghost of Tsushima",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/ghost-of-tsushima-1f644dd9.png",
+            "packageUrl": "packages/ghost-of-tsushima-1f644dd9.zip"
+        },
+        {
+            "id": "btf-v1-vert-ba6b9e69",
+            "name": "BTF V1 VERT",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/btf-v1-vert-ba6b9e69.png",
+            "packageUrl": "packages/btf-v1-vert-ba6b9e69.zip"
+        },
+        {
+            "id": "alien2-19d639fb",
+            "name": "Alien2",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/alien2-19d639fb.png",
+            "packageUrl": "packages/alien2-19d639fb.zip"
+        },
+        {
+            "id": "aida64-ripoff-f5575eed",
+            "name": "Aida64 Ripoff",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/aida64-ripoff-f5575eed.png",
+            "packageUrl": "packages/aida64-ripoff-f5575eed.zip"
+        },
+        {
+            "id": "casio-hydroshift-s-a3d4af84",
+            "name": "Casio-Hydroshift-S",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "Hydroshift II LCD-S",
+            "previewUrl": "previews/casio-hydroshift-s-a3d4af84.png",
+            "packageUrl": "packages/casio-hydroshift-s-a3d4af84.zip"
+        },
+        {
+            "id": "casio-hydroshift-c-4245840e",
+            "name": "Casio-Hydroshift-C",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-c",
+            "deviceName": "Hydroshift II LCD-C",
+            "previewUrl": "previews/casio-hydroshift-c-4245840e.png",
+            "packageUrl": "packages/casio-hydroshift-c-4245840e.zip"
+        },
+        {
+            "id": "bluetech-animated-f44d27cc",
+            "name": "BlueTech_Animated",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/bluetech-animated-f44d27cc.png",
+            "packageUrl": "packages/bluetech-animated-f44d27cc.zip"
+        },
+        {
+            "id": "crystals-182127-805110d2",
+            "name": "Crystals_182127",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/crystals-182127-805110d2.png",
+            "packageUrl": "packages/crystals-182127-805110d2.zip"
+        },
+        {
+            "id": "crystals-182127-lconnect-vm92-d97530a7",
+            "name": "Crystals_182127-LConnect-VM92",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "vm-9.2-inch",
+            "deviceName": "VM 9.2 LCD",
+            "previewUrl": "previews/crystals-182127-lconnect-vm92-d97530a7.png",
+            "packageUrl": "packages/crystals-182127-lconnect-vm92-d97530a7.zip"
+        },
+        {
+            "id": "simpleblack-vertical-with-time-69e4ec26",
+            "name": "SimpleBlack Vertical With Time",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/simpleblack-vertical-with-time-69e4ec26.png",
+            "packageUrl": "packages/simpleblack-vertical-with-time-69e4ec26.zip"
+        },
+        {
+            "id": "simple-black-vertical-f953dcef",
+            "name": "Simple Black Vertical",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/simple-black-vertical-f953dcef.png",
+            "packageUrl": "packages/simple-black-vertical-f953dcef.zip"
+        },
+        {
+            "id": "simple-white-vertical-25524e71",
+            "name": "Simple White Vertical",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/simple-white-vertical-25524e71.png",
+            "packageUrl": "packages/simple-white-vertical-25524e71.zip"
+        },
+        {
+            "id": "memento-mori-v2-d8897b0c",
+            "name": "Memento Mori V2",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/memento-mori-v2-d8897b0c.png",
+            "packageUrl": "packages/memento-mori-v2-d8897b0c.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "memento-mori-v1-97f382b2",
+            "name": "Memento Mori V1",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/memento-mori-v1-97f382b2.png",
+            "packageUrl": "packages/memento-mori-v1-97f382b2.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "doom-3c85572e",
+            "name": "Doom",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/doom-3c85572e.png",
+            "packageUrl": "packages/doom-3c85572e.zip"
+        },
+        {
+            "id": "graymetal-e3071ec2",
+            "name": "GrayMetal",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/graymetal-e3071ec2.png",
+            "packageUrl": "packages/graymetal-e3071ec2.zip"
+        },
+        {
+            "id": "radioactive-c302c775",
+            "name": "Radioactive",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/radioactive-c302c775.png",
+            "packageUrl": "packages/radioactive-c302c775-v2.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "techtheme-d151464d",
+            "name": "TechTheme",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/techtheme-d151464d.png",
+            "packageUrl": "packages/techtheme-d151464d.zip"
+        },
+        {
+            "id": "eft-v1-9b9ac874",
+            "name": "Escape From Tarkov V1",
+            "author": "Blakiukas",
+            "description": "Escape from Tarkov simple minimal info theme.",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/eft-v1-9b9ac874.png",
+            "packageUrl": "packages/eft-v1-9b9ac874.zip"
+        },
+        {
+            "id": "casual-black-with-fps-7caaefdc",
+            "name": "Casual_Black_with_FPS",
+            "author": "Nucleus",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/casual-black-with-fps-7caaefdc.png",
+            "packageUrl": "packages/casual-black-with-fps-7caaefdc.zip"
+        },
+        {
+            "id": "019-time-lcd-s-76fc6b11",
+            "name": "019 + time (LCD-S)",
+            "author": "hatiko",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "HydroShift II LCD-S",
+            "packageUrl": "packages/019-time-lcd-s-76fc6b11.zip",
+            "previewUrl": "previews/019-time-lcd-s-76fc6b11.png"
+        },
+        {
+            "id": "neon-board-44d1876c",
+            "name": "Neon Board",
+            "author": "Ozgur",
+            "description": "",
+            "deviceModel": "hydroshift-ii-lcd-s",
+            "deviceName": "HydroShift II LCD-S",
+            "packageUrl": "packages/neon-board-44d1876c.zip",
+            "previewUrl": "previews/neon-board-44d1876c.png"
+        },
+        {
+            "id": "kuromi-96bc246c",
+            "name": "Kuromi",
+            "author": "Ozgur",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "packageUrl": "packages/kuromi-96bc246c.zip",
+            "previewUrl": "previews/kuromi-96bc246c.png"
+        },
+        {
+            "id": "cyberpunk-cyan-red-v-d116e7b9",
+            "name": "Cyberpunk Cyan Red V",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk-cyan-red-v-d116e7b9.png",
+            "packageUrl": "packages/cyberpunk-cyan-red-v-d116e7b9.zip"
+        },
+        {
+            "id": "assassins-credd-origins-20260729-000954-portrait-192117-db62e36b",
+            "name": "Assassins_Credd_Origins_20260729_000954-portrait_192117",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/assassins-credd-origins-20260729-000954-portrait-192117-db62e36b.png",
+            "packageUrl": "packages/assassins-credd-origins-20260729-000954-portrait-192117-db62e36b.zip"
+        },
+        {
+            "id": "multi-colour-sensorpanelv2-a718f07c",
+            "name": "Multi colour sensorpanelV2",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/multi-colour-sensorpanelv2-a718f07c.png",
+            "packageUrl": "packages/multi-colour-sensorpanelv2-a718f07c.zip"
+        },
+        {
+            "id": "asus-blue-62e0be0c",
+            "name": "Asus Blue",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/asus-blue-62e0be0c.png",
+            "packageUrl": "packages/asus-blue-62e0be0c.zip"
+        },
+        {
+            "id": "tron-reworked-v2-d04eac82",
+            "name": "Tron reworked V2",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/tron-reworked-v2-d04eac82.png",
+            "packageUrl": "packages/tron-reworked-v2-d04eac82.zip"
+        },
+        {
+            "id": "marshall-0abe0896",
+            "name": "Marshall",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/marshall-0abe0896.png",
+            "packageUrl": "packages/marshall-0abe0896.zip"
+        },
+        {
+            "id": "pinball-89639205",
+            "name": "Pinball",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "portrait",
+            "previewUrl": "previews/pinball-89639205.png",
+            "packageUrl": "packages/pinball-89639205.zip"
+        },
+        {
+            "id": "walkie-talkie-b02d0230",
+            "name": "Walkie Talkie",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/walkie-talkie-b02d0230.png",
+            "packageUrl": "packages/walkie-talkie-b02d0230.zip"
+        },
+        {
+            "id": "analogue-data-console-02820332",
+            "name": "Analogue data console",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/analogue-data-console-02820332.png",
+            "packageUrl": "packages/analogue-data-console-02820332.zip"
+        },
+        {
+            "id": "cyberpunk2077-edgerunners-darkpink-1944d425",
+            "name": "Cyberpunk2077 Edgerunners DarkPink",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk2077-edgerunners-darkpink-1944d425.png",
+            "packageUrl": "packages/cyberpunk2077-edgerunners-darkpink-1944d425.zip"
+        },
+        {
+            "id": "assassins-credd-origins-9c396d0b",
+            "name": "Assassins Credd Origins",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/assassins-credd-origins-9c396d0b.png",
+            "packageUrl": "packages/assassins-credd-origins-9c396d0b.zip"
+        },
+        {
+            "id": "multi-colour-sensorpanellc-bb08b459",
+            "name": "Multi colour sensorpanelLC",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/multi-colour-sensorpanellc-bb08b459.png",
+            "packageUrl": "packages/multi-colour-sensorpanellc-bb08b459.zip"
+        },
+        {
+            "id": "smb-vert-653b6919",
+            "name": "SMB VERT",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/smb-vert-653b6919.png",
+            "packageUrl": "packages/smb-vert-653b6919-v3.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "asus-rog-rgb-horizontal-7620afeb",
+            "name": "Asus Rog RGB Horizontal",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/asus-rog-rgb-horizontal-7620afeb.png",
+            "packageUrl": "packages/asus-rog-rgb-horizontal-7620afeb.zip"
+        },
+        {
+            "id": "asus-rog-orange-horizontal-3a8bcc8c",
+            "name": "Asus Rog Orange Horizontal",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/asus-rog-orange-horizontal-3a8bcc8c.png",
+            "packageUrl": "packages/asus-rog-orange-horizontal-3a8bcc8c.zip"
+        },
+        {
+            "id": "cyberpunk-cyan-red-v-5c5faed0",
+            "name": "Cyberpunk Cyan Red V",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyberpunk-cyan-red-v-5c5faed0.png",
+            "packageUrl": "packages/cyberpunk-cyan-red-v-5c5faed0.zip"
+        },
+        {
+            "id": "static-theme-white-vertical-f8a97e53",
+            "name": "Static Theme White Vertical",
+            "author": "ÖZgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/static-theme-white-vertical-f8a97e53.png",
+            "packageUrl": "packages/static-theme-white-vertical-f8a97e53.zip"
+        },
+        {
+            "id": "static-theme-black-vertical-32f95a68",
+            "name": "Static Theme Black Vertical",
+            "author": "ÖZgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/static-theme-black-vertical-32f95a68.png",
+            "packageUrl": "packages/static-theme-black-vertical-32f95a68.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "static-theme-metallic-vertical-8aaba338",
+            "name": "Static Theme Metallic Vertical",
+            "author": "ÖZgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/static-theme-metallic-vertical-8aaba338.png",
+            "packageUrl": "packages/static-theme-metallic-vertical-8aaba338.zip",
+            "orientation": "portrait"
+        },
+        {
+            "id": "static-theme-metallic-31a46aca",
+            "name": "Static Theme Metallic",
+            "author": "ÖZgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/static-theme-metallic-31a46aca.png",
+            "packageUrl": "packages/static-theme-metallic-31a46aca.zip"
+        },
+        {
+            "id": "limboli1-a5ca69f3",
+            "name": "Limboli1",
+            "author": "Powder_7077",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/limboli1-a5ca69f3.png",
+            "packageUrl": "packages/limboli1-a5ca69f3.zip"
+        },
+        {
+            "id": "analogue-data-console-2-41258832",
+            "name": "Analogue data console 2",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "landscape",
+            "packageUrl": "packages/analogue-data-console-2-41258832.zip",
+            "previewUrl": "previews/analogue-data-console-2-41258832.png"
+        },
+        {
+            "id": "static-theme-black-ba9f41db",
+            "name": "Static Theme Black",
+            "author": "ÖZgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "landscape",
+            "packageUrl": "packages/static-theme-black-ba9f41db.zip",
+            "previewUrl": "previews/static-theme-black-ba9f41db.png"
+        },
+        {
+            "id": "static-theme-white-94e34a5e",
+            "name": "Static Theme White",
+            "author": "ÖZgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "orientation": "landscape",
+            "packageUrl": "packages/static-theme-white-94e34a5e.zip",
+            "previewUrl": "previews/static-theme-white-94e34a5e.png"
+        },
+        {
+            "id": "red-carbon-177471ee",
+            "name": "Red Carbon",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/red-carbon-177471ee.png",
+            "packageUrl": "packages/red-carbon-177471ee.zip"
+        },
+        {
+            "id": "white-and-gold-7d6917c6",
+            "name": "White and Gold",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/white-and-gold-7d6917c6.png",
+            "packageUrl": "packages/white-and-gold-7d6917c6.zip"
+        },
+        {
+            "id": "journey-2-e5826c09",
+            "name": "journey-2",
+            "author": "misterdarks",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/journey-2-e5826c09.png",
+            "packageUrl": "packages/journey-2-e5826c09.zip"
+        },
+        {
+            "id": "cyan-purple-discs-vertical-f8b507c1",
+            "name": "Cyan purple discs vertical",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyan-purple-discs-vertical-f8b507c1.png",
+            "packageUrl": "packages/cyan-purple-discs-vertical-f8b507c1.zip"
+        },
+        {
+            "id": "asus-proartv4-imported-224122-d615f6a5",
+            "name": "Asus_Proartv4-imported_224122",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/asus-proartv4-imported-224122-d615f6a5.png",
+            "packageUrl": "packages/asus-proartv4-imported-224122-d615f6a5.zip"
+        },
+        {
+            "id": "cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73",
+            "name": "Cyan_brushed_steel_dials_Vertical-imported_224018",
+            "author": "Galrim",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73.png",
+            "packageUrl": "packages/cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73.zip"
+        },
+        {
+            "id": "colored-cards-imported-225745-9e792aa5",
+            "name": "Colored Cards",
+            "author": "Özgür",
+            "description": "",
+            "deviceModel": "universal-screen-8.8-inch",
+            "deviceName": "8.8\" Universal Screen",
+            "previewUrl": "previews/colored-cards-imported-225745-9e792aa5.png",
+            "packageUrl": "packages/colored-cards-imported-225745-9e792aa5.zip"
+        }
+    ]
 }
