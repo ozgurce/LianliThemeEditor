@@ -1292,7 +1292,8 @@
                        "deviceModel":  "universal-screen-8.8-inch",
                        "deviceName":  "8.8\" Universal Screen",
                        "previewUrl":  "previews/static-theme-black-vertical-32f95a68.png",
-                       "packageUrl":  "packages/static-theme-black-vertical-32f95a68.zip"
+                       "packageUrl":  "packages/static-theme-black-vertical-32f95a68.zip",
+                       "orientation":  "portrait"
                    },
                    {
                        "id":  "static-theme-metallic-vertical-8aaba338",
@@ -1302,7 +1303,8 @@
                        "deviceModel":  "universal-screen-8.8-inch",
                        "deviceName":  "8.8\" Universal Screen",
                        "previewUrl":  "previews/static-theme-metallic-vertical-8aaba338.png",
-                       "packageUrl":  "packages/static-theme-metallic-vertical-8aaba338.zip"
+                       "packageUrl":  "packages/static-theme-metallic-vertical-8aaba338.zip",
+                       "orientation":  "portrait"
                    },
                    {
                        "id":  "static-theme-metallic-31a46aca",
