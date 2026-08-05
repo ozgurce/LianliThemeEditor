@@ -1398,6 +1398,26 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/cyan-purple-discs-vertical-f8b507c1.png",
       "packageUrl": "packages/cyan-purple-discs-vertical-f8b507c1.zip"
+    },
+    {
+      "id": "asus-proartv4-imported-224122-d615f6a5",
+      "name": "Asus_Proartv4-imported_224122",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/asus-proartv4-imported-224122-d615f6a5.png",
+      "packageUrl": "packages/asus-proartv4-imported-224122-d615f6a5.zip"
+    },
+    {
+      "id": "cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73",
+      "name": "Cyan_brushed_steel_dials_Vertical-imported_224018",
+      "author": "Galrim",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73.png",
+      "packageUrl": "packages/cyan-brushed-steel-dials-vertical-imported-224018-f35b1d73.zip"
     }
   ]
 }
