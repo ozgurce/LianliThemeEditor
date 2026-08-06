@@ -1427,6 +1427,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/colored-cards-imported-225745-9e792aa5.png",
       "packageUrl": "packages/colored-cards-imported-225745-9e792aa5.zip"
+    },
+    {
+      "id": "futuristic-minimal-b216c5b0",
+      "name": "Futuristic Minimal",
+      "author": "\u00D6zg\u00FCr",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/futuristic-minimal-b216c5b0.png",
+      "packageUrl": "packages/futuristic-minimal-b216c5b0.lltheme"
     }
   ]
 }
