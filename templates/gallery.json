@@ -1467,6 +1467,66 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/apex-b4e2859b.png",
       "packageUrl": "packages/apex-b4e2859b.zip"
+    },
+    {
+      "id": "warcraft-b59989b5",
+      "name": "Warcraft",
+      "author": "Raeton",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/warcraft-b59989b5.png",
+      "packageUrl": "packages/warcraft-b59989b5.zip"
+    },
+    {
+      "id": "lian-li-redesigned-stock-1cc0e178",
+      "name": "Lian-Li_redesigned_stock",
+      "author": "A\u00E4ron",
+      "description": "a redesigned stock lian li theme",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/lian-li-redesigned-stock-1cc0e178.png",
+      "packageUrl": "packages/lian-li-redesigned-stock-1cc0e178.zip"
+    },
+    {
+      "id": "kaiju-n8-708b4c16",
+      "name": "Kaiju_N8",
+      "author": "Turzx",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/kaiju-n8-708b4c16.png",
+      "packageUrl": "packages/kaiju-n8-708b4c16.zip"
+    },
+    {
+      "id": "wuthering-waves-cantarella-695222e0",
+      "name": "Wuthering Waves Cantarella",
+      "author": "MandaloreXCI",
+      "description": "A little something-something that I use.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/wuthering-waves-cantarella-695222e0.png",
+      "packageUrl": "packages/wuthering-waves-cantarella-695222e0.zip"
+    },
+    {
+      "id": "wow-theme-c84dc25f",
+      "name": "WOW Theme",
+      "author": "Raethon",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/wow-theme-c84dc25f.png",
+      "packageUrl": "packages/wow-theme-c84dc25f.zip"
+    },
+    {
+      "id": "lune-b2940307",
+      "name": "Lune",
+      "author": "Plumy",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/lune-b2940307.png",
+      "packageUrl": "packages/lune-b2940307.zip"
     }
   ]
 }
