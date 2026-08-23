@@ -1527,6 +1527,96 @@
       "deviceName": "Hydroshift II LCD-S",
       "previewUrl": "previews/lune-b2940307.png",
       "packageUrl": "packages/lune-b2940307.zip"
+    },
+    {
+      "id": "88016-a-female-samurai-d76d48e5",
+      "name": "88016-A Female Samurai",
+      "author": "Noochie7",
+      "description": "The Lian Li 88016 changed to Female and static bars removed via AI.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/88016-a-female-samurai-d76d48e5.png",
+      "packageUrl": "packages/88016-a-female-samurai-d76d48e5.zip"
+    },
+    {
+      "id": "toxicdata-3c4ad78b",
+      "name": "TOXICDATA",
+      "author": "JAKEYBOI",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/toxicdata-3c4ad78b.png",
+      "packageUrl": "packages/toxicdata-3c4ad78b.zip"
+    },
+    {
+      "id": "theme-ox-v2-anime-65022c62",
+      "name": "Theme Ox V2 Anim\u00E9",
+      "author": "Ox",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/theme-ox-v2-anime-65022c62.png",
+      "packageUrl": "packages/theme-ox-v2-anime-65022c62.zip"
+    },
+    {
+      "id": "theme-ox-b48df989",
+      "name": "Th\u00E8me Ox",
+      "author": "Ox",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/theme-ox-b48df989.png",
+      "packageUrl": "packages/theme-ox-b48df989.zip"
+    },
+    {
+      "id": "space-ship-inspiration-984eee58",
+      "name": "Space_Ship_Inspiration",
+      "author": "devilsdesigner",
+      "description": "A space ship inspired theme for universal screen",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/space-ship-inspiration-984eee58.png",
+      "packageUrl": "packages/space-ship-inspiration-984eee58.zip"
+    },
+    {
+      "id": "assassin-s-creed-bf0e3dfb",
+      "name": "Assassin\u0027s Creed",
+      "author": "Ashley88",
+      "description": "Ready.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/assassin-s-creed-bf0e3dfb.png",
+      "packageUrl": "packages/assassin-s-creed-bf0e3dfb.zip"
+    },
+    {
+      "id": "gundam-e22e144a",
+      "name": "GUNDAM",
+      "author": "Ashley88",
+      "description": "Ready.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/gundam-e22e144a.png",
+      "packageUrl": "packages/gundam-e22e144a.zip"
+    },
+    {
+      "id": "cyberpunk-2077-33341f9d",
+      "name": "Cyberpunk 2077",
+      "author": "Ashley88",
+      "description": "Ready.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyberpunk-2077-33341f9d.png",
+      "packageUrl": "packages/cyberpunk-2077-33341f9d.zip"
+    },
+    {
+      "id": "spy-family-anya-b488423c",
+      "name": "SPY FAMILY ANYA",
+      "author": "Ashley88",
+      "description": "Ready.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/spy-family-anya-b488423c.png",
+      "packageUrl": "packages/spy-family-anya-b488423c.zip"
     }
   ]
 }
