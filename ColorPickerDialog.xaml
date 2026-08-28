@@ -1,0 +1,406 @@
+<Window x:Class="ThemeEditorCSharp.ColorPickerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Color Picker"
+        Width="700"
+        Height="500"
+        MinWidth="700"
+        MinHeight="500"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <Color x:Key="ColShell">#FF08111F</Color>
+        <Color x:Key="ColCard">#F0142236</Color>
+        <Color x:Key="ColTextPrimary">#FFF5F8FF</Color>
+        <Color x:Key="ColTextSecondary">#FFA8B4C7</Color>
+        <Color x:Key="ColBorder">#334F6D96</Color>
+        <Color x:Key="ColAccent">#FF246FF2</Color>
+        <Color x:Key="ColAccentSoft">#33246FF2</Color>
+        <Color x:Key="ColField">#FF0D1828</Color>
+
+        <SolidColorBrush x:Key="BrShell" Color="{StaticResource ColShell}"/>
+        <SolidColorBrush x:Key="BrCard" Color="{StaticResource ColCard}"/>
+        <SolidColorBrush x:Key="BrTextPrimary" Color="{StaticResource ColTextPrimary}"/>
+        <SolidColorBrush x:Key="BrTextSecondary" Color="{StaticResource ColTextSecondary}"/>
+        <SolidColorBrush x:Key="BrBorder" Color="{StaticResource ColBorder}"/>
+        <SolidColorBrush x:Key="BrAccent" Color="{StaticResource ColAccent}"/>
+        <SolidColorBrush x:Key="BrField" Color="{StaticResource ColField}"/>
+
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="30" ShadowDepth="8" Direction="270" Opacity="0.55" Color="#001225"/>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource BrTextPrimary}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="FieldBox" TargetType="TextBox">
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="10,0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Background" Value="{StaticResource BrField}"/>
+            <Setter Property="Foreground" Value="{StaticResource BrTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BrBorder}"/>
+            <Setter Property="BorderThickness" Value="1.5"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="8">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{StaticResource BrAccent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SoftButton" TargetType="Button">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="MinWidth" Value="86"/>
+            <Setter Property="Padding" Value="14,0"/>
+            <Setter Property="Background" Value="{StaticResource BrAccent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.9"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="GhostButton" TargetType="Button" BasedOn="{StaticResource SoftButton}">
+            <Setter Property="Background" Value="#18246FF2"/>
+            <Setter Property="Foreground" Value="{StaticResource BrTextPrimary}"/>
+        </Style>
+
+        <Style x:Key="FormatButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="MinWidth" Value="42"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="FontSize" Value="10"/>
+        </Style>
+
+        <Style x:Key="PickerSlider" TargetType="Slider">
+            <Setter Property="Minimum" Value="0"/>
+            <Setter Property="Maximum" Value="100"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid>
+                            <Track x:Name="PART_Track" VerticalAlignment="Center">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.DecreaseLarge}" Opacity="0"/>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="{x:Static Slider.IncreaseLarge}" Opacity="0"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="18" Height="18">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{StaticResource BrAccent}" Stroke="White" StrokeThickness="3">
+                                                    <Ellipse.Effect>
+                                                        <DropShadowEffect BlurRadius="8" ShadowDepth="2" Opacity="0.28"/>
+                                                    </Ellipse.Effect>
+                                                </Ellipse>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="14" MouseLeftButtonDown="TitleSurface_MouseLeftButtonDown">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FF08111F" Offset="0"/>
+                <GradientStop Color="#FF101B2C" Offset="0.55"/>
+                <GradientStop Color="#FF07101C" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        <Grid Margin="14">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Button x:Name="CloseButton"
+                    Content="X"
+                    Width="30"
+                    Height="28"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
+                    Panel.ZIndex="5"
+                    Style="{StaticResource GhostButton}"
+                    Foreground="{StaticResource BrTextSecondary}"
+                    Click="Cancel_Click"/>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.02*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="0.98*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Background="{StaticResource BrCard}" BorderBrush="{StaticResource BrBorder}" BorderThickness="1" CornerRadius="12" Padding="14" Effect="{StaticResource CardShadow}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="160"/>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid x:Name="SvPicker"
+                              Grid.Row="0"
+                              ClipToBounds="True"
+                              Cursor="Cross"
+                              MouseLeftButtonDown="SvPicker_MouseLeftButtonDown"
+                              MouseMove="SvPicker_MouseMove"
+                              MouseLeftButtonUp="SvPicker_MouseLeftButtonUp">
+                            <Border x:Name="HueSurface" CornerRadius="8" Background="#FF4F46E5"/>
+                            <Rectangle RadiusX="8" RadiusY="8">
+                                <Rectangle.Fill>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="White" Offset="0"/>
+                                        <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Rectangle RadiusX="8" RadiusY="8">
+                                <Rectangle.Fill>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#00000000" Offset="0"/>
+                                        <GradientStop Color="#F2000000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Ellipse x:Name="SvSelector"
+                                     Width="18"
+                                     Height="18"
+                                     Stroke="White"
+                                     StrokeThickness="4"
+                                     Fill="Transparent"
+                                     HorizontalAlignment="Left"
+                                     VerticalAlignment="Top">
+                                <Ellipse.Effect>
+                                    <DropShadowEffect BlurRadius="7" ShadowDepth="1" Opacity="0.38"/>
+                                </Ellipse.Effect>
+                            </Ellipse>
+                        </Grid>
+
+                        <Grid Grid.Row="1" Margin="0,8,0,0" ClipToBounds="False">
+                            <Border Height="10" CornerRadius="5" BorderBrush="#403E5F8A" BorderThickness="1" VerticalAlignment="Center">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                        <GradientStop Color="#FFFF0000" Offset="0"/>
+                                        <GradientStop Color="#FFFFFF00" Offset="0.166"/>
+                                        <GradientStop Color="#FF00FF00" Offset="0.333"/>
+                                        <GradientStop Color="#FF00FFFF" Offset="0.5"/>
+                                        <GradientStop Color="#FF0000FF" Offset="0.666"/>
+                                        <GradientStop Color="#FFFF00FF" Offset="0.833"/>
+                                        <GradientStop Color="#FFFF0000" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            <Slider x:Name="HueSlider"
+                                    Style="{StaticResource PickerSlider}"
+                                    Maximum="360"
+                                    ValueChanged="HueSlider_ValueChanged"/>
+                        </Grid>
+
+                        <Grid Grid.Row="2" Margin="0,7,0,0" ClipToBounds="False">
+                            <Border Height="10" CornerRadius="5" ClipToBounds="True" BorderBrush="#403E5F8A" BorderThickness="1" VerticalAlignment="Center">
+                                <Grid>
+                                    <Rectangle>
+                                        <Rectangle.Fill>
+                                            <DrawingBrush TileMode="Tile" Viewport="0,0,16,16" ViewportUnits="Absolute">
+                                                <DrawingBrush.Drawing>
+                                                    <DrawingGroup>
+                                                        <GeometryDrawing Brush="#FFFFFFFF" Geometry="M0,0 L16,0 16,16 0,16Z"/>
+                                                        <GeometryDrawing Brush="#FFE5E7EB" Geometry="M0,0 L8,0 8,8 0,8Z M8,8 L16,8 16,16 8,16Z"/>
+                                                    </DrawingGroup>
+                                                </DrawingBrush.Drawing>
+                                            </DrawingBrush>
+                                        </Rectangle.Fill>
+                                    </Rectangle>
+                                    <Rectangle x:Name="AlphaGradient"/>
+                                </Grid>
+                            </Border>
+                            <Slider x:Name="AlphaSlider"
+                                    Style="{StaticResource PickerSlider}"
+                                    Maximum="100"
+                                    ValueChanged="AlphaSlider_ValueChanged"/>
+                        </Grid>
+
+                        <Grid Grid.Row="3" Margin="0,9,0,0">
+                            <Grid x:Name="HexFieldsPanel">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="14"/>
+                                    <ColumnDefinition Width="132"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock x:Name="HexLabel" Text="Color code" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource BrTextSecondary}" Margin="2,0,0,4"/>
+                                    <TextBox x:Name="HexInput"
+                                             Style="{StaticResource FieldBox}"
+                                             GotFocus="HexInput_GotFocus"
+                                             LostFocus="HexInput_LostFocus"
+                                             KeyDown="HexInput_KeyDown"/>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock x:Name="AlphaLabel" Text="Alpha" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource BrTextSecondary}" Margin="2,0,0,4"/>
+                                    <TextBox x:Name="OpacityInput"
+                                             Style="{StaticResource FieldBox}"
+                                             TextAlignment="Center"
+                                             LostFocus="OpacityInput_LostFocus"
+                                             KeyDown="OpacityInput_KeyDown"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid x:Name="RgbaFieldsPanel" Visibility="Collapsed">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="R" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource BrTextSecondary}" Margin="2,0,0,4"/>
+                                    <TextBox x:Name="RedInput" Style="{StaticResource FieldBox}" TextAlignment="Center" GotFocus="RgbaInput_GotFocus" LostFocus="RgbaInput_LostFocus" KeyDown="RgbaInput_KeyDown"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="G" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource BrTextSecondary}" Margin="2,0,0,4"/>
+                                    <TextBox x:Name="GreenInput" Style="{StaticResource FieldBox}" TextAlignment="Center" GotFocus="RgbaInput_GotFocus" LostFocus="RgbaInput_LostFocus" KeyDown="RgbaInput_KeyDown"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4">
+                                    <TextBlock Text="B" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource BrTextSecondary}" Margin="2,0,0,4"/>
+                                    <TextBox x:Name="BlueInput" Style="{StaticResource FieldBox}" TextAlignment="Center" GotFocus="RgbaInput_GotFocus" LostFocus="RgbaInput_LostFocus" KeyDown="RgbaInput_KeyDown"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="6">
+                                    <TextBlock Text="A (%)" FontSize="10" FontWeight="SemiBold" Foreground="{StaticResource BrTextSecondary}" Margin="2,0,0,4"/>
+                                    <TextBox x:Name="RgbaAlphaInput" Style="{StaticResource FieldBox}" TextAlignment="Center" GotFocus="RgbaInput_GotFocus" LostFocus="RgbaInput_LostFocus" KeyDown="RgbaInput_KeyDown"/>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+
+                        <Grid Grid.Row="4" Margin="0,10,0,8">
+                            <TextBlock x:Name="SavedColorsLabel" Text="Saved colors:" FontSize="15" FontWeight="SemiBold"/>
+                            <Button x:Name="AddSavedButton"
+                                    Content="+ Add"
+                                    HorizontalAlignment="Right"
+                                    Style="{StaticResource GhostButton}"
+                                    Foreground="{StaticResource BrTextSecondary}"
+                                    Background="Transparent"
+                                    Click="AddSavedButton_Click"/>
+                        </Grid>
+
+                        <WrapPanel x:Name="SavedColorsWrap" Grid.Row="5" Orientation="Horizontal"/>
+
+                        <StackPanel Grid.Row="6" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,6,0,0">
+                            <Button x:Name="CancelButton" Content="Cancel" Style="{StaticResource GhostButton}" Click="Cancel_Click" Margin="0,0,10,0"/>
+                            <Button x:Name="SelectButton" Content="Select" Style="{StaticResource SoftButton}" Click="Select_Click"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Background="{StaticResource BrCard}" BorderBrush="{StaticResource BrBorder}" BorderThickness="1" CornerRadius="12" Padding="14" Effect="{StaticResource CardShadow}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="36"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="72"/>
+                        </Grid.RowDefinitions>
+
+                        <Border Grid.Row="0"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Top"
+                                Background="{StaticResource BrField}"
+                                BorderBrush="{StaticResource BrBorder}"
+                                BorderThickness="1"
+                                CornerRadius="9"
+                                Padding="3">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="HexFormatButton"
+                                        Content="HEX"
+                                        Style="{StaticResource FormatButton}"
+                                        Click="HexFormatButton_Click"/>
+                                <Button x:Name="RgbFormatButton"
+                                        Content="RGB"
+                                        Style="{StaticResource FormatButton}"
+                                        Margin="3,0,0,0"
+                                        Click="RgbFormatButton_Click"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Canvas x:Name="HoneycombCanvas"
+                                Grid.Row="1"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Width="270"
+                                Height="230"/>
+
+                        <Grid Grid.Row="2" Margin="0,8,0,0">
+                            <Canvas x:Name="NeutralCanvas"
+                                    Width="174"
+                                    Height="54"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Center"/>
+                            <Canvas x:Name="SelectedHexCanvas"
+                                    Width="50"
+                                    Height="50"
+                                    Background="Transparent"
+                                    Cursor="Hand"
+                                    MouseLeftButtonDown="SelectedHexCanvas_MouseLeftButtonDown"
+                                    PreviewMouseLeftButtonDown="SelectedHexCanvas_MouseLeftButtonDown"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

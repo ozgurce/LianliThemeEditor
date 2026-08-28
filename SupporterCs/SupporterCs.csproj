@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AssemblyName>UsbMonitorL</AssemblyName>
+    <RootNamespace>ThemeEditorSupporter</RootNamespace>
+    <ApplicationIcon>..\editor.ico</ApplicationIcon>
+    <Version>4.1.1.2</Version>
+    <AssemblyVersion>4.1.1.2</AssemblyVersion>
+    <FileVersion>4.1.1.2</FileVersion>
+    <InformationalVersion>V 4.1.1.2</InformationalVersion>
+    <Title>Lian Li LCD Template Editor - Template Worker</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor - Template Worker</AssemblyTitle>
+    <Product>Lian Li LCD Template Editor</Product>
+    <Description>Template conversion and rendering worker for Lian Li LCD Template Editor</Description>
+    <Company>Ozgur Yalcin</Company>
+    <Authors>Ozgur Yalcin</Authors>
+    <Copyright>Copyright (c) Ozgur Yalcin 2026</Copyright>
+    <Deterministic>true</Deterministic>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Drawing" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Web.Extensions" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Copy SourceFiles="$(TargetDir)$(TargetName).exe" DestinationFiles="$(TargetDir)LianLiThemeEditor.TemplateWorker.exe" />
+    <Copy SourceFiles="$(TargetDir)$(TargetName).exe.config" DestinationFiles="$(TargetDir)LianLiThemeEditor.TemplateWorker.exe.config" Condition="Exists('$(TargetDir)$(TargetName).exe.config')" />
+  </Target>
+</Project>
+
+

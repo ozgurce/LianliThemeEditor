@@ -1,0 +1,173 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package
+    Name="Lian Li LCD Template Editor"
+    Manufacturer="Ozgur Yalcin"
+    Version="$(var.ProductVersion)"
+    ProductCode="$(var.ProductCode)"
+    UpgradeCode="5E2A5D54-E8B6-4E25-8BBE-9A2EA2FA3781"
+    Scope="perUser">
+
+    <SummaryInformation Description="Lian Li LCD Template Editor installer" Manufacturer="Ozgur Yalcin" />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="none" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." AllowSameVersionUpgrades="yes" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <Property Id="INSTALLFOLDER">
+      <RegistrySearch
+        Id="ExistingPerUserMsiInstallLocation"
+        Root="HKCU"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+        Name="InstallLocation"
+        Type="raw" />
+      <RegistrySearch
+        Id="ExistingPerMachineMsiInstallLocation"
+        Root="HKLM"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+        Name="InstallLocation"
+        Type="raw" />
+      <RegistrySearch
+        Id="ExistingPerUserInnoInstallLocation"
+        Root="HKCU"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\{5E2A5D54-E8B6-4E25-8BBE-9A2EA2FA3781}_is1"
+        Name="InstallLocation"
+        Type="raw" />
+      <RegistrySearch
+        Id="ExistingPerMachineInnoInstallLocation"
+        Root="HKLM"
+        Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\{5E2A5D54-E8B6-4E25-8BBE-9A2EA2FA3781}_is1"
+        Name="InstallLocation"
+        Type="raw" />
+    </Property>
+    <Property Id="DISABLEADVTSHORTCUTS" Value="1" />
+    <Property Id="ARPPRODUCTICON" Value="ProductIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/ozgurce/LianliThemeEditor" />
+    <Property Id="ARPCONTACT" Value="Ozgur Yalcin" />
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
+    <WixVariable Id="WixUILicenseRtf" Value="installer-wix\license.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="installer-wix\theme\dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="installer-wix\theme\banner.bmp" />
+    <Icon Id="ProductIcon" SourceFile="editor.ico" />
+    <ui:WixUI Id="WixUI_InstallDir" />
+    <util:CloseApplication
+      Id="CloseRunningThemeEditor"
+      Target="LianLiThemeEditor.exe"
+      CloseMessage="yes"
+      ElevatedCloseMessage="yes"
+      RebootPrompt="no"
+      Timeout="5" />
+
+    <StandardDirectory Id="PerUserProgramFilesFolder">
+      <Directory Id="INSTALLFOLDER" Name="LianLiThemeEditor" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="Lian Li LCD Template Editor" />
+    </StandardDirectory>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="A9CE2539-FD33-4876-B83A-9E4BB5ED7E70">
+        <Shortcut
+          Id="ApplicationDesktopShortcut"
+          Name="Lian Li LCD Template Editor"
+          Description="Lian Li LCD Template Editor"
+          Target="[INSTALLFOLDER]LianLiThemeEditor.exe"
+          WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Ozgur Yalcin\LianLiThemeEditor"
+          Name="DesktopShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**" />
+    </ComponentGroup>
+
+    <DirectoryRef Id="INSTALLFOLDER">
+      <Component Id="ExplicitUninstallRegistry" Guid="E54C1917-6772-47F2-95BF-117C851BA9B4">
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="DisplayName"
+          Type="string"
+          Value="Lian Li LCD Template Editor"
+          KeyPath="yes" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="DisplayVersion"
+          Type="string"
+          Value="$(var.ProductVersion)" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="Publisher"
+          Type="string"
+          Value="Ozgur Yalcin" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="InstallLocation"
+          Type="string"
+          Value="[INSTALLFOLDER]" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="DisplayIcon"
+          Type="string"
+          Value="[INSTALLFOLDER]LianLiThemeEditor.exe" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="UninstallString"
+          Type="string"
+          Value="msiexec.exe /x $(var.ProductCode)" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Name="EstimatedSize"
+          Type="integer"
+          Value="$(var.EstimatedSizeKb)" />
+        <RemoveRegistryKey
+          Root="HKCU"
+          Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\LianLiThemeEditor"
+          Action="removeOnUninstall" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="ApplicationProgramsFolder">
+      <Component Id="StartMenuShortcut" Guid="E4282560-03BE-4DDD-AF01-1355027E1338">
+        <Shortcut
+          Id="ApplicationStartMenuShortcut"
+          Name="Lian Li LCD Template Editor"
+          Description="Lian Li LCD Template Editor"
+          Target="[INSTALLFOLDER]LianLiThemeEditor.exe"
+          WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut
+          Id="ApplicationUninstallShortcut"
+          Name="Uninstall Lian Li LCD Template Editor"
+          Description="Uninstall Lian Li LCD Template Editor"
+          Target="[SystemFolder]msiexec.exe"
+          Arguments="/x [ProductCode]" />
+        <RemoveFolder Id="RemoveApplicationProgramsFolder" On="uninstall" />
+        <RegistryValue
+          Root="HKCU"
+          Key="Software\Ozgur Yalcin\LianLiThemeEditor"
+          Name="StartMenuShortcut"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id="MainFeature" Title="Lian Li LCD Template Editor" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="ExplicitUninstallRegistry" />
+      <ComponentRef Id="StartMenuShortcut" />
+      <ComponentRef Id="DesktopShortcut" />
+    </Feature>
+  </Package>
+</Wix>

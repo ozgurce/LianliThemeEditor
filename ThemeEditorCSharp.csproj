@@ -1,0 +1,146 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>LianLiThemeEditor</AssemblyName>
+    <RootNamespace>ThemeEditorCSharp</RootNamespace>
+    <Version>2.9.0</Version>
+    <AssemblyVersion>2.9.0.0</AssemblyVersion>
+    <FileVersion>2.9.0.0</FileVersion>
+    <InformationalVersion>2.9.0</InformationalVersion>
+    <Title>Lian Li LCD Template Editor 2.9.0</Title>
+    <AssemblyTitle>Lian Li LCD Template Editor 2.9.0</AssemblyTitle>
+    <Product>Lian Li LCD Template Editor</Product>
+    <Description>Theme editor for Lian Li LCD devices</Description>
+    <Company>Ozgur Yalcin</Company>
+    <Authors>Ozgur Yalcin</Authors>
+    <Copyright>Copyright (c) Ozgur Yalcin 2026</Copyright>
+    <ApplicationIcon>editor.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <UseAppHost>true</UseAppHost>
+    <BaseOutputPath>bin_build\</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);Backups\**;artifacts\**;outputs\**;tmp\**;tmp_*\**;release\**;gallery_fix_work\**;cloudflare\**;tools\**;_project-archive\**;_cleanup_20260722\**;PhoneControl\**;compare_extract\**;dim_probe\**;lc_v2_repack\**;lc_v2_verify_idnamed\**;themePic_local_fix\**;video_work\**;tmp_video_frames\**;tmp_video_frames_cv2\**;bin\**;bin_build\**;obj\**;obj_build\**;active_*.json;tmp_*;firmwares-*.json;*.fw;extracted_from_lianli88*.png</DefaultItemExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="editor.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Resource Include="Assets\glass-background.png" />
+    <Resource Include="Assets\glass-background-light.png" />
+    <Resource Include="Assets\Devices\hydroshift-ii-lcd-s.png" />
+    <Resource Include="Assets\Devices\hydroshift-ii-lcd-c.png" />
+    <Resource Include="Assets\Devices\universal-screen-8.8.png" />
+    <Resource Include="Assets\Devices\vm-9.2.png" />
+    <Resource Include="Assets\Devices\hydroshift-ii-oled-curve.png" />
+    <Resource Include="Assets\Icons\rotate-orientation-white.png" />
+    <Resource Include="Assets\Icons\screenshot-white.png" />
+    <Resource Include="Assets\Icons\offline-white.png" />
+    <Resource Include="Assets\Icons\import-theme.png" />
+    <Resource Include="Assets\Icons\export-theme.png" />
+    <Resource Include="Assets\Icons\update-theme-info.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="lang\**\*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="editor.ico" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="PhoneLinkWeb\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="templates\blank-seeds\*.template" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe" Link="LianLiThemeEditor.TemplateWorker.exe" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+    <None Include="SupporterCs\bin\$(Configuration)\net48\LianLiThemeEditor.TemplateWorker.exe.config" Link="LianLiThemeEditor.TemplateWorker.exe.config" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="tmp\**\*.cs" />
+    <Compile Remove="tmp_*\**\*.cs" />
+    <Compile Remove="artifacts\**\*.cs" />
+    <Compile Remove="Tools\**\*.cs" />
+    <Compile Remove="tools\**\*.cs" />
+    <Compile Remove="_project-archive\**\*.cs" />
+    <Compile Remove="tools\ThemeUploader\**\*.cs" />
+    <Compile Remove="tools\ThemeReview\**\*.cs" />
+    <Compile Remove="SupporterCs\**\*.cs" />
+    <Compile Remove="PhoneControl\**\*.cs" />
+    <Compile Remove="compare_extract\**\*.cs" />
+    <Compile Remove="dim_probe\**\*.cs" />
+    <Compile Remove="lc_v2_repack\**\*.cs" />
+    <Compile Remove="lc_v2_verify_idnamed\**\*.cs" />
+    <Compile Remove="themePic_local_fix\**\*.cs" />
+    <Compile Remove="video_work\**\*.cs" />
+    <Compile Remove="UsbDeviceEmulator\**\*.cs" />
+    <Compile Remove="Backups\**\*.cs" />
+    <Compile Remove="PLUS\**\*.cs" />
+    <Compile Remove="Tests\**\*.cs" />
+    <Page Remove="Tools\**\*.xaml" />
+    <Page Remove="tmp_*\**\*.xaml" />
+    <Page Remove="tools\**\*.xaml" />
+    <Page Remove="PhoneControl\**\*.xaml" />
+    <Page Remove="compare_extract\**\*.xaml" />
+    <Page Remove="dim_probe\**\*.xaml" />
+    <Page Remove="lc_v2_repack\**\*.xaml" />
+    <Page Remove="lc_v2_verify_idnamed\**\*.xaml" />
+    <Page Remove="themePic_local_fix\**\*.xaml" />
+    <Page Remove="video_work\**\*.xaml" />
+    <Page Remove="_project-archive\**\*.xaml" />
+    <Page Remove="artifacts\**\*.xaml" />
+    <Page Remove="tools\ThemeUploader\**\*.xaml" />
+    <Page Remove="tools\ThemeReview\**\*.xaml" />
+    <Page Remove="Backups\**\*.xaml" />
+    <ApplicationDefinition Remove="Tools\**\App.xaml" />
+    <ApplicationDefinition Remove="tools\**\App.xaml" />
+    <ApplicationDefinition Remove="PhoneControl\**\App.xaml" />
+    <ApplicationDefinition Remove="_project-archive\**\App.xaml" />
+    <ApplicationDefinition Remove="Backups\**\App.xaml" />
+    <None Remove="PhoneControl\**" />
+    <None Remove="compare_extract\**" />
+    <None Remove="dim_probe\**" />
+    <None Remove="lc_v2_repack\**" />
+    <None Remove="lc_v2_verify_idnamed\**" />
+    <None Remove="themePic_local_fix\**" />
+    <None Remove="video_work\**" />
+    <None Remove="tmp_video_frames\**" />
+    <None Remove="tmp_video_frames_cv2\**" />
+    <Resource Remove="PhoneControl\**" />
+    <Resource Remove="compare_extract\**" />
+    <Resource Remove="dim_probe\**" />
+    <Resource Remove="lc_v2_repack\**" />
+    <Resource Remove="lc_v2_verify_idnamed\**" />
+    <Resource Remove="themePic_local_fix\**" />
+    <Resource Remove="video_work\**" />
+    <Resource Remove="tmp_video_frames\**" />
+    <Resource Remove="tmp_video_frames_cv2\**" />
+  </ItemGroup>
+
+  <Target Name="BuildCSharpSupporter" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true' and '$(SkipSupporterBuild)' != 'true'">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\SupporterCs\SupporterCs.csproj" Targets="Restore;Build" Properties="Configuration=$(Configuration)" RemoveProperties="RuntimeIdentifier;RuntimeIdentifiers;SelfContained" />
+  </Target>
+
+  <Target Name="GenerateBuildInfo" BeforeTargets="CoreCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <BuildTimestamp>$([System.DateTime]::Now.ToString("yyyy-MM-dd HH:mm:ss zzz"))</BuildTimestamp>
+      <BuildInfoFile>$(IntermediateOutputPath)GeneratedBuildInfo.g.cs</BuildInfoFile>
+    </PropertyGroup>
+    <ItemGroup>
+      <BuildInfoLines Include="// &lt;auto-generated /&gt;" />
+      <BuildInfoLines Include="namespace ThemeEditorCSharp" />
+      <BuildInfoLines Include="{" />
+      <BuildInfoLines Include="internal static class BuildInfo" />
+      <BuildInfoLines Include="{" />
+      <BuildInfoLines Include="    public const string BuiltAt = &quot;$(BuildTimestamp)&quot;%3B" />
+      <BuildInfoLines Include="}" />
+      <BuildInfoLines Include="}" />
+    </ItemGroup>
+    <WriteLinesToFile File="$(BuildInfoFile)" Lines="@(BuildInfoLines)" Overwrite="true" Encoding="UTF-8" />
+    <ItemGroup>
+      <Compile Include="$(BuildInfoFile)" AutoGen="True" DesignTime="True" />
+    </ItemGroup>
+  </Target>
+
+</Project>

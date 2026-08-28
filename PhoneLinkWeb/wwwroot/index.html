@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Lian-Li Phone Link</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css?v=2026071403">
+</head>
+<body>
+  <main class="appShell">
+    <header class="appHeader">
+      <div class="brandBlock">
+        <span class="appIcon">PL</span>
+        <div>
+          <h1 data-i18n="appTitle">Phone Link</h1>
+          <p id="statusText" data-i18n="connecting">Connecting...</p>
+        </div>
+      </div>
+      <div class="topActions">
+        <div class="liveBadge">
+          <span></span>
+          <b data-i18n="live">Live</b>
+        </div>
+        <button id="settingsButton" class="iconButton" title="Settings" aria-label="Settings" data-i18n-title="settings" data-i18n-aria="settings">
+          <img src="/icons/settings.png" alt="">
+        </button>
+        <button id="refreshButton" class="iconButton" title="Reconnect" aria-label="Reconnect" data-i18n-title="reconnect" data-i18n-aria="reconnect">
+          <img src="/icons/reconnect.png" alt="">
+        </button>
+      </div>
+    </header>
+
+    <section id="authPanel" class="panel hidden">
+      <label for="tokenInput" data-i18n="pin">PIN</label>
+      <div class="inline">
+        <input id="tokenInput" type="password" inputmode="numeric" autocomplete="one-time-code">
+        <button id="saveTokenButton" data-i18n="connect">Connect</button>
+      </div>
+    </section>
+
+    <section class="deviceHero">
+      <div>
+        <span class="eyebrow" data-i18n="activeDevice">Active device</span>
+        <div class="selectShell largeSelect">
+          <select id="deviceSelect"></select>
+        </div>
+      </div>
+    </section>
+
+    <section id="fanGroupPanel" class="fanGroupPanel hidden">
+      <span class="eyebrow" data-i18n="fanGroup">Fan group</span>
+      <div class="selectShell">
+        <select id="fanGroupSelect"></select>
+      </div>
+    </section>
+
+    <section class="controlStack">
+      <article id="screenCard" class="controlCard screenCard">
+        <div class="cardHeader">
+          <div>
+            <h2 data-i18n="screen">Screen</h2>
+            <p data-i18n="screenDesc">LCD backlight brightness</p>
+          </div>
+          <output id="brightnessValue">50%</output>
+        </div>
+        <div class="screenSliderLayout">
+          <div class="verticalSliderShell" id="brightnessShell">
+            <span class="brightnessFill" aria-hidden="true"></span>
+            <input id="brightnessSlider" type="range" min="0" max="100" step="25" value="50" orient="vertical">
+          </div>
+          <div id="brightnessSegments" class="brightnessSegments" aria-label="Screen brightness"></div>
+        </div>
+      </article>
+
+      <article class="controlCard effectCard">
+        <div class="cardHeader">
+          <div>
+            <h2 data-i18n="lighting">Lighting</h2>
+            <p data-i18n="lightingDesc">LED effect and effect brightness</p>
+          </div>
+          <output id="ledBrightnessValue">70%</output>
+        </div>
+        <div class="effectForm">
+          <label id="fanMergeRow" class="toggleRow fanMergeRow hidden">
+            <input id="fanMergeCheck" type="checkbox">
+            <span data-i18n="groupMerge">Group merge</span>
+          </label>
+          <label>
+            <span data-i18n="effect">Effect</span>
+            <div class="selectShell">
+              <select id="effectSelect"></select>
+            </div>
+          </label>
+        </div>
+        <div class="colorPalette">
+          <div class="paletteHeader">
+            <span data-i18n="colors">Colors</span>
+            <span id="colorSlotHint" data-i18n="mainColors">Main colors</span>
+          </div>
+          <div id="colorInputs" class="colorInputs"></div>
+          <div id="colorPalette" class="hexPalette" aria-label="Color palette"></div>
+        </div>
+        <div class="ledSlider" id="ledBrightnessShell">
+          <span class="levelDot"></span>
+          <input id="ledBrightnessSlider" type="range" min="0" max="100" step="25" value="75">
+        </div>
+        <div id="ledBrightnessSegments" class="brightnessSegments ledSegments" aria-label="Lighting brightness"></div>
+        <div class="speedControl">
+          <div class="paletteHeader">
+            <span data-i18n="speed">Speed</span>
+            <span id="speedValue">50%</span>
+          </div>
+          <div id="speedSegments" class="brightnessSegments ledSegments" aria-label="Effect speed"></div>
+        </div>
+        <div class="directionControl">
+          <div class="paletteHeader">
+            <span data-i18n="direction">Direction</span>
+            <span id="directionValue">Forward</span>
+          </div>
+          <div id="directionSegments" class="directionSegments" aria-label="Effect direction"></div>
+        </div>
+          <div class="lightingActions">
+            <button id="applyEffectButton" class="wideButton" data-i18n="applySelectedGroup">Apply selected group</button>
+            <button id="applyAllFansButton" class="wideButton secondaryWide hidden" data-i18n="applyAllFans">Apply to all TL W</button>
+          </div>
+        </article>
+    </section>
+
+    <section id="themesSection" class="themes">
+      <div class="sectionHeader">
+        <div>
+          <span class="eyebrow" data-i18n="library">Library</span>
+          <h2 data-i18n="themes">Themes</h2>
+        </div>
+        <span id="themeCount"></span>
+      </div>
+      <div id="themeGrid" class="themeGrid"></div>
+    </section>
+  </main>
+
+  <div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modalPanel">
+      <div class="sectionHeader">
+        <h2 id="settingsTitle" data-i18n="settings">Settings</h2>
+        <button id="closeSettingsButton" class="iconButton compactButton" title="Close" aria-label="Close" data-i18n-title="close" data-i18n-aria="close">X</button>
+      </div>
+      <button id="forgetTokenButton" class="secondaryButton" data-i18n="forgetPin">Forget PIN</button>
+      <label class="toggleRow">
+        <input id="usePinCheck" type="checkbox">
+        <span data-i18n="usePin">Use PIN</span>
+      </label>
+      <div class="pinInline">
+        <input id="settingsPinInput" type="password" placeholder="PIN" autocomplete="one-time-code" data-i18n-placeholder="pin">
+        <button id="savePinButton" class="secondaryButton" data-i18n="savePin">Save PIN</button>
+      </div>
+      <dl class="settingsGrid">
+        <div>
+          <dt data-i18n="port">Port</dt>
+          <dd id="portValue">-</dd>
+        </div>
+        <div>
+          <dt data-i18n="pin">PIN</dt>
+          <dd id="pinModeValue">-</dd>
+        </div>
+        <div>
+          <dt>L-Connect</dt>
+          <dd id="lConnectValue">-</dd>
+        </div>
+      </dl>
+      <div class="urlList" id="urlList"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/app.js?v=2026071404" defer></script>
+</body>
+</html>
