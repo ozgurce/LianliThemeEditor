@@ -45,6 +45,9 @@ PhoneLinkWeb/wwwroot/styles.old.css
 
 # Generated packages
 *.zip
+!templates/packages/clock-with-sensors-9f367ce3.zip
+!templates/packages/hydroshift-clockv1.zip
+!templates/packages/hydroshift-clockv3.zip
 *.nupkg
 
 # OS/editor noise
