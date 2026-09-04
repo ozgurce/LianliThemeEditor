@@ -22219,7 +22219,7 @@ public partial class MainWindow : Window
         var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         if (!string.IsNullOrWhiteSpace(informational))
         {
-            return informational;
+            return informational.Split('+', 2)[0];
         }
 
         return assembly.GetName().Version?.ToString() ?? "Unknown";
