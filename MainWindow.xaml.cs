@@ -264,7 +264,18 @@ public partial class MainWindow : Window
     private string _currentBackgroundPath = "";
     private string _selectedBackgroundSourcePath = "";
     private double _backgroundPreviewAutoRotationDegrees;
-    private bool _isLoading = true;
+    private bool _explicitLoading = true;
+    private int _loadingDepth;
+
+    // Load scopes nest and overlap across awaits, so saving and restoring a bool was not
+    // reentrancy safe: an inner scope could capture true and write true back after the outer
+    // scope had already finished, wedging the editor with every template selection ignored.
+    // A depth counter is safe because each scope only ever undoes its own increment.
+    private bool _isLoading
+    {
+        get => _explicitLoading || System.Threading.Volatile.Read(ref _loadingDepth) > 0;
+        set => _explicitLoading = value;
+    }
     private bool _suppressSelectionHydrationEvents;
     private int _selectionHydrationVersion;
     private bool _isDraggingPreview;
@@ -1286,7 +1297,7 @@ public partial class MainWindow : Window
     {
         try
         {
-            _isLoading = true;
+            _explicitLoading = true;
             ConfigureReadOnlyComboBoxDisplays(this);
             TemplateCombo.ItemsSource = TemplateOptions;
             LocalThemesItemsControl.ItemsSource = LocalVisibleThemes;
@@ -1310,7 +1321,7 @@ public partial class MainWindow : Window
             ApplyOwnedDeviceVisibility(save: false);
             UpdateCanvasConfiguration(resetZoom: true);
             // RefreshTemplateList(selectFirstWhenMissing: true, loadVisuals: false); // REMOVED FOR STARTUP OPTIMIZATION
-            _isLoading = false;
+            _explicitLoading = false;
             ReapplyPersistedLanguage("startup-loaded");
             UpdateHistoryButtons();
             UpdatePreviewGuidesButton();
@@ -1331,7 +1342,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            _isLoading = false;
+            _explicitLoading = false;
             WriteStartupExceptionLog(ex);
             SetStatus(GetLanguageText("messages.initializationFailed", "Initialization failed"));
             MessageBox.Show(this, ex.Message, GetLanguageText("messages.initializationFailed", "Initialization failed"), MessageBoxButton.OK, MessageBoxImage.Error);
@@ -1364,10 +1375,15 @@ public partial class MainWindow : Window
 
     private async void ActiveThemeButton_Click(object sender, RoutedEventArgs e)
     {
-        var wasLoading = _isLoading;
-        _isLoading = true;
-        UseActiveCheck.IsChecked = true;
-        _isLoading = wasLoading;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
+        try
+        {
+            UseActiveCheck.IsChecked = true;
+        }
+        finally
+        {
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
+        }
         await LoadLayersAsync(false);
     }
 
@@ -2116,10 +2132,15 @@ public partial class MainWindow : Window
             try
             {
                 SetBusy(true, GetLanguageText("status.creatingOfflineCopy", "Creating offline copy..."));
-                var wasLoading = _isLoading;
-                _isLoading = true;
-                UseActiveCheck.IsChecked = false;
-                _isLoading = wasLoading;
+                System.Threading.Interlocked.Increment(ref _loadingDepth);
+                try
+                {
+                    UseActiveCheck.IsChecked = false;
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref _loadingDepth);
+                }
                 await EnsureOfflineTemplateCopyAsync(GetSelectedDeviceModel(), GetSelectedTemplatePath());
                 await LoadLayersAsync(true);
                 SetBusy(false, GetLanguageText("status.offlineModeReady", "Offline mode is using a local copy."));
@@ -2707,10 +2728,15 @@ public partial class MainWindow : Window
 
         if (result != null)
         {
-            var wasLoading = _isLoading;
-            _isLoading = true;
-            UseActiveCheck.IsChecked = true;
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Increment(ref _loadingDepth);
+            try
+            {
+                UseActiveCheck.IsChecked = true;
+            }
+            finally
+            {
+                System.Threading.Interlocked.Decrement(ref _loadingDepth);
+            }
         }
         else
         {
@@ -2724,13 +2750,18 @@ public partial class MainWindow : Window
                     GetLanguageText("messages.noTemplateFound", "No template was found for this device."));
             }
 
-            var wasLoading = _isLoading;
-            _isLoading = true;
-            UseActiveCheck.IsChecked = false;
-            TemplateCombo.SelectedItem = firstTemplate;
-            TemplateIdBox.Text = firstTemplate.Id;
-            _currentTemplatePath = firstTemplate.Path;
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Increment(ref _loadingDepth);
+            try
+            {
+                UseActiveCheck.IsChecked = false;
+                TemplateCombo.SelectedItem = firstTemplate;
+                TemplateIdBox.Text = firstTemplate.Id;
+                _currentTemplatePath = firstTemplate.Path;
+            }
+            finally
+            {
+                System.Threading.Interlocked.Decrement(ref _loadingDepth);
+            }
             result = await Task.Run(() =>
                 LoadTemplateOptionAsync(deviceModel, firstTemplate, inspectBitmaps: false));
         }
@@ -2818,7 +2849,7 @@ public partial class MainWindow : Window
     private void ApplyTemplateResult(TemplateLoadResult result)
     {
         var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         _selectedBackgroundSourcePath = "";
         _currentTemplatePath = result.TemplatePath;
         _currentTemplateId = result.TemplateId;
@@ -2979,7 +3010,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
 
         _livePreviewTimer.Interval = Layers.Count >= 60
@@ -3247,7 +3278,8 @@ public partial class MainWindow : Window
             Background = parts[0].Background,
             BackgroundPath = parts[0].BackgroundPath,
             Width = OledCurveCanvasWidth,
-            Height = OledCurveCanvasHeight
+            Height = OledCurveCanvasHeight,
+            IsLandscape = parts[0].IsLandscape
         };
 
         var globalIndex = 0;
@@ -3470,13 +3502,18 @@ public partial class MainWindow : Window
         TemplatePathText.Text = templatePath;
         TemplateTitleText.Text = FormatLanguageText("template.idFormat", "Template ID: {0}", templateId);
 
-        var wasLoading = _isLoading;
-        _isLoading = true;
-        // A template selected from the combo is an explicit edit target. Do not flip
-        // back to "Use active template"; otherwise the next write can resolve the
-        // older L-Connect selection and apply/save the wrong theme.
-        UseActiveCheck.IsChecked = false;
-        _isLoading = wasLoading;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
+        try
+        {
+            // A template selected from the combo is an explicit edit target. Do not flip
+            // back to "Use active template"; otherwise the next write can resolve the
+            // older L-Connect selection and apply/save the wrong theme.
+            UseActiveCheck.IsChecked = false;
+        }
+        finally
+        {
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
+        }
 
         await Task.Run(() => TrySetActiveTemplateProfile(templateId, deviceModel));
         await TriggerLConnectRefreshAsync();
@@ -3789,8 +3826,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
         PropertyEditorContent.Visibility = Visibility.Visible;
@@ -4301,7 +4337,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
     }
 
@@ -4709,6 +4745,10 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(AddTextBox.Text)) return;
         try
         {
+            // The worker appends the new layer to the template on disk and FinalizeAddedLayerAsync
+            // reloads from it, which resets every pending queue. Flush queued deletes/moves/duplicates
+            // first so the reloaded template already reflects them, exactly as remove/duplicate do.
+            await ForceSyncPendingStructuralChangesAsync(moves: true, deletes: true, duplicates: true);
             CapturePendingDirtyLayersBeforeAdd();
             SetBusy(true, GetLanguageText("status.addingText", "Adding text..."));
             var target = await ResolveTemplateTargetAsync();
@@ -4739,6 +4779,10 @@ public partial class MainWindow : Window
         if (string.IsNullOrWhiteSpace(data)) return;
         try
         {
+            // The worker appends the new layer to the template on disk and FinalizeAddedLayerAsync
+            // reloads from it, which resets every pending queue. Flush queued deletes/moves/duplicates
+            // first so the reloaded template already reflects them, exactly as remove/duplicate do.
+            await ForceSyncPendingStructuralChangesAsync(moves: true, deletes: true, duplicates: true);
             CapturePendingDirtyLayersBeforeAdd();
             SetBusy(true, GetLanguageText("status.addingData", "Adding data..."));
             var target = await ResolveTemplateTargetAsync();
@@ -4781,6 +4825,10 @@ public partial class MainWindow : Window
 
         try
         {
+            // The worker appends the new layer to the template on disk and FinalizeAddedLayerAsync
+            // reloads from it, which resets every pending queue. Flush queued deletes/moves/duplicates
+            // first so the reloaded template already reflects them, exactly as remove/duplicate do.
+            await ForceSyncPendingStructuralChangesAsync(moves: true, deletes: true, duplicates: true);
             CapturePendingDirtyLayersBeforeAdd();
             var isClock = string.Equals(selectedType, "Gauge", StringComparison.OrdinalIgnoreCase);
             SetBusy(true, isClock ? "Adding gauge layer..." : GetLanguageText("status.addingImageLayer", "Adding image layer..."));
@@ -4840,6 +4888,10 @@ public partial class MainWindow : Window
 
         try
         {
+            // The worker appends the new layer to the template on disk and FinalizeAddedLayerAsync
+            // reloads from it, which resets every pending queue. Flush queued deletes/moves/duplicates
+            // first so the reloaded template already reflects them, exactly as remove/duplicate do.
+            await ForceSyncPendingStructuralChangesAsync(moves: true, deletes: true, duplicates: true);
             CapturePendingDirtyLayersBeforeAdd();
             SetBusy(true, GetLanguageText("status.addingGraph", "Adding graph..."));
             var target = await ResolveTemplateTargetAsync();
@@ -7786,15 +7838,14 @@ public partial class MainWindow : Window
 
     private void SetGaugeAngleTextSilently(TextBox textBox, string value)
     {
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             textBox.Text = value;
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
     }
 
@@ -8282,15 +8333,14 @@ public partial class MainWindow : Window
             return;
         }
 
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             SetComboText(combo, GetCaseFanIndex(dataSource).ToString(CultureInfo.InvariantCulture));
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
     }
 
@@ -15917,6 +15967,12 @@ public partial class MainWindow : Window
     private static (int Width, int Height) GetWideRuntimeH264Pixels(string deviceModel, string orientation = "")
     {
         var canvas = GetDeviceCanvasPixels(deviceModel, orientation);
+        if (string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase) &&
+            canvas.Width >= canvas.Height)
+        {
+            return (480, canvas.Width);
+        }
+
         return canvas.Width >= canvas.Height
             ? (canvas.Height, canvas.Width)
             : canvas;
@@ -16060,8 +16116,7 @@ public partial class MainWindow : Window
     private async Task RefreshTemplateListAsync(bool selectFirstWhenMissing = false, bool loadVisuals = true)
     {
         var selectedPath = _currentTemplatePath;
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             var deviceModel = GetSelectedDeviceModel();
@@ -16117,7 +16172,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
     }
 
@@ -17400,8 +17455,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             foreach (var item in DeviceCombo.Items.OfType<ComboBoxItem>())
@@ -17421,7 +17475,7 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
     }
 
@@ -20175,7 +20229,10 @@ public partial class MainWindow : Window
         var outputFullPath = Path.GetFullPath(outputPath);
         var sourceFullPath = Path.GetFullPath(sourcePath);
 
-        if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase))
+        if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
+            (sourceSize.Width == 0 ||
+             sourceSize.Height == 0 ||
+             (sourceSize.Width == expected.Width && sourceSize.Height == expected.Height)))
         {
             if (!string.Equals(sourceFullPath, outputFullPath, StringComparison.OrdinalIgnoreCase))
             {
@@ -20183,18 +20240,17 @@ public partial class MainWindow : Window
                 CopyFileWithRetry(sourcePath, outputFullPath);
             }
 
-            if (sourceSize.Width > 0 &&
-                sourceSize.Height > 0 &&
-                (sourceSize.Width != expected.Width ||
-                 sourceSize.Height != expected.Height))
-            {
-                AppLogger.Info(
-                    $"Wide runtime H264 background kept without re-encoding despite nonstandard dimensions: " +
-                    $"{DescribeFileForLog(outputPath)}; " +
-                    $"size={sourceSize.Width}x{sourceSize.Height}; nominal={expected.Width}x{expected.Height}");
-            }
-
             return outputPath;
+        }
+
+        if (sourceExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
+            sourceSize.Width > 0 &&
+            sourceSize.Height > 0)
+        {
+            AppLogger.Info(
+                $"Wide runtime H264 background dimensions do not match the target device; re-encoding: " +
+                $"{DescribeFileForLog(sourcePath)}; " +
+                $"size={sourceSize.Width}x{sourceSize.Height}; expected={expected.Width}x{expected.Height}");
         }
 
         var conversionOutput = outputPath;
@@ -26323,7 +26379,7 @@ public partial class MainWindow : Window
                     preferLandscape &&
                     sourceSize.Width == 480 &&
                     sourceSize.Height == 1920 &&
-                    runtimeH264.Width == 464 &&
+                    targetCanvas.Height == 464 &&
                     runtimeH264.Height == 1920;
                 if (sourceIsRotatedWideRuntime)
                 {
@@ -26349,8 +26405,19 @@ public partial class MainWindow : Window
                     filters.Add("transpose=cclock");
                 }
 
-                filters.Add($"scale={targetWidth}:{targetHeight}:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc");
-                filters.Add($"crop={targetWidth}:{targetHeight}");
+                if (outputExtension.Equals(".h264", StringComparison.OrdinalIgnoreCase) &&
+                    preferLandscape &&
+                    string.Equals(deviceModel, Vm92DeviceModel, StringComparison.OrdinalIgnoreCase))
+                {
+                    filters.Add($"scale={targetCanvas.Height}:{targetHeight}:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc");
+                    filters.Add($"crop={targetCanvas.Height}:{targetHeight}");
+                    filters.Add($"pad={targetWidth}:{targetHeight}:(ow-iw)/2:(oh-ih)/2:black");
+                }
+                else
+                {
+                    filters.Add($"scale={targetWidth}:{targetHeight}:force_original_aspect_ratio=increase:flags=lanczos:out_range=pc");
+                    filters.Add($"crop={targetWidth}:{targetHeight}");
+                }
                 filters.Add("setsar=1");
                 filters.Add("fps=24");
                 filters.Add("format=yuv420p");
@@ -29346,8 +29413,7 @@ private static string CreateExportPackageBaseName(string templateId)
 
     private void RefreshDataSourceItems()
     {
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             var dataSelection = GetComboValue(DataCombo);
@@ -29365,7 +29431,7 @@ private static string CreateExportPackageBaseName(string templateId)
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
     }
 
@@ -30001,8 +30067,7 @@ private static string CreateExportPackageBaseName(string templateId)
         if (LayerGrid.SelectedItem is LayerRow sensorLayer &&
             string.Equals(sensorLayer.Type, "GraphSensor", StringComparison.OrdinalIgnoreCase))
         {
-            var wasLoading = _isLoading;
-            _isLoading = true;
+            System.Threading.Interlocked.Increment(ref _loadingDepth);
             try
             {
                 sensorLayer.SensorType = data;
@@ -30013,7 +30078,7 @@ private static string CreateExportPackageBaseName(string templateId)
             }
             finally
             {
-                _isLoading = wasLoading;
+                System.Threading.Interlocked.Decrement(ref _loadingDepth);
             }
             LayerGrid.Items.Refresh();
             OnInputChanged();
@@ -30023,8 +30088,7 @@ private static string CreateExportPackageBaseName(string templateId)
         if (LayerGrid.SelectedItem is LayerRow layer &&
             !string.Equals(layer.DataSource, data, StringComparison.OrdinalIgnoreCase))
         {
-            var wasLoading = _isLoading;
-            _isLoading = true;
+            System.Threading.Interlocked.Increment(ref _loadingDepth);
             try
             {
                 layer.DataSource = ResolveCaseFanDataSource(data, CaseFanCombo);
@@ -30048,7 +30112,7 @@ private static string CreateExportPackageBaseName(string templateId)
             }
             finally
             {
-                _isLoading = wasLoading;
+                System.Threading.Interlocked.Decrement(ref _loadingDepth);
             }
             LayerGrid.Items.Refresh();
         }
@@ -35430,8 +35494,7 @@ private static string CreateExportPackageBaseName(string templateId)
             return;
         }
 
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             SetComboTag(
@@ -35440,7 +35503,7 @@ private static string CreateExportPackageBaseName(string templateId)
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
         OnInputChanged();
     }
@@ -35452,8 +35515,7 @@ private static string CreateExportPackageBaseName(string templateId)
             return;
         }
 
-        var wasLoading = _isLoading;
-        _isLoading = true;
+        System.Threading.Interlocked.Increment(ref _loadingDepth);
         try
         {
             SetComboTag(
@@ -35462,7 +35524,7 @@ private static string CreateExportPackageBaseName(string templateId)
         }
         finally
         {
-            _isLoading = wasLoading;
+            System.Threading.Interlocked.Decrement(ref _loadingDepth);
         }
         OnInputChanged();
     }
@@ -35784,15 +35846,14 @@ private static string CreateExportPackageBaseName(string templateId)
         {
             if (SetTextCheck.IsChecked == true)
             {
-                var wasLoading = _isLoading;
-                _isLoading = true;
+                System.Threading.Interlocked.Increment(ref _loadingDepth);
                 try
                 {
                     SetComboText(DataCombo, "StaticText");
                 }
                 finally
                 {
-                    _isLoading = wasLoading;
+                    System.Threading.Interlocked.Decrement(ref _loadingDepth);
                 }
             }
         }

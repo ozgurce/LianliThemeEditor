@@ -1099,10 +1099,7 @@ public sealed class SupporterBridge : ISupporterBridge
             TemplatePath = GetValue(root, "TemplatePath"),
             Background = GetValue(root, "Background"),
             BackgroundPath = GetValue(root, "BackgroundPath"),
-            IsLandscape = root.TryGetProperty("IsLandscape", out var isLandscape) &&
-                          (isLandscape.ValueKind == JsonValueKind.True || isLandscape.ValueKind == JsonValueKind.False)
-                ? isLandscape.GetBoolean()
-                : null,
+            IsLandscape = GetNullableBoolValue(root, "IsLandscape"),
             Width = GetIntValue(root, "Width"),
             Height = GetIntValue(root, "Height")
         };
@@ -1430,6 +1427,22 @@ public sealed class SupporterBridge : ISupporterBridge
             JsonValueKind.False => false,
             JsonValueKind.String => bool.TryParse(property.GetString(), out var parsed) && parsed,
             _ => false
+        };
+    }
+
+    private static bool? GetNullableBoolValue(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var property))
+        {
+            return null;
+        }
+
+        return property.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.String => bool.TryParse(property.GetString(), out var parsed) ? parsed : null,
+            _ => null
         };
     }
 
