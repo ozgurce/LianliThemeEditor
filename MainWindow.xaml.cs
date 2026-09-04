@@ -2823,27 +2823,7 @@ public partial class MainWindow : Window
 
     private static bool ShouldUseFastProfileBackground(TemplateLoadResult result, string fastBackground)
     {
-        if (string.IsNullOrWhiteSpace(fastBackground) || !File.Exists(fastBackground))
-        {
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(result.BackgroundPath) || !File.Exists(result.BackgroundPath))
-        {
-            return true;
-        }
-
-        var existingName = Path.GetFileNameWithoutExtension(result.BackgroundPath);
-        var fastName = Path.GetFileNameWithoutExtension(fastBackground);
-        var templateId = result.TemplateId ?? "";
-        if (string.IsNullOrWhiteSpace(existingName) || string.IsNullOrWhiteSpace(fastName))
-        {
-            return false;
-        }
-
-        return !string.IsNullOrWhiteSpace(templateId) &&
-               fastName.StartsWith(templateId, StringComparison.OrdinalIgnoreCase) &&
-               !existingName.StartsWith(templateId, StringComparison.OrdinalIgnoreCase);
+        return !string.IsNullOrWhiteSpace(fastBackground) && File.Exists(fastBackground);
     }
 
     private void ApplyTemplateResult(TemplateLoadResult result)
@@ -3188,6 +3168,20 @@ public partial class MainWindow : Window
 
     private void NormalizeLoadedTemplateBackground(TemplateLoadResult result)
     {
+        if (!string.IsNullOrWhiteSpace(result.BackgroundPath) && File.Exists(result.BackgroundPath))
+        {
+            var preferred = PreferPreviewFriendlyBackgroundVariant(result.BackgroundPath);
+            result.BackgroundPath = preferred;
+            result.Background = Path.GetFileName(preferred);
+            foreach (var layer in result.Layers.Where(layer =>
+                         string.Equals(layer.Type, "GraphAnimation", StringComparison.OrdinalIgnoreCase)))
+            {
+                layer.Media = result.Background;
+                layer.MediaPath = result.BackgroundPath;
+            }
+            return;
+        }
+
         var names = new List<string>();
         AddIfNotEmpty(names, result.Background);
         AddIfNotEmpty(names, Path.GetFileName(result.BackgroundPath));
@@ -11210,9 +11204,12 @@ public partial class MainWindow : Window
             var thickness = thickVal > 0 ? Math.Max(2.0, ToPreview(thickVal)) : Math.Max(8.0, Math.Min(width, height) * 0.12);
             TryParseInvariant(layer.BorderWidth, out var parsedBorderWidth);
             var borderThickness = parsedBorderWidth > 0 ? Math.Max(0.75, ToPreview(parsedBorderWidth)) : 1.0;
-            var padding = Math.Max(2.0, borderThickness + 1.0);
-            var centerDiameter = Math.Max(4.0, Math.Min(width, height) - thickness - (padding * 2.0));
-            var center = new Point(width / 2.0, height / 2.0);
+            var archOuterDiameter = TryParseInvariant(layer.Diameter, out var parsedDiameter) && parsedDiameter > 0
+                ? ToPreview(parsedDiameter)
+                : Math.Max(4.0, Math.Min(width, height) - ToPreview(GetArchGraphPreviewPadding(layer) * 2.0));
+            archOuterDiameter = Math.Min(archOuterDiameter, Math.Min(width, height));
+            var centerDiameter = Math.Max(4.0, archOuterDiameter - thickness);
+            var center = new Point(outerWidth / 2.0, outerHeight / 2.0);
             var circleLeft = center.X - centerDiameter / 2.0;
             var circleTop = center.Y - centerDiameter / 2.0;
 
@@ -25767,6 +25764,17 @@ public partial class MainWindow : Window
         try
         {
             await _supporter.NormalizeTemplateIdentityAsync(snapshot.DeviceModel, tempTemplate, exportTemplateId);
+            if (!string.IsNullOrWhiteSpace(snapshot.BackgroundPath) && File.Exists(snapshot.BackgroundPath))
+            {
+                var canvas = GetExportTemplateCanvasPixels(snapshot.DeviceModel, snapshot.UniversalOrientation);
+                await _supporter.SetBackgroundRefsAsync(
+                    snapshot.DeviceModel,
+                    tempTemplate,
+                    snapshot.BackgroundPath,
+                    canvas.Width,
+                    canvas.Height,
+                    string.Equals(NormalizeUniversalOrientation(snapshot.UniversalOrientation), "landscape", StringComparison.OrdinalIgnoreCase));
+            }
             var tempPreviewPath = snapshot.PreviewPath;
             var generatedPreviewPath = "";
             if (string.IsNullOrWhiteSpace(tempPreviewPath) || !File.Exists(tempPreviewPath))

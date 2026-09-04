@@ -533,6 +533,17 @@ internal static class Program
             }
             var templateBackground = ResolveTemplateBackgroundPath(theme);
             var backgroundPath = ChooseBackgroundPath(profileBackground, templateBackground);
+            if (!string.IsNullOrWhiteSpace(backgroundPath) && File.Exists(backgroundPath))
+            {
+                foreach (var layer in layers)
+                {
+                    if (string.Equals(layer.TryGetValue("Type", out var t) ? t?.ToString() : null, "GraphAnimation", StringComparison.OrdinalIgnoreCase))
+                    {
+                        layer["Media"] = Path.GetFileName(backgroundPath);
+                        layer["MediaPath"] = backgroundPath;
+                    }
+                }
+            }
             var result = new Dictionary<string, object?>
             {
                 ["TemplatePath"] = _templatePath,
@@ -1680,7 +1691,13 @@ internal static class Program
                 Reflection.TrySet(graph, "ImgName", Path.GetFileName(path));
                 Reflection.TrySet(graph, "videoName", Path.GetFileName(path));
                 Reflection.TrySet(graph, "FilePath", themeMediaPath);
+                Reflection.TrySet(graph, "Path", themeMediaPath);
+                Reflection.TrySet(graph, "ImagePath", themeMediaPath);
+                Reflection.TrySet(graph, "posX", 0);
+                Reflection.TrySet(graph, "posY", 0);
                 Reflection.TrySet(graph, "zoom_rate", 1.0);
+                Reflection.TrySet(graph, "ZoomRate", 1.0);
+                Reflection.TrySet(graph, "hide", false);
             }
             SetThemeZoomRate(theme, 1.0);
             Console.WriteLine("BackgroundPath: " + path);
@@ -1739,9 +1756,13 @@ internal static class Program
             var animations = Graphs(theme).Cast<object>()
                 .Where(layer => layer.GetType().Name == "GraphAnimation")
                 .ToList();
-            if (animations.Count > 0)
+            if (animations.Count == 0)
             {
-                var layer = animations[0];
+                animations = EnsureBackgroundLayer(theme, resetMedia: false);
+            }
+
+            foreach (var layer in animations)
+            {
                 Reflection.TrySet(layer, "ImgName", fileName);
                 Reflection.TrySet(layer, "videoName", fileName);
                 Reflection.TrySet(layer, "FilePath", mediaPath);
