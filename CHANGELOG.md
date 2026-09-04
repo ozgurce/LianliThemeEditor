@@ -5,6 +5,8 @@
 All the current fixed included, its a long list and I just moved to new house. But I don't expect any bugs. 
 This is the latest version for all the supported devices, there won't nbe new devices because of the don't having the physical screens to test.  No new or old devices added after this release.
 
+- Fixed copied Curved Bar previews changing shape after being moved by keeping the editor fallback drawing aligned with the layer's real Diameter instead of treating the padded selection bounds as the graph diameter.
+
 ## V 2.8.16
 
 - Fixed theme orientation retention when adding background media to a newly created theme: prevented background media dimensions from changing or overriding the new theme's orientation.
