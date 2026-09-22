@@ -1716,6 +1716,16 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/iron-man-blue-2d1da700.png",
       "packageUrl": "packages/iron-man-blue-2d1da700.zip"
+    },
+    {
+      "id": "red-omega-6ae99aa6",
+      "name": "Red Omega",
+      "author": "\u00D6zg\u00FCr",
+      "description": "Azgur Author",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/red-omega-6ae99aa6.png",
+      "packageUrl": "packages/red-omega-6ae99aa6.zip"
     }
   ]
 }
