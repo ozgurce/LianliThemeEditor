@@ -1726,6 +1726,176 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/red-omega-6ae99aa6.png",
       "packageUrl": "packages/red-omega-6ae99aa6.zip"
+    },
+    {
+      "id": "mechwarior-7f0cc289",
+      "name": "Mechwarior",
+      "author": "David Homolka",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/mechwarior-7f0cc289.png",
+      "packageUrl": "packages/mechwarior-7f0cc289.zip"
+    },
+    {
+      "id": "mechwarior-v2-dfe5e78b",
+      "name": "Mechwarior v2",
+      "author": "David Homolka",
+      "description": "Inspired Battletech",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/mechwarior-v2-dfe5e78b.png",
+      "packageUrl": "packages/mechwarior-v2-dfe5e78b.zip"
+    },
+    {
+      "id": "darkmatter-ea88aee9",
+      "name": "DarkMatter",
+      "author": "RustyBreaker",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/darkmatter-ea88aee9.png",
+      "packageUrl": "packages/darkmatter-ea88aee9.zip"
+    },
+    {
+      "id": "llmm-628f6f9f",
+      "name": "LLMM",
+      "author": "AhmedEssam",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/llmm-628f6f9f.png",
+      "packageUrl": "packages/llmm-628f6f9f.zip"
+    },
+    {
+      "id": "llmm-imported-d9ca63a1",
+      "name": "LLMM-imported",
+      "author": "NIMSIS",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/llmm-imported-d9ca63a1.png",
+      "packageUrl": "packages/llmm-imported-d9ca63a1.zip"
+    },
+    {
+      "id": "llmm-4221afea",
+      "name": "LLMM",
+      "author": "NIMSIS",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/llmm-4221afea.png",
+      "packageUrl": "packages/llmm-4221afea.zip"
+    },
+    {
+      "id": "llmm-e0a016e2",
+      "name": "LLMM",
+      "author": "NIMSIS",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-c",
+      "deviceName": "Hydroshift II LCD-C",
+      "previewUrl": "previews/llmm-e0a016e2.png",
+      "packageUrl": "packages/llmm-e0a016e2.zip"
+    },
+    {
+      "id": "mechwarior-0f01ab42",
+      "name": "Mechwarior",
+      "author": "David homolka",
+      "description": "Inspired Battletech universum",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/mechwarior-0f01ab42.png",
+      "packageUrl": "packages/mechwarior-0f01ab42.zip"
+    },
+    {
+      "id": "apex-black-vertical-bbf28dc3",
+      "name": "Apex Black Vertical",
+      "author": "deepsky303",
+      "description": "Vertical Apex_Black",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/apex-black-vertical-bbf28dc3.png",
+      "packageUrl": "packages/apex-black-vertical-bbf28dc3.zip"
+    },
+    {
+      "id": "the-division-40c6931d",
+      "name": "The Division",
+      "author": "deepsky303",
+      "description": "The Division theme",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/the-division-40c6931d.png",
+      "packageUrl": "packages/the-division-40c6931d.zip"
+    },
+    {
+      "id": "lconnect-systeminfo-v5-3ba3313e",
+      "name": "LConnect SystemInfo v5",
+      "author": "deepsky303",
+      "description": "Theme with l-connect design",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/lconnect-systeminfo-v5-3ba3313e.png",
+      "packageUrl": "packages/lconnect-systeminfo-v5-3ba3313e.zip"
+    },
+    {
+      "id": "sceptical-samurai-085cfd01",
+      "name": "Sceptical Samurai",
+      "author": "Mr.Geo",
+      "description": "A need to make something fresh.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/sceptical-samurai-085cfd01.png",
+      "packageUrl": "packages/sceptical-samurai-085cfd01.zip"
+    },
+    {
+      "id": "cyan-magenta-55cc5805",
+      "name": "Cyan Magenta",
+      "author": "KLPFL",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyan-magenta-55cc5805.png",
+      "packageUrl": "packages/cyan-magenta-55cc5805.zip"
+    },
+    {
+      "id": "aisus-3d-animated-227bb46a",
+      "name": "AIsus 3D Animated",
+      "author": "KLPFL",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/aisus-3d-animated-227bb46a.png",
+      "packageUrl": "packages/aisus-3d-animated-227bb46a.zip"
+    },
+    {
+      "id": "calm-dd42b696",
+      "name": "Calm",
+      "author": "Moojoose",
+      "description": "A calm clear theme on a digital lake",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/calm-dd42b696.png",
+      "packageUrl": "packages/calm-dd42b696.zip"
+    },
+    {
+      "id": "apex-v2-black-88734744",
+      "name": "Apex v2 Black",
+      "author": "F0n73n3l3",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/apex-v2-black-88734744.png",
+      "packageUrl": "packages/apex-v2-black-88734744.zip"
+    },
+    {
+      "id": "apex-v2-a8dc4e99",
+      "name": "Apex v2",
+      "author": "F0n73n3l3",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/apex-v2-a8dc4e99.png",
+      "packageUrl": "packages/apex-v2-a8dc4e99.zip"
     }
   ]
 }
