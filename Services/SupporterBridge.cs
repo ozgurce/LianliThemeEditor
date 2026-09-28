@@ -713,7 +713,7 @@ public sealed class SupporterBridge : ISupporterBridge
         });
         if (landscape)
         {
-            args.AddRange(new[] { "-Landscape", "true" });
+            args.Add("-Landscape");
         }
 
         var output = await RunSupporterAsync(args, cancellationToken).ConfigureAwait(false);
