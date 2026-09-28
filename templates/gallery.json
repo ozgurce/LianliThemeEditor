@@ -1964,6 +1964,7 @@
       "description": "a",
       "deviceModel": "universal-screen-8.8-inch",
       "deviceName": "8.8\u0022 Universal Screen",
+      "orientation": "landscape",
       "previewUrl": "previews/silent-walnut-jt-8-8-landscape-v1-20260925-035035-44db70fa.png",
       "packageUrl": "packages/silent-walnut-jt-8-8-landscape-v1-20260925-035035-44db70fa.zip"
     }
