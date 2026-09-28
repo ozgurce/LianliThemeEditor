@@ -1896,6 +1896,66 @@
       "deviceName": "8.8\u0022 Universal Screen",
       "previewUrl": "previews/apex-v2-a8dc4e99.png",
       "packageUrl": "packages/apex-v2-a8dc4e99.zip"
+    },
+    {
+      "id": "obsidian-flux-fps-horizontal-themeeditor-imported-20260927-113048-a330a711",
+      "name": "OBSIDIAN_FLUX_FPS_HORIZONTAL-ThemeEditor-imported_20260927_113048",
+      "author": "Rotor1503",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/obsidian-flux-fps-horizontal-themeeditor-imported-20260927-113048-a330a711.png",
+      "packageUrl": "packages/obsidian-flux-fps-horizontal-themeeditor-imported-20260927-113048-a330a711.zip"
+    },
+    {
+      "id": "anne-a667963c",
+      "name": "anne",
+      "author": "hlp",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/anne-a667963c.png",
+      "packageUrl": "packages/anne-a667963c.zip"
+    },
+    {
+      "id": "test2-ba1ebbe2",
+      "name": "test2",
+      "author": "hp",
+      "description": "",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/test2-ba1ebbe2.png",
+      "packageUrl": "packages/test2-ba1ebbe2.zip"
+    },
+    {
+      "id": "ll020-2d810467",
+      "name": "LL020",
+      "author": "martr",
+      "description": "",
+      "deviceModel": "hydroshift-ii-lcd-s",
+      "deviceName": "Hydroshift II LCD-S",
+      "previewUrl": "previews/ll020-2d810467.png",
+      "packageUrl": "packages/ll020-2d810467.zip"
+    },
+    {
+      "id": "cyan-magenta-imported-20260923-070201-4c26051a",
+      "name": "Cyan_Magenta-imported_20260923_070201",
+      "author": "KLPFL",
+      "description": "Alignment fix.. please delete the old one per our discord converstaion. Remove this message. Thanks.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/cyan-magenta-imported-20260923-070201-4c26051a.png",
+      "packageUrl": "packages/cyan-magenta-imported-20260923-070201-4c26051a.zip"
+    },
+    {
+      "id": "iron-man-blue-themeeditor-imported-20260923-065821-59f2a3c6",
+      "name": "Iron_Man_Blue_-ThemeEditor-imported_20260923_065821",
+      "author": "KLPFL",
+      "description": "Alignment fix.. please delete the old one per our discord converstaion. Remove this message. Thanks.",
+      "deviceModel": "universal-screen-8.8-inch",
+      "deviceName": "8.8\u0022 Universal Screen",
+      "previewUrl": "previews/iron-man-blue-themeeditor-imported-20260923-065821-59f2a3c6.png",
+      "packageUrl": "packages/iron-man-blue-themeeditor-imported-20260923-065821-59f2a3c6.zip"
     }
   ]
 }
